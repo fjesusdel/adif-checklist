@@ -644,6 +644,7 @@ header {
       <h1>Mantenimiento ADIF</h1>
       <p>Contrato 4.26/28510.0005 · RC Sur</p>
     </div>
+    <button id="btnInstalarHeader" onclick="instalarApp()" style="background:var(--amarillo);color:var(--azul);border:none;border-radius:7px;padding:6px 11px;font-size:11px;font-weight:800;cursor:pointer;white-space:nowrap;display:none">⬇ Instalar</button>
   </div>
   <div class="header-bar"></div>
 </header>
@@ -1766,9 +1767,10 @@ var _deferredPrompt = null;
 window.addEventListener('beforeinstallprompt', function(e) {
   e.preventDefault();
   _deferredPrompt = e;
-  // Mostrar banner solo si no está ya instalada
   if (!window.matchMedia('(display-mode: standalone)').matches) {
     document.getElementById('installBanner').classList.add('visible');
+    var btn = document.getElementById('btnInstalarHeader');
+    if (btn) btn.style.display = 'block';
   }
 });
 
@@ -1803,6 +1805,10 @@ function cerrarBanner() {
 (function() {
   var isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
   var isStandalone = window.matchMedia('(display-mode: standalone)').matches;
+  if (!isStandalone) {
+    var btn = document.getElementById('btnInstalarHeader');
+    if (btn) btn.style.display = 'block';
+  }
   if (isIOS && !isStandalone) {
     setTimeout(function() {
       document.getElementById('installBanner').classList.add('visible');
