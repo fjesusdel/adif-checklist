@@ -584,52 +584,6 @@ header {
   flex-shrink: 0;
 }
 
-
-#installBanner {
-  display: none;
-  position: fixed;
-  bottom: 0; left: 0; right: 0;
-  background: var(--azul);
-  color: white;
-  padding: 12px 16px;
-  z-index: 200;
-  box-shadow: 0 -2px 12px rgba(0,0,0,0.2);
-}
-#installBanner.visible { display: flex; align-items: center; gap: 10px; }
-#installBanner .ib-text { flex: 1; font-size: 13px; line-height: 1.4; }
-#installBanner .ib-text strong { display: block; font-size: 14px; margin-bottom: 2px; }
-#installBanner .ib-btn {
-  background: var(--amarillo); color: var(--azul);
-  border: none; border-radius: 7px; padding: 8px 14px;
-  font-size: 13px; font-weight: 800; cursor: pointer; white-space: nowrap;
-}
-#installBanner .ib-close {
-  background: none; border: none; color: rgba(255,255,255,0.7);
-  font-size: 20px; cursor: pointer; padding: 0 4px; line-height: 1;
-}
-#iosInstallModal {
-  display: none; position: fixed; inset: 0;
-  background: rgba(0,0,0,0.6); z-index: 300;
-  align-items: flex-end; justify-content: center;
-}
-#iosInstallModal.visible { display: flex; }
-#iosInstallModal .modal-box {
-  background: white; border-radius: 16px 16px 0 0;
-  padding: 24px 20px 36px; max-width: 500px; width: 100%;
-  text-align: center;
-}
-#iosInstallModal .modal-box h3 { color: var(--azul); font-size: 17px; margin-bottom: 12px; }
-#iosInstallModal .modal-box p  { font-size: 14px; color: #374151; line-height: 1.6; margin-bottom: 16px; }
-#iosInstallModal .modal-box .step { 
-  background: var(--azul-claro); border-radius: 8px; 
-  padding: 10px 14px; margin-bottom: 8px; 
-  font-size: 13px; text-align: left; color: var(--gris-oscuro);
-}
-#iosInstallModal .modal-close {
-  margin-top: 8px; background: var(--azul); color: white;
-  border: none; border-radius: 9px; padding: 12px 32px;
-  font-size: 15px; font-weight: 700; cursor: pointer;
-}
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
@@ -644,7 +598,6 @@ header {
       <h1>Mantenimiento ADIF</h1>
       <p>Contrato 4.26/28510.0005 · RC Sur</p>
     </div>
-    <button id="btnInstalarHeader" onclick="instalarApp()" style="background:var(--amarillo);color:var(--azul);border:none;border-radius:7px;padding:6px 11px;font-size:11px;font-weight:800;cursor:pointer;white-space:nowrap;display:none">⬇ Instalar</button>
   </div>
   <div class="header-bar"></div>
 </header>
@@ -744,7 +697,7 @@ header {
   <div class="card">
     <div class="card-title">Exportar informe</div>
     <button class="btn-primary" onclick="compartirExcel()">📤 Compartir informe Excel</button>
-    <button class="btn-amarillo" onclick="descargarExcel()">💾 Descargar Excel (para PC)</button>
+    <button class="btn-amarillo" onclick="descargarExcel()">💾 Descargar Excel (PC)</button>
   </div>
   <div class="card">
     <button class="btn-secondary" onclick="nuevaVisita()">🔄 Nueva visita</button>
@@ -1631,19 +1584,16 @@ function _recogerDatos() {
   var tipoLabel = tipo==='anual'?'Revision Anual Presencial':tipo==='trimestral'?'Revision Trimestral Remota':'Revision Trimestral PCI (RD 513/2017)';
   var periodOK = getPuntosParaTipo(tipo);
   var sistemas = tipo==='pci-trim' ? ['pci'] : inst.sistemas.concat(['eq_general']);
-
   var nOk=0, nInc=0, nNa=0, total=0;
   var incidencias = [];
   var filasPDF = [];
 
   sistemas.forEach(function(sist) {
-    var def = CHECKLIST[sist];
-    if (!def) return;
+    var def = CHECKLIST[sist]; if (!def) return;
     var grupos = def.grupos.map(function(g){
       return {g:g.g, items:g.items.filter(function(it){return periodOK.includes(it.p);})};
     }).filter(function(g){return g.items.length>0;});
     if (!grupos.length) return;
-
     grupos.forEach(function(grupo) {
       filasPDF.push({tipo:'header', texto: def.label + ' - ' + grupo.g});
       grupo.items.forEach(function(item) {
@@ -1652,21 +1602,19 @@ function _recogerDatos() {
         var est = res.estado || 'pendiente';
         if (est==='ok') nOk++;
         else if (est==='inc') { nInc++; incidencias.push({c:item.c, n:item.n, desc:res.desc||''}); }
-        else if (est==='na')  nNa++;
+        else if (est==='na') nNa++;
         filasPDF.push({tipo:'fila', codigo:item.c, nombre:item.n, estado:est, desc:res.desc||''});
       });
     });
   });
-
   var fechaStr = fv.fecha ? new Date(fv.fecha+'T12:00:00').toLocaleDateString('es-ES',{day:'2-digit',month:'long',year:'numeric'}) : '-';
-  return {inst,fv,tipo,tipoLabel,nOk,nInc,nNa,total,incidencias,filasPDF,fechaStr};
+  return {inst:inst, fv:fv, tipo:tipo, tipoLabel:tipoLabel, nOk:nOk, nInc:nInc, nNa:nNa, total:total, incidencias:incidencias, filasPDF:filasPDF, fechaStr:fechaStr};
 }
 
 function _buildXLSX() {
   var d = _recogerDatos();
   var wb = XLSX.utils.book_new();
 
-  // Hoja 1: Resumen
   var wsRes = XLSX.utils.aoa_to_sheet([
     ['INFORME DE MANTENIMIENTO PREVENTIVO - ILUNION SEGURIDAD'],
     ['Contrato ADIF 4.26/28510.0005 - RC Sur'],
@@ -1687,19 +1635,17 @@ function _buildXLSX() {
     ['Correctos', d.nOk],
     ['Incidencias', d.nInc],
     ['No aplica', d.nNa],
-    ['Pendientes', d.total - d.nOk - d.nInc - d.nNa],
+    ['Pendientes', d.total-d.nOk-d.nInc-d.nNa],
     ['Total puntos', d.total],
   ]);
   wsRes['!cols'] = [{wch:22},{wch:45}];
   XLSX.utils.book_append_sheet(wb, wsRes, 'Resumen');
 
-  // Hoja 2: Checklist completo
   var filas = [['Codigo','Grupo','Punto de revision','Estado','Observaciones']];
   var grupoActual = '';
   d.filasPDF.forEach(function(f) {
-    if (f.tipo === 'header') {
-      grupoActual = f.texto;
-    } else {
+    if (f.tipo === 'header') { grupoActual = f.texto; }
+    else {
       var label = f.estado==='ok'?'OK':f.estado==='inc'?'INCIDENCIA':f.estado==='na'?'N/A':'PENDIENTE';
       filas.push([f.codigo, grupoActual, f.nombre, label, f.desc||'']);
     }
@@ -1708,7 +1654,6 @@ function _buildXLSX() {
   wsCheck['!cols'] = [{wch:12},{wch:30},{wch:55},{wch:14},{wch:40}];
   XLSX.utils.book_append_sheet(wb, wsCheck, 'Checklist');
 
-  // Hoja 3: Solo incidencias
   if (d.incidencias.length > 0) {
     var incData = [['Codigo','Punto de revision','Descripcion de la incidencia']];
     d.incidencias.forEach(function(i){ incData.push([i.c, i.n, i.desc]); });
@@ -1716,28 +1661,20 @@ function _buildXLSX() {
     wsInc['!cols'] = [{wch:12},{wch:55},{wch:50}];
     XLSX.utils.book_append_sheet(wb, wsInc, 'Incidencias');
   }
-
   return wb;
 }
-
 
 function compartirExcel() {
   var d = _recogerDatos();
   var fname = 'Informe_' + d.inst.codigo + '_' + d.tipo + '_' + (d.fv.fecha||new Date().toISOString().split('T')[0]) + '.xlsx';
   var wb = _buildXLSX();
-  var wbOut = XLSX.write(wb, {bookType:'xlsx', type:'array'});
-  var blob = new File([wbOut], fname, {type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
-
+  var out = XLSX.write(wb, {bookType:'xlsx', type:'array'});
+  var blob = new File([out], fname, {type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
   if (navigator.share && navigator.canShare && navigator.canShare({files:[blob]})) {
-    navigator.share({
-      files: [blob],
-      title: 'Informe ' + d.inst.nombre,
-      text: 'Informe de mantenimiento - ' + d.inst.nombre + ' - ' + d.fechaStr
-    }).then(function(){ toast('Excel compartido \u2713'); })
+    navigator.share({files:[blob], title:'Informe '+d.inst.nombre, text:'Informe mantenimiento - '+d.inst.nombre+' - '+d.fechaStr})
+      .then(function(){ toast('Excel compartido \u2713'); })
       .catch(function(e){ if(e.name!=='AbortError') descargarExcel(); });
-  } else {
-    descargarExcel();
-  }
+  } else { descargarExcel(); }
 }
 
 function descargarExcel() {
@@ -1748,10 +1685,8 @@ function descargarExcel() {
   toast('Excel descargado \u2713');
 }
 
-function exportarCSV() { descargarExcel(); }
-function compartirArchivo() { compartirExcel(); }
-function generarPDF() { compartirExcel(); }
-
+function exportarCSV()    { descargarExcel(); }
+function compartirArchivo(){ compartirExcel(); }
 function cerrarPDF() {
   document.getElementById('pdfVisor').style.display = 'none';
   document.getElementById('pdfContenido').innerHTML = '';
@@ -1760,62 +1695,11 @@ function cerrarPDF() {
 
 
 
-
-// ── PWA INSTALL ───────────────────────────────────────────
-var _deferredPrompt = null;
-
-window.addEventListener('beforeinstallprompt', function(e) {
-  e.preventDefault();
-  _deferredPrompt = e;
-  if (!window.matchMedia('(display-mode: standalone)').matches) {
-    document.getElementById('installBanner').classList.add('visible');
-    var btn = document.getElementById('btnInstalarHeader');
-    if (btn) btn.style.display = 'block';
-  }
-});
-
-window.addEventListener('appinstalled', function() {
-  document.getElementById('installBanner').classList.remove('visible');
-  _deferredPrompt = null;
-  toast('App instalada correctamente ✓');
-});
-
-function instalarApp() {
-  var isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
-  var isStandalone = window.matchMedia('(display-mode: standalone)').matches;
-  if (isStandalone) { toast('La app ya está instalada ✓'); return; }
-  if (isIOS) {
-    document.getElementById('iosInstallModal').classList.add('visible');
-    return;
-  }
-  if (_deferredPrompt) {
-    _deferredPrompt.prompt();
-    _deferredPrompt.userChoice.then(function(r) {
-      _deferredPrompt = null;
-      document.getElementById('installBanner').classList.remove('visible');
-    });
-  }
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', function() {
+    navigator.serviceWorker.register('./sw.js');
+  });
 }
-
-function cerrarBanner() {
-  document.getElementById('installBanner').classList.remove('visible');
-}
-
-// Mostrar botón instalar en iOS aunque no haya beforeinstallprompt
-(function() {
-  var isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
-  var isStandalone = window.matchMedia('(display-mode: standalone)').matches;
-  if (!isStandalone) {
-    var btn = document.getElementById('btnInstalarHeader');
-    if (btn) btn.style.display = 'block';
-  }
-  if (isIOS && !isStandalone) {
-    setTimeout(function() {
-      document.getElementById('installBanner').classList.add('visible');
-    }, 2000);
-  }
-})();
-
 
 // ── INIT ──────────────────────────────────────────────────────────────
 initPaso1();
@@ -1829,28 +1713,5 @@ initPaso1();
   </div>
   <div id="pdfContenido" style="padding:16px;max-width:700px;margin:0 auto;"></div>
 </div>
-
-<!-- Banner instalación PWA -->
-<div id="installBanner">
-  <div class="ib-text">
-    <strong>📱 Instalar como app</strong>
-    Accede sin navegador, funciona sin internet
-  </div>
-  <button class="ib-btn" id="installBtn" onclick="instalarApp()">Instalar</button>
-  <button class="ib-close" onclick="cerrarBanner()">×</button>
-</div>
-
-<!-- Modal instrucciones iOS -->
-<div id="iosInstallModal">
-  <div class="modal-box">
-    <h3>📱 Instalar en iPhone / iPad</h3>
-    <p>Safari no permite instalar automáticamente.<br>Sigue estos pasos:</p>
-    <div class="step">1️⃣ Pulsa el botón <strong>Compartir</strong> de Safari<br><span style="font-size:18px">⬆️</span> (el cuadrado con flecha, abajo en la barra)</div>
-    <div class="step">2️⃣ Desplázate y pulsa <strong>"Añadir a pantalla de inicio"</strong></div>
-    <div class="step">3️⃣ Pulsa <strong>"Añadir"</strong> — aparecerá el icono en tu pantalla</div>
-    <button class="modal-close" onclick="document.getElementById('iosInstallModal').classList.remove('visible')">Entendido</button>
-  </div>
-</div>
-
 </body>
 </html>
