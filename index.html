@@ -4,11 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>Checklist Mantenimiento ADIF · Ilunion Seguridad</title>
-<link rel="manifest" href="manifest.json">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="ADIF Check">
-<meta name="theme-color" content="#003087">
 <style>
 :root {
   --azul:     #003087;
@@ -700,9 +695,9 @@ header {
   </div>
   <div class="card">
     <div class="card-title">Exportar informe</div>
-    <button class="btn-amarillo" onclick="exportarCSV()">📄 Descargar CSV (para PC)</button>
-    <button class="btn-primary" onclick="crearPDF()">📋 Crear PDF del informe</button>
-    
+    <button class="btn-primary" onclick="generarPDF()">📋 Generar y descargar PDF</button>
+    <button class="btn-secondary" onclick="compartirArchivo()">📤 Compartir (WhatsApp / Correo / ...)</button>
+    <button class="btn-amarillo" onclick="exportarCSV()">📊 Descargar CSV (Excel)</button>
   </div>
   <div class="card">
     <button class="btn-secondary" onclick="nuevaVisita()">🔄 Nueva visita</button>
@@ -1582,141 +1577,232 @@ function toast(msg) {
 }
 
 
-function crearPDF() {
-  var inst  = state.instalacion;
-  var fv    = state.fichaVisita;
-  var tipo  = state.tipoVisita;
-  var tipoLabel = tipo==='anual' ? 'Revision Anual Presencial'
-                : tipo==='trimestral' ? 'Revision Trimestral Remota'
-                : 'Revision Trimestral PCI (RD 513/2017)';
+function _recogerDatos() {
+  var inst = state.instalacion;
+  var fv   = state.fichaVisita;
+  var tipo = state.tipoVisita;
+  var tipoLabel = tipo==='anual'?'Revision Anual Presencial':tipo==='trimestral'?'Revision Trimestral Remota':'Revision Trimestral PCI (RD 513/2017)';
   var periodOK = getPuntosParaTipo(tipo);
   var sistemas = tipo==='pci-trim' ? ['pci'] : inst.sistemas.concat(['eq_general']);
 
   var nOk=0, nInc=0, nNa=0, total=0;
   var incidencias = [];
-  var tablas = '';
+  var filasPDF = [];
 
   sistemas.forEach(function(sist) {
     var def = CHECKLIST[sist];
     if (!def) return;
-    var grupos = def.grupos.map(function(g) {
-      return {g: g.g, items: g.items.filter(function(it){ return periodOK.includes(it.p); })};
-    }).filter(function(g){ return g.items.length > 0; });
+    var grupos = def.grupos.map(function(g){
+      return {g:g.g, items:g.items.filter(function(it){return periodOK.includes(it.p);})};
+    }).filter(function(g){return g.items.length>0;});
     if (!grupos.length) return;
 
     grupos.forEach(function(grupo) {
-      var filas = '';
+      filasPDF.push({tipo:'header', texto: def.label + ' - ' + grupo.g});
       grupo.items.forEach(function(item) {
         total++;
         var res = state.resultados[item.c] || {};
         var est = res.estado || 'pendiente';
-        if (est==='ok')  nOk++;
+        if (est==='ok') nOk++;
         else if (est==='inc') { nInc++; incidencias.push({c:item.c, n:item.n, desc:res.desc||''}); }
         else if (est==='na')  nNa++;
-        var color = est==='ok'?'#16a34a':est==='inc'?'#ea580c':est==='na'?'#9ca3af':'#dc2626';
-        var bg    = est==='ok'?'#f0fdf4':est==='inc'?'#fff7ed':est==='na'?'#f8fafc':'#fff';
-        var label = est==='ok'?'OK':est==='inc'?'INCIDENCIA':est==='na'?'N/A':'PENDIENTE';
-        var nota  = res.desc ? ('<br><small style="color:#ea580c">' + res.desc + '</small>') : '';
-        filas += '<tr style="background:' + bg + '">'
-          + '<td style="padding:5px 8px;font-size:11px;font-weight:700;color:#003087;border-bottom:1px solid #e5e7eb;white-space:nowrap">' + item.c + '</td>'
-          + '<td style="padding:5px 8px;font-size:11px;line-height:1.4;border-bottom:1px solid #e5e7eb">' + item.n + nota + '</td>'
-          + '<td style="padding:5px 8px;font-size:11px;font-weight:700;color:' + color + ';text-align:center;border-bottom:1px solid #e5e7eb;white-space:nowrap">' + label + '</td>'
-          + '</tr>';
+        filasPDF.push({tipo:'fila', codigo:item.c, nombre:item.n, estado:est, desc:res.desc||''});
       });
-      tablas += '<div style="margin-bottom:14px">'
-        + '<div style="background:#003087;color:#fff;padding:6px 12px;font-size:12px;font-weight:700">'
-        + def.label + ' - ' + grupo.g + '</div>'
-        + '<table style="width:100%;border-collapse:collapse;border:1px solid #d1d5db;border-top:none">'
-        + '<colgroup><col style="width:70px"><col><col style="width:110px"></colgroup>'
-        + filas + '</table></div>';
     });
   });
 
-  var sinRevisar = total - nOk - nInc - nNa;
-
-  var incBlock = '';
-  if (incidencias.length > 0) {
-    var rows = '';
-    incidencias.forEach(function(i) {
-      rows += '<div style="border-left:3px solid #ea580c;margin-top:6px;padding:6px 10px;background:#fff7ed;border-radius:0 4px 4px 0">'
-        + '<div style="font-size:11px;font-weight:700;color:#ea580c">' + i.c + ' - ' + i.n + '</div>'
-        + (i.desc ? '<div style="font-size:11px;color:#6b7280;margin-top:2px">' + i.desc + '</div>' : '')
-        + '</div>';
-    });
-    incBlock = '<div style="margin-bottom:18px">'
-      + '<div style="background:#ea580c;color:#fff;padding:6px 12px;font-size:12px;font-weight:700;border-radius:4px">'
-      + 'Incidencias detectadas (' + incidencias.length + ')</div>' + rows + '</div>';
-  }
-
-  var ft = state.fichaTecnica || {};
-  var ftBlock = '';
-  if (ft.ip_grabador || ft.ip_central || ft.ip_uca || ft.notas) {
-    var ftRows = '';
-    if (ft.ip_grabador) ftRows += '<div><b>IP Grabador:</b> ' + ft.ip_grabador + (ft.puerto_grabador ? ':'+ft.puerto_grabador : '') + '</div>';
-    if (ft.ip_central)  ftRows += '<div><b>IP Central:</b> '  + ft.ip_central  + (ft.modelo_central ? ' ('+ft.modelo_central+')' : '') + '</div>';
-    if (ft.ip_uca)      ftRows += '<div><b>IP UCA:</b> '      + ft.ip_uca + '</div>';
-    if (ft.ip_pci)      ftRows += '<div><b>IP PCI:</b> '      + ft.ip_pci + '</div>';
-    ftBlock = '<div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:4px;padding:8px 12px;margin-bottom:14px;font-size:11px">'
-      + '<div style="font-size:10px;font-weight:700;color:#003087;margin-bottom:5px;text-transform:uppercase">Ficha Tecnica</div>'
-      + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:4px">' + ftRows + '</div>'
-      + (ft.notas ? '<div style="margin-top:5px;color:#6b7280"><b>Notas:</b> ' + ft.notas + '</div>' : '')
-      + '</div>';
-  }
-
-  var now = new Date();
-  var nowStr = now.toLocaleDateString('es-ES') + ' ' + now.toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'});
   var fechaStr = fv.fecha ? new Date(fv.fecha+'T12:00:00').toLocaleDateString('es-ES',{day:'2-digit',month:'long',year:'numeric'}) : '-';
+  return {inst,fv,tipo,tipoLabel,nOk,nInc,nNa,total,incidencias,filasPDF,fechaStr};
+}
 
-  var doc = '<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">'
-    + '<meta name="viewport" content="width=device-width,initial-scale=1">'
-    + '<title>Informe ' + inst.nombre + ' ' + (fv.fecha||'') + '</title>'
-    + '<style>'
-    + 'body{font-family:Arial,sans-serif;color:#1f2937;margin:0;padding:16px;font-size:12px}'
-    + '.hdr{background:#003087;color:#fff;padding:14px 18px;display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;border-radius:6px}'
-    + '.hdr-t{font-size:15px;font-weight:800;margin:0}'
-    + '.hdr-s{font-size:10px;margin:3px 0 0;opacity:.8}'
-    + '.hdr-d{text-align:right;font-size:10px;opacity:.9}'
-    + '.inst{background:#eff6ff;border:1px solid #bfdbfe;border-radius:6px;padding:12px 16px;margin-bottom:12px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px}'
-    + '.i-n{font-size:15px;font-weight:800;color:#003087}'
-    + '.i-m{font-size:11px;color:#374151;margin-top:2px}'
-    + '.badge{display:inline-block;background:#FFD100;color:#003087;font-size:10px;font-weight:800;padding:3px 9px;border-radius:99px;margin-top:5px}'
-    + '.i-d{text-align:right;font-size:11px;color:#374151}'
-    + '.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px}'
-    + '.stat{text-align:center;padding:10px 6px;border-radius:6px}'
-    + '.stat .n{font-size:22px;font-weight:800;line-height:1}'
-    + '.stat .l{font-size:9px;font-weight:700;margin-top:3px;text-transform:uppercase;color:#6b7280}'
-    + '.footer{text-align:center;font-size:9px;color:#9ca3af;margin-top:20px;padding-top:10px;border-top:1px solid #e5e7eb}'
-    + '@media print{body{padding:4mm}}'
-    + '</style></head><body>'
-    + '<div class="hdr"><div>'
-    + '<div class="hdr-t">Informe de Mantenimiento Preventivo</div>'
-    + '<div class="hdr-s">Contrato ADIF 4.26/28510.0005 - RC Sur - Ilunion Seguridad</div>'
-    + '</div><div class="hdr-d">Generado: ' + nowStr + '</div></div>'
-    + '<div class="inst"><div>'
-    + '<div class="i-n">' + inst.nombre + '</div>'
-    + '<div class="i-m">' + inst.codigo + ' - ' + inst.provincia + ' - ' + inst.tipo + '</div>'
-    + '<span class="badge">' + tipoLabel + '</span>'
-    + '</div><div class="i-d">'
-    + '<div><b>Fecha:</b> ' + fechaStr + '</div>'
-    + '<div><b>Tecnico:</b> ' + (fv.tecnico||'-') + '</div>'
-    + '<div><b>Entrada:</b> ' + (fv.horaIn||'-') + '  <b>Salida:</b> ' + (fv.horaOut||'-') + '</div>'
-    + '</div></div>'
-    + '<div class="stats">'
-    + '<div class="stat" style="background:#dcfce7"><div class="n" style="color:#16a34a">' + nOk + '</div><div class="l">Correctos</div></div>'
-    + '<div class="stat" style="background:#ffedd5"><div class="n" style="color:#ea580c">' + nInc + '</div><div class="l">Incidencias</div></div>'
-    + '<div class="stat" style="background:#f1f5f9"><div class="n" style="color:#9ca3af">' + nNa + '</div><div class="l">No aplica</div></div>'
-    + '<div class="stat" style="background:#fee2e2"><div class="n" style="color:#dc2626">' + sinRevisar + '</div><div class="l">Pendientes</div></div>'
-    + '</div>'
-    + ftBlock + incBlock + tablas
-    + '<div class="footer">Ilunion Seguridad - Contrato ADIF 4.26/28510.0005 - RC Sur - fjdelgado@ilunion.com</div>'
-    + '</body></html>';
+function generarPDF() {
+  if (typeof window.jspdf === 'undefined') {
+    toast('Cargando librería PDF... espera un momento');
+    setTimeout(generarPDF, 1500);
+    return;
+  }
+  var d = _recogerDatos();
+  var doc = new window.jspdf.jsPDF({orientation:'portrait', unit:'mm', format:'a4'});
 
-  var contenido = document.getElementById('pdfContenido');
-  var visor     = document.getElementById('pdfVisor');
-  contenido.innerHTML = doc;
-  visor.style.display = 'block';
-  visor.scrollTop = 0;
-  toast('Informe listo - pulsa Imprimir / PDF para guardarlo');
+  // Cabecera azul
+  doc.setFillColor(0, 48, 135);
+  doc.rect(0, 0, 210, 28, 'F');
+  doc.setTextColor(255,255,255);
+  doc.setFontSize(14);
+  doc.setFont('helvetica','bold');
+  doc.text('Informe de Mantenimiento Preventivo', 14, 11);
+  doc.setFontSize(8);
+  doc.setFont('helvetica','normal');
+  doc.text('Contrato ADIF 4.26/28510.0005 - RC Sur - Ilunion Seguridad', 14, 17);
+  doc.text('Generado: ' + new Date().toLocaleDateString('es-ES') + ' ' + new Date().toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'}), 14, 22);
+
+  // Bloque instalación
+  doc.setFillColor(239, 246, 255);
+  doc.rect(10, 32, 190, 28, 'F');
+  doc.setDrawColor(191, 219, 254);
+  doc.rect(10, 32, 190, 28, 'S');
+  doc.setTextColor(0, 48, 135);
+  doc.setFontSize(13);
+  doc.setFont('helvetica','bold');
+  doc.text(d.inst.nombre, 14, 41);
+  doc.setFontSize(9);
+  doc.setFont('helvetica','normal');
+  doc.setTextColor(55, 65, 81);
+  doc.text(d.inst.codigo + ' - ' + d.inst.provincia + ' - ' + d.inst.tipo, 14, 47);
+  doc.setFillColor(255, 209, 0);
+  doc.rect(14, 50, 0, 0, 'F');
+  doc.setFontSize(8);
+  doc.setTextColor(0, 48, 135);
+  doc.text(d.tipoLabel, 14, 55);
+  // Datos visita (derecha)
+  doc.setTextColor(55,65,81);
+  doc.setFontSize(8);
+  doc.text('Fecha: ' + d.fechaStr, 130, 41);
+  doc.text('Tecnico: ' + (d.fv.tecnico||'-'), 130, 46);
+  doc.text('Entrada: ' + (d.fv.horaIn||'-') + '   Salida: ' + (d.fv.horaOut||'-'), 130, 51);
+
+  // Stats
+  var statY = 65;
+  var statW = 44;
+  var stats = [
+    {label:'Correctos', val:d.nOk, r:22,g:163,b:74, br:220,bg:252,bb:231},
+    {label:'Incidencias', val:d.nInc, r:234,g:88,b:12, br:255,bg:237,bb:213},
+    {label:'No aplica', val:d.nNa, r:107,g:114,b:128, br:241,bg:245,bb:249},
+    {label:'Pendientes', val:d.total-d.nOk-d.nInc-d.nNa, r:220,g:38,b:38, br:254,bg:226,bb:226},
+  ];
+  stats.forEach(function(s,i) {
+    var x = 10 + i*(statW+2);
+    doc.setFillColor(s.br,s.bg,s.bb);
+    doc.rect(x, statY, statW, 18, 'F');
+    doc.setTextColor(s.r,s.g,s.b);
+    doc.setFontSize(18);
+    doc.setFont('helvetica','bold');
+    doc.text(String(s.val), x+statW/2, statY+11, {align:'center'});
+    doc.setFontSize(7);
+    doc.setFont('helvetica','normal');
+    doc.setTextColor(107,114,128);
+    doc.text(s.label, x+statW/2, statY+16, {align:'center'});
+  });
+
+  // Incidencias resumen
+  var curY = statY + 24;
+  if (d.incidencias.length > 0) {
+    doc.setFillColor(234,88,12);
+    doc.rect(10, curY, 190, 7, 'F');
+    doc.setTextColor(255,255,255);
+    doc.setFontSize(9);
+    doc.setFont('helvetica','bold');
+    doc.text('Incidencias detectadas (' + d.incidencias.length + ')', 14, curY+5);
+    curY += 9;
+    d.incidencias.forEach(function(inc) {
+      if (curY > 270) { doc.addPage(); curY = 15; }
+      doc.setFillColor(255,247,237);
+      doc.rect(10, curY, 190, inc.desc ? 10 : 7, 'F');
+      doc.setDrawColor(234,88,12);
+      doc.rect(10, curY, 2, inc.desc ? 10 : 7, 'F');
+      doc.setTextColor(234,88,12);
+      doc.setFontSize(8);
+      doc.setFont('helvetica','bold');
+      doc.text(inc.c + ' - ' + inc.n, 14, curY+5);
+      if (inc.desc) {
+        doc.setTextColor(107,114,128);
+        doc.setFont('helvetica','normal');
+        doc.setFontSize(7);
+        doc.text('-> ' + inc.desc, 14, curY+9);
+      }
+      curY += inc.desc ? 12 : 9;
+    });
+    curY += 4;
+  }
+
+  // Tabla checklist con autoTable
+  var tableRows = [];
+  var tableStyles = [];
+  d.filasPDF.forEach(function(f, idx) {
+    if (f.tipo === 'header') {
+      tableRows.push([{content: f.texto, colSpan:3, styles:{fillColor:[0,48,135], textColor:[255,255,255], fontStyle:'bold', fontSize:9}}]);
+    } else {
+      var est = f.estado;
+      var label = est==='ok'?'OK':est==='inc'?'INCIDENCIA':est==='na'?'N/A':'PENDIENTE';
+      var bg = est==='ok'?[240,253,244]:est==='inc'?[255,247,237]:est==='na'?[248,250,252]:[255,255,255];
+      var tc = est==='ok'?[22,163,74]:est==='inc'?[234,88,12]:est==='na'?[107,114,128]:[220,38,38];
+      var nombre = f.desc ? (f.nombre + ' -> ' + f.desc) : f.nombre;
+      tableRows.push([
+        {content:f.codigo, styles:{fontStyle:'bold', textColor:[0,48,135], cellWidth:18}},
+        {content:nombre, styles:{fontSize:8, cellWidth:'auto'}},
+        {content:label, styles:{fontStyle:'bold', textColor:tc, halign:'center', cellWidth:28}}
+      ]);
+    }
+  });
+
+  doc.autoTable({
+    startY: curY,
+    body: tableRows,
+    theme: 'plain',
+    styles: {fontSize:8, cellPadding:2, overflow:'linebreak'},
+    margin: {left:10, right:10},
+    didParseCell: function(data) {
+      if (data.row.raw && data.row.raw[0] && data.row.raw[0].styles && data.row.raw[0].styles.fillColor) {
+        // header row already styled
+      }
+    }
+  });
+
+  // Footer
+  var pageCount = doc.internal.getNumberOfPages();
+  for (var i=1; i<=pageCount; i++) {
+    doc.setPage(i);
+    doc.setFontSize(7);
+    doc.setTextColor(156,163,175);
+    doc.text('Ilunion Seguridad - ADIF 4.26/28510.0005 - RC Sur - fjdelgado@ilunion.com  |  Pag. ' + i + '/' + pageCount, 105, 292, {align:'center'});
+  }
+
+  var fname = 'Informe_' + d.inst.codigo + '_' + d.tipo + '_' + (d.fv.fecha||new Date().toISOString().split('T')[0]) + '.pdf';
+
+  // Intentar Web Share API con el PDF
+  var pdfBlob = doc.output('blob');
+  if (navigator.share && navigator.canShare) {
+    var file = new File([pdfBlob], fname, {type:'application/pdf'});
+    if (navigator.canShare({files:[file]})) {
+      navigator.share({
+        files: [file],
+        title: 'Informe ' + d.inst.nombre,
+        text: 'Informe de mantenimiento - ' + d.inst.nombre + ' - ' + d.fechaStr
+      }).then(function(){ toast('PDF compartido ✓'); })
+        .catch(function(e){ if(e.name!=='AbortError') doc.save(fname); });
+      return;
+    }
+  }
+  // Fallback: descarga directa
+  doc.save(fname);
+  toast('PDF descargado ✓');
+}
+
+function compartirArchivo() {
+  // Compartir el CSV via Web Share API
+  var csv  = generarCSV();
+  var inst = state.instalacion;
+  var fv   = state.fichaVisita;
+  var tl   = state.tipoVisita==='anual'?'Anual':state.tipoVisita==='trimestral'?'Trim_Remota':'Trim_PCI';
+  var fecha = fv.fecha || new Date().toISOString().split('T')[0];
+  var fname = 'Informe_' + inst.codigo + '_' + tl + '_' + fecha + '.csv';
+
+  if (navigator.share && navigator.canShare) {
+    var blob = new Blob(['﻿'+csv], {type:'text/csv;charset=utf-8;'});
+    var file = new File([blob], fname, {type:'text/csv'});
+    if (navigator.canShare({files:[file]})) {
+      navigator.share({
+        files: [file],
+        title: 'Informe ' + inst.nombre,
+        text: 'Informe CSV de mantenimiento - ' + inst.nombre + ' - ' + fecha
+      }).then(function(){ toast('CSV compartido ✓'); })
+        .catch(function(e){ if(e.name!=='AbortError') exportarCSV(); });
+      return;
+    }
+  }
+  // Fallback descarga
+  exportarCSV();
+  toast('CSV descargado ✓');
 }
 
 function cerrarPDF() {
@@ -1725,13 +1811,6 @@ function cerrarPDF() {
 }
 
 
-
-// ── SERVICE WORKER ────────────────────────────────────────
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', function() {
-    navigator.serviceWorker.register('./sw.js');
-  });
-}
 
 // ── INIT ──────────────────────────────────────────────────────────────
 initPaso1();
