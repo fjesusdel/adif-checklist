@@ -1715,6 +1715,129 @@ if ('serviceWorker' in navigator) {
   });
 }
 
+
+function abrirPDF() {
+  var d = _recogerDatos();
+
+  var filas = '';
+  var grupoActual = '';
+  d.filasPDF.forEach(function(f) {
+    if (f.tipo === 'header') {
+      filas += '<tr><td colspan="3" style="background:#1e3a7a;color:#fff;padding:7px 10px;font-size:11px;font-weight:700">' + f.texto + '</td></tr>';
+    } else {
+      var est = f.estado;
+      var label = est==='ok'?'OK':est==='inc'?'INCIDENCIA':est==='na'?'N/A':'PENDIENTE';
+      var bg    = est==='ok'?'#f0fdf4':est==='inc'?'#fff7ed':est==='na'?'#f8fafc':'#fff';
+      var color = est==='ok'?'#16a34a':est==='inc'?'#ea580c':est==='na'?'#9ca3af':'#dc2626';
+      filas += '<tr style="background:' + bg + '">'
+        + '<td style="padding:5px 8px;font-size:11px;font-weight:700;color:#003087;white-space:nowrap;border-bottom:1px solid #e5e7eb">' + f.codigo + '</td>'
+        + '<td style="padding:5px 8px;font-size:11px;border-bottom:1px solid #e5e7eb;line-height:1.4">' + f.nombre + (f.desc ? '<br><span style="color:#ea580c;font-size:10px">&rarr; ' + f.desc + '</span>' : '') + '</td>'
+        + '<td style="padding:5px 8px;font-size:11px;font-weight:700;color:' + color + ';text-align:center;border-bottom:1px solid #e5e7eb;white-space:nowrap">' + label + '</td>'
+        + '</tr>';
+    }
+  });
+
+  var incBlock = '';
+  if (d.incidencias.length > 0) {
+    var incRows = d.incidencias.map(function(i) {
+      return '<div style="border-left:3px solid #ea580c;padding:7px 12px;background:#fff7ed;margin-bottom:6px;border-radius:0 5px 5px 0">'
+        + '<div style="font-weight:700;font-size:12px;color:#ea580c">' + i.c + ' &mdash; ' + i.n + '</div>'
+        + (i.desc ? '<div style="font-size:11px;color:#6b7280;margin-top:2px">&rarr; ' + i.desc + '</div>' : '')
+        + '</div>';
+    }).join('');
+    incBlock = '<div style="margin-bottom:20px">'
+      + '<div style="background:#ea580c;color:#fff;padding:7px 14px;font-weight:700;font-size:12px;border-radius:5px 5px 0 0">'
+      + '&#9888; Incidencias detectadas (' + d.incidencias.length + ')</div>'
+      + '<div style="border:1px solid #ea580c;border-top:none;border-radius:0 0 5px 5px;padding:10px">' + incRows + '</div>'
+      + '</div>';
+  }
+
+  var ft = state.fichaTecnica || {};
+  var ftBlock = '';
+  if (ft.ip_central || ft.ip_grabador || ft.ip_uca || ft.notas) {
+    var ftRows = '';
+    if (ft.ip_grabador) ftRows += '<tr><td style="font-weight:700;padding:4px 8px;font-size:11px;width:140px">IP Grabador</td><td style="padding:4px 8px;font-size:11px">' + ft.ip_grabador + (ft.puerto_grabador?':'+ft.puerto_grabador:'') + '</td></tr>';
+    if (ft.ip_central)  ftRows += '<tr><td style="font-weight:700;padding:4px 8px;font-size:11px">IP Central</td><td style="padding:4px 8px;font-size:11px">' + ft.ip_central + (ft.modelo_central?' ('+ft.modelo_central+')':'') + '</td></tr>';
+    if (ft.ip_uca)      ftRows += '<tr><td style="font-weight:700;padding:4px 8px;font-size:11px">IP UCA</td><td style="padding:4px 8px;font-size:11px">' + ft.ip_uca + '</td></tr>';
+    if (ft.notas)       ftRows += '<tr><td style="font-weight:700;padding:4px 8px;font-size:11px">Notas</td><td style="padding:4px 8px;font-size:11px">' + ft.notas + '</td></tr>';
+    ftBlock = '<div style="margin-bottom:20px">'
+      + '<div style="background:#1e40af;color:#fff;padding:7px 14px;font-weight:700;font-size:12px;border-radius:5px 5px 0 0">Ficha T&eacute;cnica</div>'
+      + '<table style="width:100%;border-collapse:collapse;border:1px solid #bfdbfe;border-top:none;border-radius:0 0 5px 5px">' + ftRows + '</table>'
+      + '</div>';
+  }
+
+  var now = new Date();
+  var nowStr = now.toLocaleDateString('es-ES') + ' ' + now.toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'});
+
+  var doc = '<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">'
+    + '<meta name="viewport" content="width=device-width,initial-scale=1">'
+    + '<title>Informe ' + d.inst.nombre + ' ' + (d.fv.fecha||'') + '</title>'
+    + '<style>'
+    + 'body{font-family:Arial,sans-serif;margin:0;padding:16px;color:#1f2937;font-size:12px}'
+    + 'table{border-collapse:collapse}'
+    + '@media print{'
+    + '  body{padding:8mm}'
+    + '  .no-print{display:none}'
+    + '  @page{margin:10mm}'
+    + '}'
+    + '</style></head><body>'
+    // Botón compartir sticky arriba — solo visible en pantalla, no al imprimir
+    + '<div class="no-print" style="position:sticky;top:0;background:#003087;padding:10px 14px;margin:-16px -16px 16px;display:flex;justify-content:space-between;align-items:center;z-index:10">'
+    + '<span style="color:#fff;font-size:13px;font-weight:700">Informe generado</span>'
+    + '<button onclick="window.print()" style="background:#FFD100;color:#003087;border:none;border-radius:7px;padding:8px 16px;font-size:13px;font-weight:800;cursor:pointer">&#128247; Imprimir / Guardar PDF</button>'
+    + '</div>'
+    // Cabecera
+    + '<div style="background:#003087;color:#fff;padding:14px 18px;border-radius:7px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:flex-start">'
+    + '<div>'
+    + '<div style="font-size:16px;font-weight:800;margin-bottom:3px">Informe de Mantenimiento Preventivo</div>'
+    + '<div style="font-size:10px;opacity:.8">Contrato ADIF 4.26/28510.0005 &middot; RC Sur &middot; Ilunion Seguridad</div>'
+    + '</div>'
+    + '<div style="text-align:right;font-size:10px;opacity:.85">' + nowStr + '</div>'
+    + '</div>'
+    // Bloque instalación
+    + '<div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:7px;padding:12px 16px;margin-bottom:14px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px">'
+    + '<div>'
+    + '<div style="font-size:16px;font-weight:800;color:#003087">' + d.inst.nombre + '</div>'
+    + '<div style="font-size:11px;color:#374151;margin-top:3px">' + d.inst.codigo + ' &middot; ' + d.inst.provincia + ' &middot; ' + d.inst.tipo + '</div>'
+    + '<div style="display:inline-block;background:#FFD100;color:#003087;font-size:10px;font-weight:800;padding:3px 10px;border-radius:99px;margin-top:6px">' + d.tipoLabel + '</div>'
+    + '</div>'
+    + '<div style="text-align:right;font-size:11px;color:#374151">'
+    + '<div><strong>Fecha:</strong> ' + d.fechaStr + '</div>'
+    + '<div><strong>T&eacute;cnico:</strong> ' + (d.fv.tecnico||'&mdash;') + '</div>'
+    + '<div><strong>Entrada:</strong> ' + (d.fv.horaIn||'&mdash;') + ' &nbsp; <strong>Salida:</strong> ' + (d.fv.horaOut||'&mdash;') + '</div>'
+    + '</div></div>'
+    // Stats
+    + '<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:16px">'
+    + '<div style="text-align:center;padding:10px;background:#dcfce7;border-radius:7px"><div style="font-size:24px;font-weight:800;color:#16a34a">' + d.nOk + '</div><div style="font-size:9px;font-weight:700;color:#6b7280;text-transform:uppercase">Correctos</div></div>'
+    + '<div style="text-align:center;padding:10px;background:#ffedd5;border-radius:7px"><div style="font-size:24px;font-weight:800;color:#ea580c">' + d.nInc + '</div><div style="font-size:9px;font-weight:700;color:#6b7280;text-transform:uppercase">Incidencias</div></div>'
+    + '<div style="text-align:center;padding:10px;background:#f1f5f9;border-radius:7px"><div style="font-size:24px;font-weight:800;color:#9ca3af">' + d.nNa + '</div><div style="font-size:9px;font-weight:700;color:#6b7280;text-transform:uppercase">No aplica</div></div>'
+    + '<div style="text-align:center;padding:10px;background:#fee2e2;border-radius:7px"><div style="font-size:24px;font-weight:800;color:#dc2626">' + (d.total-d.nOk-d.nInc-d.nNa) + '</div><div style="font-size:9px;font-weight:700;color:#6b7280;text-transform:uppercase">Pendientes</div></div>'
+    + '</div>'
+    + ftBlock
+    + incBlock
+    // Tabla checklist
+    + '<table style="width:100%;border-collapse:collapse;border:1px solid #d1d5db;border-radius:7px;overflow:hidden">'
+    + '<colgroup><col style="width:70px"><col><col style="width:110px"></colgroup>'
+    + '<thead><tr style="background:#003087;color:#fff">'
+    + '<th style="padding:8px 10px;font-size:11px;text-align:left">Codigo</th>'
+    + '<th style="padding:8px 10px;font-size:11px;text-align:left">Punto de revision</th>'
+    + '<th style="padding:8px 10px;font-size:11px;text-align:center">Estado</th>'
+    + '</tr></thead>'
+    + '<tbody>' + filas + '</tbody></table>'
+    // Footer
+    + '<div style="text-align:center;font-size:9px;color:#9ca3af;margin-top:20px;padding-top:10px;border-top:1px solid #e5e7eb">'
+    + 'Ilunion Seguridad &middot; Contrato ADIF 4.26/28510.0005 &middot; RC Sur &middot; fjdelgado@ilunion.com'
+    + '</div>'
+    + '</body></html>';
+
+  var blob = new Blob([doc], {type:'text/html;charset=utf-8'});
+  var url  = URL.createObjectURL(blob);
+  window.open(url, '_blank');
+  setTimeout(function(){ URL.revokeObjectURL(url); }, 30000);
+  toast('Informe abierto en nueva pesta\u00f1a');
+}
+
+
 // ── INIT ──────────────────────────────────────────────────────────────
 initPaso1();
 </script>
