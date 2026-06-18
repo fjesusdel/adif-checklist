@@ -702,7 +702,7 @@ header {
   </div>
   <div class="card">
     <div class="card-title">Exportar informe</div>
-    <button class="btn-primary" onclick="compartirExcel()">📤 Compartir informe Excel</button>
+    <button class="btn-primary" onclick="compartirExcel()">📤 Enviar / Compartir informe Excel</button>
     <button class="btn-amarillo" onclick="descargarExcel()">💾 Descargar Excel (PC)</button>
   </div>
   <div class="card">
@@ -1675,12 +1675,20 @@ function compartirExcel() {
   var fname = 'Informe_' + d.inst.codigo + '_' + d.tipo + '_' + (d.fv.fecha||new Date().toISOString().split('T')[0]) + '.xlsx';
   var wb = _buildXLSX();
   var out = XLSX.write(wb, {bookType:'xlsx', type:'array'});
-  var blob = new File([out], fname, {type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
-  if (navigator.share && navigator.canShare && navigator.canShare({files:[blob]})) {
-    navigator.share({files:[blob], title:'Informe '+d.inst.nombre, text:'Informe mantenimiento - '+d.inst.nombre+' - '+d.fechaStr})
-      .then(function(){ toast('Excel compartido \u2713'); })
-      .catch(function(e){ if(e.name!=='AbortError') descargarExcel(); });
-  } else { descargarExcel(); }
+  var file = new File([new Uint8Array(out)], fname, {type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+
+  if (navigator.share) {
+    var shareData = {files:[file], title:'Informe '+d.inst.nombre, text:'Informe mantenimiento ADIF - '+d.inst.nombre+' - '+d.fechaStr};
+    var canShare = !navigator.canShare || navigator.canShare(shareData);
+    if (canShare) {
+      navigator.share(shareData)
+        .then(function(){ toast('Informe compartido ✓'); })
+        .catch(function(e){ if(e.name!=='AbortError'){ descargarExcel(); toast('Guardado en Descargas'); } });
+      return;
+    }
+  }
+  descargarExcel();
+  toast('Guardado en Descargas');
 }
 
 function descargarExcel() {
