@@ -585,6 +585,7 @@ header {
 }
 
 </style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </head>
 <body>
 
@@ -695,9 +696,8 @@ header {
   </div>
   <div class="card">
     <div class="card-title">Exportar informe</div>
-    <button class="btn-primary" onclick="generarPDF()">📋 Generar y descargar PDF</button>
-    <button class="btn-secondary" onclick="compartirArchivo()">📤 Compartir (WhatsApp / Correo / ...)</button>
-    <button class="btn-amarillo" onclick="exportarCSV()">📊 Descargar CSV (Excel)</button>
+    <button class="btn-primary" onclick="compartirExcel()">📤 Compartir informe Excel</button>
+    <button class="btn-amarillo" onclick="descargarExcel()">💾 Descargar Excel (para PC)</button>
   </div>
   <div class="card">
     <button class="btn-secondary" onclick="nuevaVisita()">🔄 Nueva visita</button>
@@ -1615,200 +1615,157 @@ function _recogerDatos() {
   return {inst,fv,tipo,tipoLabel,nOk,nInc,nNa,total,incidencias,filasPDF,fechaStr};
 }
 
-function generarPDF() {
-  if (typeof window.jspdf === 'undefined') {
-    toast('Cargando librería PDF... espera un momento');
-    setTimeout(generarPDF, 1500);
-    return;
-  }
+function _buildXLSX() {
   var d = _recogerDatos();
-  var doc = new window.jspdf.jsPDF({orientation:'portrait', unit:'mm', format:'a4'});
+  var wb = XLSX.utils.book_new();
 
-  // Cabecera azul
-  doc.setFillColor(0, 48, 135);
-  doc.rect(0, 0, 210, 28, 'F');
-  doc.setTextColor(255,255,255);
-  doc.setFontSize(14);
-  doc.setFont('helvetica','bold');
-  doc.text('Informe de Mantenimiento Preventivo', 14, 11);
-  doc.setFontSize(8);
-  doc.setFont('helvetica','normal');
-  doc.text('Contrato ADIF 4.26/28510.0005 - RC Sur - Ilunion Seguridad', 14, 17);
-  doc.text('Generado: ' + new Date().toLocaleDateString('es-ES') + ' ' + new Date().toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'}), 14, 22);
-
-  // Bloque instalación
-  doc.setFillColor(239, 246, 255);
-  doc.rect(10, 32, 190, 28, 'F');
-  doc.setDrawColor(191, 219, 254);
-  doc.rect(10, 32, 190, 28, 'S');
-  doc.setTextColor(0, 48, 135);
-  doc.setFontSize(13);
-  doc.setFont('helvetica','bold');
-  doc.text(d.inst.nombre, 14, 41);
-  doc.setFontSize(9);
-  doc.setFont('helvetica','normal');
-  doc.setTextColor(55, 65, 81);
-  doc.text(d.inst.codigo + ' - ' + d.inst.provincia + ' - ' + d.inst.tipo, 14, 47);
-  doc.setFillColor(255, 209, 0);
-  doc.rect(14, 50, 0, 0, 'F');
-  doc.setFontSize(8);
-  doc.setTextColor(0, 48, 135);
-  doc.text(d.tipoLabel, 14, 55);
-  // Datos visita (derecha)
-  doc.setTextColor(55,65,81);
-  doc.setFontSize(8);
-  doc.text('Fecha: ' + d.fechaStr, 130, 41);
-  doc.text('Tecnico: ' + (d.fv.tecnico||'-'), 130, 46);
-  doc.text('Entrada: ' + (d.fv.horaIn||'-') + '   Salida: ' + (d.fv.horaOut||'-'), 130, 51);
-
-  // Stats
-  var statY = 65;
-  var statW = 44;
-  var stats = [
-    {label:'Correctos', val:d.nOk, r:22,g:163,b:74, br:220,bg:252,bb:231},
-    {label:'Incidencias', val:d.nInc, r:234,g:88,b:12, br:255,bg:237,bb:213},
-    {label:'No aplica', val:d.nNa, r:107,g:114,b:128, br:241,bg:245,bb:249},
-    {label:'Pendientes', val:d.total-d.nOk-d.nInc-d.nNa, r:220,g:38,b:38, br:254,bg:226,bb:226},
+  // ── Hoja 1: RESUMEN ─────────────────────────────────────
+  var resumen = [
+    ['INFORME DE MANTENIMIENTO PREVENTIVO - ILUNION SEGURIDAD'],
+    ['Contrato ADIF 4.26/28510.0005 - RC Sur'],
+    [],
+    ['INSTALACION', d.inst.nombre],
+    ['Codigo', d.inst.codigo],
+    ['Provincia', d.inst.provincia],
+    ['Tipo instalacion', d.inst.tipo],
+    ['Tipo de visita', d.tipoLabel],
+    [],
+    ['DATOS DE LA VISITA'],
+    ['Tecnico', d.fv.tecnico||'-'],
+    ['Fecha', d.fechaStr],
+    ['Hora entrada', d.fv.horaIn||'-'],
+    ['Hora salida', d.fv.horaOut||'-'],
+    [],
+    ['RESULTADOS'],
+    ['Correctos', d.nOk],
+    ['Incidencias', d.nInc],
+    ['No aplica', d.nNa],
+    ['Pendientes', d.total - d.nOk - d.nInc - d.nNa],
+    ['Total puntos', d.total],
   ];
-  stats.forEach(function(s,i) {
-    var x = 10 + i*(statW+2);
-    doc.setFillColor(s.br,s.bg,s.bb);
-    doc.rect(x, statY, statW, 18, 'F');
-    doc.setTextColor(s.r,s.g,s.b);
-    doc.setFontSize(18);
-    doc.setFont('helvetica','bold');
-    doc.text(String(s.val), x+statW/2, statY+11, {align:'center'});
-    doc.setFontSize(7);
-    doc.setFont('helvetica','normal');
-    doc.setTextColor(107,114,128);
-    doc.text(s.label, x+statW/2, statY+16, {align:'center'});
-  });
+  var wsRes = XLSX.utils.aoa_to_sheet(resumen);
+  wsRes['!cols'] = [{wch:22},{wch:40}];
+  // Estilo titulo
+  wsRes['A1'].s = {font:{bold:true,sz:14,color:{rgb:'FFFFFF'}}, fill:{fgColor:{rgb:'003087'}}, alignment:{horizontal:'center'}};
+  wsRes['A2'].s = {font:{bold:true,color:{rgb:'FFFFFF'}}, fill:{fgColor:{rgb:'003087'}}};
+  XLSX.utils.book_append_sheet(wb, wsRes, 'Resumen');
 
-  // Incidencias resumen
-  var curY = statY + 24;
-  if (d.incidencias.length > 0) {
-    doc.setFillColor(234,88,12);
-    doc.rect(10, curY, 190, 7, 'F');
-    doc.setTextColor(255,255,255);
-    doc.setFontSize(9);
-    doc.setFont('helvetica','bold');
-    doc.text('Incidencias detectadas (' + d.incidencias.length + ')', 14, curY+5);
-    curY += 9;
-    d.incidencias.forEach(function(inc) {
-      if (curY > 270) { doc.addPage(); curY = 15; }
-      doc.setFillColor(255,247,237);
-      doc.rect(10, curY, 190, inc.desc ? 10 : 7, 'F');
-      doc.setDrawColor(234,88,12);
-      doc.rect(10, curY, 2, inc.desc ? 10 : 7, 'F');
-      doc.setTextColor(234,88,12);
-      doc.setFontSize(8);
-      doc.setFont('helvetica','bold');
-      doc.text(inc.c + ' - ' + inc.n, 14, curY+5);
-      if (inc.desc) {
-        doc.setTextColor(107,114,128);
-        doc.setFont('helvetica','normal');
-        doc.setFontSize(7);
-        doc.text('-> ' + inc.desc, 14, curY+9);
-      }
-      curY += inc.desc ? 12 : 9;
-    });
-    curY += 4;
-  }
+  // ── Hoja 2: CHECKLIST ────────────────────────────────────
+  var cabecera = [['Codigo','Sistema / Grupo','Punto de revision','Estado','Observaciones']];
+  var filas = [cabecera[0]];
+  var estilosFila = [null]; // null = cabecera (se trata aparte)
 
-  // Tabla checklist con autoTable
-  var tableRows = [];
-  var tableStyles = [];
-  d.filasPDF.forEach(function(f, idx) {
+  d.filasPDF.forEach(function(f) {
     if (f.tipo === 'header') {
-      tableRows.push([{content: f.texto, colSpan:3, styles:{fillColor:[0,48,135], textColor:[255,255,255], fontStyle:'bold', fontSize:9}}]);
+      filas.push([f.texto, '', '', '', '']);
+      estilosFila.push('header');
     } else {
-      var est = f.estado;
-      var label = est==='ok'?'OK':est==='inc'?'INCIDENCIA':est==='na'?'N/A':'PENDIENTE';
-      var bg = est==='ok'?[240,253,244]:est==='inc'?[255,247,237]:est==='na'?[248,250,252]:[255,255,255];
-      var tc = est==='ok'?[22,163,74]:est==='inc'?[234,88,12]:est==='na'?[107,114,128]:[220,38,38];
-      var nombre = f.desc ? (f.nombre + ' -> ' + f.desc) : f.nombre;
-      tableRows.push([
-        {content:f.codigo, styles:{fontStyle:'bold', textColor:[0,48,135], cellWidth:18}},
-        {content:nombre, styles:{fontSize:8, cellWidth:'auto'}},
-        {content:label, styles:{fontStyle:'bold', textColor:tc, halign:'center', cellWidth:28}}
-      ]);
+      var label = f.estado==='ok'?'OK':f.estado==='inc'?'INCIDENCIA':f.estado==='na'?'N/A':'PENDIENTE';
+      // Extraer sistema del texto del header anterior
+      filas.push([f.codigo, '', f.nombre, label, f.desc||'']);
+      estilosFila.push(f.estado);
     }
   });
 
-  doc.autoTable({
-    startY: curY,
-    body: tableRows,
-    theme: 'plain',
-    styles: {fontSize:8, cellPadding:2, overflow:'linebreak'},
-    margin: {left:10, right:10},
-    didParseCell: function(data) {
-      if (data.row.raw && data.row.raw[0] && data.row.raw[0].styles && data.row.raw[0].styles.fillColor) {
-        // header row already styled
+  var wsCheck = XLSX.utils.aoa_to_sheet(filas);
+  wsCheck['!cols'] = [{wch:12},{wch:35},{wch:55},{wch:14},{wch:40}];
+
+  // Aplicar estilos fila a fila
+  filas.forEach(function(row, r) {
+    row.forEach(function(cell, c) {
+      var addr = XLSX.utils.encode_cell({r:r, c:c});
+      if (!wsCheck[addr]) wsCheck[addr] = {v:'', t:'s'};
+      var tipo = estilosFila[r];
+      var s = {alignment:{vertical:'center', wrapText:true}};
+
+      if (r === 0) {
+        // Cabecera
+        s.font = {bold:true, color:{rgb:'FFFFFF'}, sz:10};
+        s.fill = {fgColor:{rgb:'003087'}};
+        s.border = {bottom:{style:'medium',color:{rgb:'FFD100'}}};
+      } else if (tipo === 'header') {
+        s.font = {bold:true, color:{rgb:'FFFFFF'}, sz:9};
+        s.fill = {fgColor:{rgb:'1e40af'}};
+      } else if (tipo === 'ok') {
+        s.fill = {fgColor:{rgb:'f0fdf4'}};
+        if (c === 3) { s.font = {bold:true, color:{rgb:'16a34a'}}; }
+      } else if (tipo === 'inc') {
+        s.fill = {fgColor:{rgb:'fff7ed'}};
+        if (c === 3) { s.font = {bold:true, color:{rgb:'ea580c'}}; }
+      } else if (tipo === 'na') {
+        s.fill = {fgColor:{rgb:'f8fafc'}};
+        if (c === 3) { s.font = {color:{rgb:'9ca3af'}}; }
+      } else {
+        // pendiente
+        s.fill = {fgColor:{rgb:'fee2e2'}};
+        if (c === 3) { s.font = {bold:true, color:{rgb:'dc2626'}}; }
       }
-    }
+      wsCheck[addr].s = s;
+    });
   });
 
-  // Footer
-  var pageCount = doc.internal.getNumberOfPages();
-  for (var i=1; i<=pageCount; i++) {
-    doc.setPage(i);
-    doc.setFontSize(7);
-    doc.setTextColor(156,163,175);
-    doc.text('Ilunion Seguridad - ADIF 4.26/28510.0005 - RC Sur - fjdelgado@ilunion.com  |  Pag. ' + i + '/' + pageCount, 105, 292, {align:'center'});
+  wsCheck['!freeze'] = {xSplit:0, ySplit:1};
+  XLSX.utils.book_append_sheet(wb, wsCheck, 'Checklist');
+
+  // ── Hoja 3: INCIDENCIAS ───────────────────────────────────
+  if (d.incidencias.length > 0) {
+    var incData = [['Codigo','Punto de revision','Descripcion de la incidencia']];
+    d.incidencias.forEach(function(i){ incData.push([i.c, i.n, i.desc]); });
+    var wsInc = XLSX.utils.aoa_to_sheet(incData);
+    wsInc['!cols'] = [{wch:12},{wch:55},{wch:50}];
+    // Cabecera naranja
+    ['A1','B1','C1'].forEach(function(a){
+      if (wsInc[a]) wsInc[a].s = {font:{bold:true,color:{rgb:'FFFFFF'}}, fill:{fgColor:{rgb:'ea580c'}}};
+    });
+    // Filas incidencias
+    incData.slice(1).forEach(function(_,r){
+      ['A','B','C'].forEach(function(col){
+        var a = col+(r+2);
+        if (wsInc[a]) wsInc[a].s = {fill:{fgColor:{rgb:'fff7ed'}}, alignment:{wrapText:true}};
+      });
+    });
+    XLSX.utils.book_append_sheet(wb, wsInc, 'Incidencias');
   }
 
-  var fname = 'Informe_' + d.inst.codigo + '_' + d.tipo + '_' + (d.fv.fecha||new Date().toISOString().split('T')[0]) + '.pdf';
-
-  // Intentar Web Share API con el PDF
-  var pdfBlob = doc.output('blob');
-  if (navigator.share && navigator.canShare) {
-    var file = new File([pdfBlob], fname, {type:'application/pdf'});
-    if (navigator.canShare({files:[file]})) {
-      navigator.share({
-        files: [file],
-        title: 'Informe ' + d.inst.nombre,
-        text: 'Informe de mantenimiento - ' + d.inst.nombre + ' - ' + d.fechaStr
-      }).then(function(){ toast('PDF compartido ✓'); })
-        .catch(function(e){ if(e.name!=='AbortError') doc.save(fname); });
-      return;
-    }
-  }
-  // Fallback: descarga directa
-  doc.save(fname);
-  toast('PDF descargado ✓');
+  return wb;
 }
 
-function compartirArchivo() {
-  // Compartir el CSV via Web Share API
-  var csv  = generarCSV();
-  var inst = state.instalacion;
-  var fv   = state.fichaVisita;
-  var tl   = state.tipoVisita==='anual'?'Anual':state.tipoVisita==='trimestral'?'Trim_Remota':'Trim_PCI';
-  var fecha = fv.fecha || new Date().toISOString().split('T')[0];
-  var fname = 'Informe_' + inst.codigo + '_' + tl + '_' + fecha + '.csv';
+function compartirExcel() {
+  var d = _recogerDatos();
+  var fname = 'Informe_' + d.inst.codigo + '_' + d.tipo + '_' + (d.fv.fecha||new Date().toISOString().split('T')[0]) + '.xlsx';
+  var wb = _buildXLSX();
+  var wbOut = XLSX.write(wb, {bookType:'xlsx', type:'array', cellStyles:true});
+  var blob = new File([wbOut], fname, {type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
 
-  if (navigator.share && navigator.canShare) {
-    var blob = new Blob(['﻿'+csv], {type:'text/csv;charset=utf-8;'});
-    var file = new File([blob], fname, {type:'text/csv'});
-    if (navigator.canShare({files:[file]})) {
-      navigator.share({
-        files: [file],
-        title: 'Informe ' + inst.nombre,
-        text: 'Informe CSV de mantenimiento - ' + inst.nombre + ' - ' + fecha
-      }).then(function(){ toast('CSV compartido ✓'); })
-        .catch(function(e){ if(e.name!=='AbortError') exportarCSV(); });
-      return;
-    }
+  if (navigator.share && navigator.canShare && navigator.canShare({files:[blob]})) {
+    navigator.share({
+      files: [blob],
+      title: 'Informe ' + d.inst.nombre,
+      text: 'Informe de mantenimiento - ' + d.inst.nombre + ' - ' + d.fechaStr
+    }).then(function(){ toast('Excel compartido \u2713'); })
+      .catch(function(e){ if(e.name!=='AbortError') descargarExcel(); });
+  } else {
+    descargarExcel();
   }
-  // Fallback descarga
-  exportarCSV();
-  toast('CSV descargado ✓');
 }
+
+function descargarExcel() {
+  var d = _recogerDatos();
+  var fname = 'Informe_' + d.inst.codigo + '_' + d.tipo + '_' + (d.fv.fecha||new Date().toISOString().split('T')[0]) + '.xlsx';
+  var wb = _buildXLSX();
+  XLSX.writeFile(wb, fname, {cellStyles:true});
+  toast('Excel descargado \u2713');
+}
+
+function exportarCSV() { descargarExcel(); }
+function compartirArchivo() { compartirExcel(); }
+function generarPDF() { compartirExcel(); }
 
 function cerrarPDF() {
   document.getElementById('pdfVisor').style.display = 'none';
   document.getElementById('pdfContenido').innerHTML = '';
 }
+
 
 
 
