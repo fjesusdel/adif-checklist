@@ -2,21 +2,29 @@
   "name": "Checklist Mantenimiento ADIF",
   "short_name": "ADIF Check",
   "description": "App de mantenimiento preventivo ADIF - Ilunion Seguridad RC Sur",
-  "start_url": "./index.html",
+  "start_url": "/",
+  "scope": "/",
   "display": "standalone",
   "background_color": "#003087",
   "theme_color": "#003087",
   "orientation": "portrait",
+  "lang": "es",
+  "categories": [
+    "utilities",
+    "productivity"
+  ],
   "icons": [
     {
       "src": "icon-192.png",
       "sizes": "192x192",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any maskable"
     },
     {
       "src": "icon-512.png",
       "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any maskable"
     }
   ]
 }
