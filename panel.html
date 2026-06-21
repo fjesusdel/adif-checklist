@@ -1,0 +1,1495 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Panel Coordinador · ADIF · Ilunion Seguridad</title>
+<style>
+:root {
+  --azul:     #003087;
+  --azul-mid: #00408a;
+  --azul-claro: #e8eef8;
+  --amarillo: #FFD100;
+  --gris-oscuro: #2d2d2d;
+  --gris-medio: #6b6b6b;
+  --gris-borde: #d1d5db;
+  --gris-fondo: #f4f6fa;
+  --blanco: #ffffff;
+  --verde:   #16a34a;
+  --rojo:    #dc2626;
+  --naranja: #ea580c;
+  --radio:   10px;
+  --sombra:  0 2px 12px rgba(0,48,135,0.10);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'Segoe UI', Arial, sans-serif;
+  background: var(--gris-fondo);
+  color: var(--gris-oscuro);
+  min-height: 100vh;
+  font-size: 15px;
+}
+
+/* ── HEADER ─────────────────────────────────── */
+header {
+  background: var(--azul);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+}
+.header-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 20px;
+  max-width: 1100px;
+  margin: 0 auto;
+}
+.header-title h1 { color: var(--blanco); font-size: 16px; font-weight: 700; }
+.header-title p { color: var(--amarillo); font-size: 11px; margin-top: 1px; }
+.header-bar { background: var(--amarillo); height: 4px; }
+
+/* ── NAV TABS ───────────────────────────────── */
+.nav-tabs {
+  display: flex;
+  max-width: 1100px;
+  margin: 0 auto;
+  background: var(--blanco);
+  border-bottom: 1.5px solid var(--gris-borde);
+  position: sticky;
+  top: 0;
+  z-index: 95;
+  overflow-x: auto;
+}
+.nav-tab {
+  flex: 1;
+  min-width: 110px;
+  padding: 13px 10px;
+  background: none;
+  border: none;
+  border-bottom: 3px solid transparent;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--gris-medio);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+.nav-tab.active { color: var(--azul); border-bottom-color: var(--azul); }
+.nav-tab-badge {
+  background: var(--rojo);
+  color: var(--blanco);
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 99px;
+  min-width: 16px;
+  text-align: center;
+}
+
+.container { max-width: 1100px; margin: 0 auto; padding: 18px; }
+.hidden { display: none !important; }
+
+/* ── CARDS ──────────────────────────────────── */
+.card {
+  background: var(--blanco);
+  border-radius: var(--radio);
+  box-shadow: var(--sombra);
+  padding: 20px;
+  margin-bottom: 16px;
+}
+.card-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--azul);
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.card-title::before {
+  content: '';
+  display: block;
+  width: 3px;
+  height: 16px;
+  background: var(--amarillo);
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+/* ── RESUMEN: STAT GRID ─────────────────────── */
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
+}
+.stat-box {
+  text-align: center;
+  padding: 18px 10px;
+  border-radius: var(--radio);
+  background: var(--gris-fondo);
+}
+.stat-box .stat-num { font-size: 30px; font-weight: 800; line-height: 1; }
+.stat-box .stat-label { font-size: 11px; font-weight: 700; color: var(--gris-medio); margin-top: 6px; text-transform: uppercase; letter-spacing: 0.3px; }
+.stat-box.ok       .stat-num { color: var(--verde); }
+.stat-box.warn     .stat-num { color: var(--naranja); }
+.stat-box.critical .stat-num { color: var(--rojo); }
+.stat-box.info     .stat-num { color: var(--azul); }
+
+/* ── LISTA SIMPLE (instalaciones sin tocar / averías recientes en resumen) ── */
+.simple-list { display: flex; flex-direction: column; gap: 8px; }
+.simple-list-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 14px;
+  background: var(--gris-fondo);
+  border-radius: 8px;
+  font-size: 13px;
+}
+.simple-list-item .left { font-weight: 600; }
+.simple-list-item .right { font-size: 12px; color: var(--gris-medio); white-space: nowrap; }
+
+/* ── LOADING / EMPTY STATES ─────────────────── */
+.empty-state { text-align: center; padding: 30px 10px; color: var(--gris-medio); font-size: 13px; }
+
+/* ── TOAST ──────────────────────────────────── */
+#toast {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%) translateY(80px);
+  background: var(--gris-oscuro);
+  color: var(--blanco);
+  padding: 11px 20px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  z-index: 999;
+  transition: transform 0.3s ease;
+  white-space: nowrap;
+  pointer-events: none;
+}
+#toast.show { transform: translateX(-50%) translateY(0); }
+
+/* ── BOTONES ────────────────────────────────── */
+.btn-primary {
+  display: inline-block;
+  padding: 10px 18px;
+  background: var(--azul);
+  color: var(--blanco);
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.btn-primary:hover { background: #00205e; }
+.btn-secondary {
+  display: inline-block;
+  padding: 9px 16px;
+  background: var(--blanco);
+  color: var(--azul);
+  border: 1.5px solid var(--azul);
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.btn-secondary:hover { background: var(--azul-claro); }
+
+/* ── CORELINK STATUS BADGE ──────────────────── */
+.corelink-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 3px 9px;
+  border-radius: 99px;
+}
+.corelink-badge.ok   { background: rgba(22,163,74,0.18); color: #bbf7d0; }
+.corelink-badge.sync { background: rgba(255,209,0,0.18); color: var(--amarillo); }
+.corelink-badge.off  { background: rgba(220,38,38,0.2); color: #fecaca; }
+
+/* ── PILLS DE FILTRO ─────────────────────────── */
+.pill {
+  padding: 5px 12px;
+  border: 1.5px solid var(--gris-borde);
+  border-radius: 99px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  background: var(--blanco);
+  color: var(--gris-medio);
+}
+.pill.active { background: var(--azul); border-color: var(--azul); color: var(--blanco); }
+
+/* ── LISTADO DE INSTALACIONES (panel) ───────── */
+.inst-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 10px; }
+.inst-card-panel {
+  border: 1.5px solid var(--gris-borde);
+  border-radius: 9px;
+  padding: 13px 15px;
+  cursor: pointer;
+  background: var(--blanco);
+  transition: all 0.15s;
+}
+.inst-card-panel:hover { border-color: var(--azul); background: var(--azul-claro); }
+.inst-card-panel .nombre { font-weight: 700; font-size: 14px; }
+.inst-card-panel .meta { font-size: 11px; color: var(--gris-medio); margin-top: 2px; }
+.estado-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
+.estado-dot.visitada { background: var(--verde); }
+.estado-dot.pendiente { background: var(--gris-borde); }
+.estado-dot.con-averia { background: var(--rojo); }
+
+/* ── MODAL EDITOR INSTALACIÓN ───────────────── */
+.modal-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.55);
+  z-index: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+.modal-overlay.hidden { display: none; }
+.modal-box {
+  background: var(--blanco);
+  border-radius: 14px;
+  max-width: 640px;
+  width: 100%;
+  max-height: 88vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.modal-header {
+  background: var(--azul);
+  color: var(--blanco);
+  padding: 16px 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+.modal-titulo { font-size: 17px; font-weight: 700; }
+.modal-subtitulo { font-size: 12px; opacity: 0.8; margin-top: 2px; }
+.modal-cerrar { background: none; border: none; color: var(--blanco); font-size: 24px; cursor: pointer; line-height: 1; }
+.modal-tabs { display: flex; border-bottom: 1.5px solid var(--gris-borde); }
+.modal-tab {
+  flex: 1; padding: 11px; background: none; border: none; border-bottom: 3px solid transparent;
+  font-size: 12px; font-weight: 700; color: var(--gris-medio); cursor: pointer;
+}
+.modal-tab.active { color: var(--azul); border-bottom-color: var(--azul); }
+.modal-body { padding: 18px 20px; overflow-y: auto; flex: 1; }
+
+/* ── FORM FIELDS (reutilizados en varios modales) ────────────────── */
+.ficha-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.ficha-field label { display: block; font-size: 11px; font-weight: 700; color: var(--gris-medio); text-transform: uppercase; margin-bottom: 4px; }
+.ficha-field input, .ficha-field textarea, .ficha-field select {
+  width: 100%; border: 1.5px solid var(--gris-borde); border-radius: 7px; padding: 9px 11px;
+  font-size: 14px; outline: none; font-family: inherit;
+}
+
+/* ── FORMULARIO FLOTANTE (averías/agenda/notas) ─────── */
+.form-flotante {
+  background: var(--gris-fondo);
+  border: 1.5px solid var(--gris-borde);
+  border-radius: 9px;
+  padding: 16px;
+}
+.inst-list-mini { max-height: 160px; overflow-y: auto; margin-top: 6px; }
+.inst-list-mini .inst-item-mini {
+  padding: 8px 11px; border-radius: 6px; cursor: pointer; font-size: 13px;
+}
+.inst-list-mini .inst-item-mini:hover { background: var(--azul-claro); }
+.inst-list-mini .inst-item-mini .meta { font-size: 11px; color: var(--gris-medio); }
+.chip-seleccion {
+  margin-top: 8px; background: var(--azul-claro); border-radius: 7px; padding: 8px 11px;
+  font-size: 13px; font-weight: 600; color: var(--azul); display: flex; justify-content: space-between; align-items: center;
+}
+.chip-seleccion button { background: none; border: none; color: var(--azul); font-size: 16px; cursor: pointer; }
+
+.prioridad-selector { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; }
+.prio-btn {
+  padding: 9px 4px; border: 2px solid var(--gris-borde); border-radius: 7px; font-size: 12px;
+  font-weight: 700; cursor: pointer; background: var(--blanco); text-align: center;
+}
+.prio-btn.active.prio-critica { background: #fee2e2; border-color: var(--rojo); color: var(--rojo); }
+.prio-btn.active.prio-normal  { background: #ffedd5; border-color: var(--naranja); color: var(--naranja); }
+.prio-btn.active.prio-leve    { background: #fef9c3; border-color: #ca8a04; color: #ca8a04; }
+
+/* ── TARJETAS DE AVERÍA / AGENDA / NOTA ─────── */
+.item-card { border-radius: 9px; padding: 12px 14px; margin-bottom: 9px; background: var(--blanco); box-shadow: var(--sombra); border-left: 4px solid var(--gris-borde); }
+.item-card.prio-critica { border-left-color: var(--rojo); background: #fef2f2; }
+.item-card.prio-normal  { border-left-color: var(--naranja); background: #fff7ed; }
+.item-card.prio-leve    { border-left-color: #ca8a04; background: #fefce8; }
+.item-tag { display: inline-block; font-size: 10px; font-weight: 800; padding: 2px 8px; border-radius: 99px; text-transform: uppercase; margin-bottom: 6px; }
+.item-tag.prio-critica { background: var(--rojo); color: var(--blanco); }
+.item-tag.prio-normal  { background: var(--naranja); color: var(--blanco); }
+.item-tag.prio-leve    { background: #ca8a04; color: var(--blanco); }
+.item-card-titulo { font-size: 14px; font-weight: 700; }
+.item-card-desc { font-size: 13px; color: var(--gris-oscuro); margin-top: 4px; }
+.item-card-meta { font-size: 11px; color: var(--gris-medio); margin-top: 6px; }
+.item-card-btns { display: flex; gap: 6px; margin-top: 9px; }
+.btn-mini { flex: 1; padding: 7px 4px; border: 1.5px solid var(--gris-borde); border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer; background: var(--blanco); color: var(--gris-medio); }
+.btn-mini.verde { border-color: var(--verde); color: var(--verde); }
+.btn-mini.verde:hover { background: #f0fdf4; }
+.btn-mini.activo { background: var(--verde); border-color: var(--verde); color: var(--blanco); }
+.btn-mini.activo-amarillo { background: var(--amarillo); border-color: var(--amarillo); color: var(--azul); }
+
+.agenda-dia-titulo { font-size: 12px; font-weight: 800; color: var(--azul); text-transform: uppercase; margin: 16px 0 8px; padding-bottom: 6px; border-bottom: 2px solid var(--azul-claro); }
+.agenda-dia-titulo:first-child { margin-top: 0; }
+
+.nota-card.hecha { opacity: 0.5; }
+
+/* ── STOCK (panel) ───────────────────────────── */
+.material-card-panel {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--blanco);
+  border-radius: 9px;
+  padding: 13px 16px;
+  margin-bottom: 9px;
+  box-shadow: var(--sombra);
+  border-left: 4px solid var(--gris-borde);
+  cursor: pointer;
+}
+.material-card-panel:hover { background: var(--azul-claro); }
+.material-card-panel.bajo-minimo { border-left-color: var(--rojo); }
+.material-card-panel .nombre { font-size: 14px; font-weight: 700; }
+.material-card-panel .cantidades { display: flex; gap: 18px; }
+.material-card-panel .cant-box { text-align: center; }
+.material-card-panel .cant-num { font-size: 20px; font-weight: 800; color: var(--azul); }
+.material-card-panel .cant-num.bajo { color: var(--rojo); }
+.material-card-panel .cant-label { font-size: 10px; color: var(--gris-medio); text-transform: uppercase; }
+
+.modal-box-mini { background: var(--blanco); border-radius: 14px; padding: 20px; max-width: 420px; width: 100%; }
+.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.55); z-index: 500; display: flex; align-items: center; justify-content: center; padding: 16px; }
+.modal-overlay.hidden { display: none; }
+
+/* ── KILOMETRAJE ─────────────────────────────── */
+.km-item { display: flex; justify-content: space-between; align-items: center; padding: 11px 14px; background: var(--gris-fondo); border-radius: 8px; margin-bottom: 8px; }
+.km-item .info { font-size: 13px; }
+.km-item .km-num { font-size: 16px; font-weight: 800; color: var(--azul); }
+.km-item .borrar-km { background: none; border: none; color: var(--rojo); font-size: 16px; cursor: pointer; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-inner">
+    <div class="header-title">
+      <h1>Panel Coordinador</h1>
+      <p>Contrato ADIF 4.26/28510.0005 · RC Sur</p>
+    </div>
+    <div id="corelinkBadge" class="corelink-badge off">☁ Sin conexión</div>
+  </div>
+  <div class="header-bar"></div>
+</header>
+
+<div class="nav-tabs">
+  <button class="nav-tab active" id="tabResumen" onclick="cambiarSeccion('resumen')">📊 Resumen</button>
+  <button class="nav-tab" id="tabInstalaciones" onclick="cambiarSeccion('instalaciones')">🏢 Instalaciones</button>
+  <button class="nav-tab" id="tabAverias" onclick="cambiarSeccion('averias')">⚠ Averías<span id="averiasBadgeTab" class="nav-tab-badge hidden">0</span></button>
+  <button class="nav-tab" id="tabAgenda" onclick="cambiarSeccion('agenda')">📅 Agenda<span id="agendaBadgeTab" class="nav-tab-badge hidden">0</span></button>
+  <button class="nav-tab" id="tabStock" onclick="cambiarSeccion('stock')">📦 Stock<span id="stockBadgeTab" class="nav-tab-badge hidden">0</span></button>
+  <button class="nav-tab" id="tabNotas" onclick="cambiarSeccion('notas')">📝 Notas<span id="notasBadgeTab" class="nav-tab-badge hidden">0</span></button>
+  <button class="nav-tab" id="tabKilometraje" onclick="cambiarSeccion('kilometraje')">🚗 Km</button>
+</div>
+
+<div id="toast"></div>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- RESUMEN                                                 -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<div id="seccionResumen" class="container">
+  <div class="card">
+    <div class="card-title">Vista general</div>
+    <div class="stat-grid" id="resumenStatGrid">
+      <div class="empty-state">Cargando datos...</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">⚠ Instalaciones sin visitar hace más tiempo</div>
+    <div class="simple-list" id="resumenSinVisitar">
+      <div class="empty-state">Cargando...</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">🔴 Averías críticas abiertas</div>
+    <div class="simple-list" id="resumenAveriasCriticas">
+      <div class="empty-state">Cargando...</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- INSTALACIONES                                           -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<div id="seccionInstalaciones" class="container hidden">
+  <div class="card">
+    <div class="card-title">🏢 Instalaciones (78)</div>
+    <div class="search-wrap">
+      <input type="text" id="instSearch" placeholder="Buscar por nombre o código..." oninput="renderListaInstalaciones()" style="width:100%;padding:11px 14px;border:1.5px solid var(--gris-borde);border-radius:8px;font-size:14px;outline:none">
+    </div>
+    <div class="provincia-pills" id="instProvinciaPills" style="display:flex;flex-wrap:wrap;gap:6px;margin:12px 0"></div>
+    <div class="filtro-estado-pills" id="instEstadoPills" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px"></div>
+    <div id="instalacionesListContainer"></div>
+  </div>
+</div>
+
+<!-- Editor de instalación (modal a pantalla completa) -->
+<div id="modalInstalacion" class="modal-overlay hidden">
+  <div class="modal-box">
+    <div class="modal-header">
+      <div>
+        <div class="modal-titulo" id="modalInstNombre"></div>
+        <div class="modal-subtitulo" id="modalInstMeta"></div>
+      </div>
+      <button class="modal-cerrar" onclick="cerrarModalInstalacion()">×</button>
+    </div>
+    <div class="modal-tabs">
+      <button class="modal-tab active" id="modalTabFicha" onclick="cambiarModalTab('ficha')">Ficha técnica</button>
+      <button class="modal-tab" id="modalTabContacto" onclick="cambiarModalTab('contacto')">Contacto</button>
+      <button class="modal-tab" id="modalTabHistorial" onclick="cambiarModalTab('historial')">Historial</button>
+    </div>
+    <div class="modal-body">
+      <div id="modalPanelFicha"></div>
+      <div id="modalPanelContacto" class="hidden"></div>
+      <div id="modalPanelHistorial" class="hidden"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- AVERÍAS                                                 -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<div id="seccionAverias" class="container hidden">
+  <div class="card">
+    <div class="card-title">⚠ Averías</div>
+    <button class="btn-primary" onclick="abrirFormNuevaAveria()" style="margin-bottom:14px">+ Nueva avería</button>
+    <div id="formNuevaAveria" class="form-flotante hidden">
+      <div class="ficha-field" style="margin-bottom:10px">
+        <label>Instalación</label>
+        <input type="text" id="averiaInstSearch" placeholder="Buscar instalación..." oninput="filtrarInstalacionesAveria()">
+        <div class="inst-list-mini" id="averiaInstList"></div>
+        <div id="averiaInstSeleccionada" class="chip-seleccion hidden"></div>
+      </div>
+      <div class="ficha-field" style="margin-bottom:10px"><label>Descripción</label><textarea id="averiaDesc" rows="3"></textarea></div>
+      <div class="ficha-field" style="margin-bottom:10px">
+        <label>Prioridad</label>
+        <div class="prioridad-selector">
+          <button class="prio-btn prio-critica" onclick="seleccionarPrioridad('critica', this)">🔴 Crítica</button>
+          <button class="prio-btn prio-normal active" onclick="seleccionarPrioridad('normal', this)">🟠 Normal</button>
+          <button class="prio-btn prio-leve" onclick="seleccionarPrioridad('leve', this)">🟡 Leve</button>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="btn-secondary" onclick="cerrarFormNuevaAveria()">Cancelar</button>
+        <button class="btn-primary" onclick="guardarNuevaAveriaPanel()">Guardar avería</button>
+      </div>
+    </div>
+    <div id="averiasListContainer"></div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- AGENDA                                                  -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<div id="seccionAgenda" class="container hidden">
+  <div class="card">
+    <div class="card-title">📅 Agenda de Jesús</div>
+    <button class="btn-primary" onclick="abrirFormNuevaTarea()" style="margin-bottom:14px">+ Nueva tarea</button>
+    <div id="formNuevaTarea" class="form-flotante hidden">
+      <div class="ficha-field" style="margin-bottom:10px">
+        <label>Instalación</label>
+        <input type="text" id="tareaInstSearch" placeholder="Buscar instalación..." oninput="filtrarInstalacionesTarea()">
+        <div class="inst-list-mini" id="tareaInstList"></div>
+        <div id="tareaInstSeleccionada" class="chip-seleccion hidden"></div>
+      </div>
+      <div class="ficha-grid" style="margin-bottom:10px">
+        <div class="ficha-field"><label>Fecha</label><input type="date" id="tareaFecha"></div>
+        <div class="ficha-field">
+          <label>Tipo</label>
+          <select id="tareaTipo">
+            <option value="anual">🔧 Anual</option>
+            <option value="trimestral">💻 Trimestral</option>
+            <option value="pci-trim">🔥 Trimestral PCI</option>
+            <option value="averia">⚠ Avería</option>
+          </select>
+        </div>
+      </div>
+      <div class="ficha-field" style="margin-bottom:10px"><label>Nota</label><textarea id="tareaNota" rows="2"></textarea></div>
+      <div style="display:flex;gap:8px">
+        <button class="btn-secondary" onclick="cerrarFormNuevaTarea()">Cancelar</button>
+        <button class="btn-primary" onclick="guardarNuevaTareaPanel()">Guardar tarea</button>
+      </div>
+    </div>
+    <div id="agendaListContainer"></div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- NOTAS                                                   -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<div id="seccionNotas" class="container hidden">
+  <div class="card">
+    <div class="card-title">📝 Notas y recordatorios</div>
+    <div class="form-flotante" style="margin-bottom:14px">
+      <div class="ficha-field" style="margin-bottom:10px"><label>Nota</label><textarea id="notaTexto" rows="2" placeholder="Ej: llamar a Juan Luis Téllez para confirmar protocolo NBTTIA"></textarea></div>
+      <div class="ficha-field" style="margin-bottom:10px"><label>Fecha (opcional)</label><input type="date" id="notaFecha"></div>
+      <button class="btn-primary" onclick="guardarNuevaNota()">+ Añadir nota</button>
+    </div>
+    <div id="notasListContainer"></div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- STOCK: almacén central + furgón de Jesús                -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<div id="seccionStock" class="container hidden">
+  <div class="card">
+    <div class="card-title">📦 Stock — Almacén y furgón</div>
+    <div id="stockPanelListContainer"></div>
+  </div>
+</div>
+
+<!-- Modal de ajuste/reposición de material -->
+<div id="modalAjusteStock" class="modal-overlay hidden">
+  <div class="modal-box-mini">
+    <div class="modal-titulo" id="modalAjusteStockNombre"></div>
+    <div class="ficha-grid" style="margin:14px 0 10px">
+      <div class="ficha-field"><label>Almacén</label><input type="number" id="ajusteAlmacen" min="0"></div>
+      <div class="ficha-field"><label>Furgón</label><input type="number" id="ajusteFurgon" min="0"></div>
+    </div>
+    <div class="ficha-field" style="margin-bottom:14px"><label>Mínimo recomendado en furgón</label><input type="number" id="ajusteMinimo" min="0"></div>
+    <button class="btn-primary" style="width:100%;margin-bottom:8px" onclick="guardarAjusteStock()">Guardar cambios</button>
+    <div style="display:flex;gap:8px;margin-bottom:10px">
+      <input type="number" id="reponerCantidad" placeholder="Cantidad" min="1" style="flex:1;border:1.5px solid var(--gris-borde);border-radius:7px;padding:9px 11px;font-size:14px">
+      <button class="btn-secondary" style="margin:0;white-space:nowrap" onclick="reponerAFurgon()">→ Reponer a furgón</button>
+    </div>
+    <button class="btn-secondary" style="width:100%;margin:0" onclick="cerrarModalAjusteStock()">Cerrar</button>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- KILOMETRAJE (solo coordinador)                          -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<div id="seccionKilometraje" class="container hidden">
+  <div class="card">
+    <div class="card-title">🚗 Kilometraje</div>
+    <div class="form-flotante" style="margin-bottom:14px">
+      <div class="ficha-grid" style="margin-bottom:10px">
+        <div class="ficha-field"><label>Fecha</label><input type="date" id="kmFecha"></div>
+        <div class="ficha-field"><label>Kilómetros</label><input type="number" id="kmCantidad" min="1" placeholder="Ej: 85"></div>
+      </div>
+      <div class="ficha-field" style="margin-bottom:10px">
+        <label>Instalación (opcional)</label>
+        <input type="text" id="kmInstSearch" placeholder="Buscar instalación..." oninput="filtrarInstalacionesKm()">
+        <div class="inst-list-mini" id="kmInstList"></div>
+        <div id="kmInstSeleccionada" class="chip-seleccion hidden"></div>
+      </div>
+      <div class="ficha-field" style="margin-bottom:10px"><label>Nota</label><input type="text" id="kmNota" placeholder="Ej: visita anual + recogida de material"></div>
+      <button class="btn-primary" onclick="guardarRegistroKm()">+ Añadir registro</button>
+    </div>
+    <div class="stat-grid" id="kmResumenStats" style="margin-bottom:16px"></div>
+    <div id="kmListContainer"></div>
+  </div>
+</div>
+
+
+<script>
+// ═══════════════════════════════════════════════════════════════════════
+// DATOS — mismas 78 instalaciones que la app de Jesús
+// ═══════════════════════════════════════════════════════════════════════
+const INSTALACIONES = [
+  {codigo:"04E002S001",nombre:"Huercal",provincia:"Almería",tipo:"Subestación Eléctrica",tamaño:"Pequeña",sistemas:["intrusion"]},
+  {codigo:"04E003S001",nombre:"Santa Fé",provincia:"Almería",tipo:"Subestación Eléctrica",tamaño:"Pequeña",sistemas:["intrusion"]},
+  {codigo:"04E004S001",nombre:"Fuente Santa",provincia:"Almería",tipo:"Subestación Eléctrica",tamaño:"Pequeña",sistemas:["intrusion"]},
+  {codigo:"04E005S001",nombre:"Nacimiento",provincia:"Almería",tipo:"Subestación Eléctrica",tamaño:"Pequeña",sistemas:["intrusion"]},
+  {codigo:"04E006S001",nombre:"Abla",provincia:"Almería",tipo:"Subestación Eléctrica",tamaño:"Pequeña",sistemas:["intrusion"]},
+  {codigo:"04E007S001",nombre:"Huéneja",provincia:"Almería",tipo:"Subestación Eléctrica",tamaño:"Pequeña",sistemas:["intrusion"]},
+  {codigo:"11E002S001",nombre:"Puerto Sta Maria",provincia:"Cádiz",tipo:"Equipo de Línea",tamaño:"Mediana",sistemas:["intrusion","cctv"]},
+  {codigo:"11E003S002",nombre:"Cádiz Edificio Técnico",provincia:"Cádiz",tipo:"Edificio Técnico",tamaño:"Mediana",sistemas:["intrusion","cctv"]},
+  {codigo:"11E004S002",nombre:"Jerez de la Frontera",provincia:"Cádiz",tipo:"Subestación Eléctrica",tamaño:"Grande",sistemas:["intrusion","cctv","ccaa","interfonia"]},
+  {codigo:"11E008S001",nombre:"El Portal",provincia:"Cádiz",tipo:"Subestación Eléctrica",tamaño:"Mediana",sistemas:["intrusion","cctv"]},
+  {codigo:"11E009S001",nombre:"Cortadura",provincia:"Cádiz",tipo:"Subestación Eléctrica",tamaño:"Mediana",sistemas:["intrusion","cctv"]},
+  {codigo:"11E010S001",nombre:"Puerto Real",provincia:"Cádiz",tipo:"Subestación Eléctrica",tamaño:"Grande",sistemas:["intrusion","cctv","ccaa","interfonia"]},
+  {codigo:"11E012S001",nombre:"Algeciras",provincia:"Cádiz",tipo:"Cuarto Técnico",tamaño:"Mediana",sistemas:["intrusion","cctv","ccaa"]},
+  {codigo:"11E013S001",nombre:"Los Barrios",provincia:"Cádiz",tipo:"Cuarto Técnico",tamaño:"Mediana",sistemas:["intrusion","cctv","ccaa"]},
+  {codigo:"11E014S001",nombre:"Jimena de la Frontera",provincia:"Cádiz",tipo:"Cuarto Técnico",tamaño:"Pequeña",sistemas:["intrusion"]},
+  {codigo:"11E015S001",nombre:"Castellar de la Frontera",provincia:"Cádiz",tipo:"Cuarto Técnico",tamaño:"Mediana",sistemas:["intrusion","cctv","ccaa"]},
+  {codigo:"11E016S001",nombre:"San Roque Viajeros",provincia:"Cádiz",tipo:"Cuarto Técnico",tamaño:"Mediana",sistemas:["intrusion","cctv","ccaa"]},
+  {codigo:"11E017S001",nombre:"San Roque Mercancías",provincia:"Cádiz",tipo:"Cuarto Técnico",tamaño:"Mediana",sistemas:["intrusion","cctv","ccaa"]},
+  {codigo:"53E001S009",nombre:"Torregorda S/E 22",provincia:"Cádiz",tipo:"Subestación Eléctrica",tamaño:"Pequeña",sistemas:["intrusion"]},
+  {codigo:"14E002S002",nombre:"Córdoba Mercancías Polivalente",provincia:"Córdoba",tipo:"Almacén",tamaño:"Mediana",sistemas:["intrusion","pci"]},
+  {codigo:"14E002S003",nombre:"Córdoba Mercancías Sectores",provincia:"Córdoba",tipo:"Base Mantenimiento",tamaño:"Pequeña",sistemas:["intrusion"]},
+  {codigo:"14E005S002",nombre:"Puente Genil",provincia:"Córdoba",tipo:"Subestación Eléctrica",tamaño:"Grande",sistemas:["intrusion","cctv","ccaa","interfonia"]},
+  {codigo:"14E006S001",nombre:"Villa del Río",provincia:"Córdoba",tipo:"Subestación Eléctrica",tamaño:"Grande",sistemas:["intrusion","cctv","ccaa","interfonia"]},
+  {codigo:"14E007S001",nombre:"Alcolea de Córdoba",provincia:"Córdoba",tipo:"Subestación Eléctrica",tamaño:"Grande",sistemas:["intrusion","cctv","ccaa","interfonia"]},
+  {codigo:"14E007S002",nombre:"Alcolea de Córdoba (Cambiador)",provincia:"Córdoba",tipo:"Cambiador de Anchos",tamaño:"Grande",sistemas:["intrusion","cctv","ccaa","interfonia"]},
+  {codigo:"14E008S001",nombre:"Posadas",provincia:"Córdoba",tipo:"Subestación Eléctrica",tamaño:"Grande",sistemas:["intrusion","cctv","ccaa","interfonia"]},
+  {codigo:"14E009S001",nombre:"Pedro Abad",provincia:"Córdoba",tipo:"Subestación Eléctrica",tamaño:"Grande",sistemas:["intrusion","cctv","ccaa","interfonia"]},
+  {codigo:"14E010S001",nombre:"Villarrubia",provincia:"Córdoba",tipo:"Subestación Eléctrica",tamaño:"Grande",sistemas:["intrusion","cctv","ccaa","interfonia"]},
+  {codigo:"14E011S001",nombre:"Palma del Río",provincia:"Córdoba",tipo:"Subestación Eléctrica",tamaño:"Grande",sistemas:["intrusion","cctv","ccaa","interfonia"]},
+  {codigo:"14E012S001",nombre:"Valchillón",provincia:"Córdoba",tipo:"Subestación Eléctrica",tamaño:"Grande",sistemas:["intrusion","cctv","ccaa","interfonia"]},
+  {codigo:"14E014S001",nombre:"Fernán Núñez",provincia:"Córdoba",tipo:"Subestación Eléctrica",tamaño:"Grande",sistemas:["intrusion","cctv","ccaa","interfonia"]},
+  {codigo:"14E016S001",nombre:"Aguilar de la Frontera",provincia:"Córdoba",tipo:"Subestación Eléctrica",tamaño:"Grande",sistemas:["intrusion","cctv","ccaa","interfonia"]},
+  {codigo:"21E001S002",nombre:"Huelva Cargas",provincia:"Huelva",tipo:"Subestación Eléctrica",tamaño:"Grande",sistemas:["intrusion","cctv","ccaa","interfonia"]},
+  {codigo:"21E005S001",nombre:"Niebla",provincia:"Huelva",tipo:"Subestación Eléctrica",tamaño:"Grande",sistemas:["intrusion","cctv","ccaa","interfonia"]},
+  {codigo:"21E006S001",nombre:"Villalba de Alcor",provincia:"Huelva",tipo:"Subestación Eléctrica",tamaño:"Grande",sistemas:["intrusion","cctv","ccaa","interfonia"]},
+  {codigo:"23E002S001",nombre:"Linares Baeza",provincia:"Jaén",tipo:"Almacén",tamaño:"Pequeña",sistemas:["intrusion"]},
+  {codigo:"23E006S001",nombre:"Grañena",provincia:"Jaén",tipo:"Subestación Eléctrica",tamaño:"Pequeña",sistemas:["intrusion"]},
+  {codigo:"23E007S001",nombre:"Jabalquinto",provincia:"Jaén",tipo:"Subestación Eléctrica",tamaño:"Pequeña",sistemas:["intrusion"]},
+  {codigo:"23E008S001",nombre:"Calancha",provincia:"Jaén",tipo:"Subestación Eléctrica",tamaño:"Pequeña",sistemas:["intrusion"]},
+  {codigo:"23E009S001",nombre:"Vadollano",provincia:"Jaén",tipo:"Subestación Eléctrica",tamaño:"Pequeña",sistemas:["intrusion"]},
+  {codigo:"23E010S001",nombre:"Arjonilla",provincia:"Jaén",tipo:"Subestación Eléctrica",tamaño:"Grande",sistemas:["intrusion","cctv","ccaa","interfonia"]},
+  {codigo:"23E011S001",nombre:"Villanueva de la Reina",provincia:"Jaén",tipo:"Subestación Eléctrica",tamaño:"Grande",sistemas:["intrusion","cctv","ccaa","interfonia"]},
+  {codigo:"23E012S001",nombre:"Vadollano (CT)",provincia:"Jaén",tipo:"Cuarto Técnico",tamaño:"Mediana",sistemas:["intrusion","cctv","ccaa"]},
+  {codigo:"23E013S001",nombre:"Torreblascopedro",provincia:"Jaén",tipo:"Cuarto Técnico",tamaño:"Mediana",sistemas:["intrusion","cctv","ccaa"]},
+  {codigo:"23E014S001",nombre:"Begijar",provincia:"Jaén",tipo:"Cuarto Técnico",tamaño:"Mediana",sistemas:["intrusion","cctv","ccaa"]},
+  {codigo:"23E015S001",nombre:"Los Propios y Cazorla",provincia:"Jaén",tipo:"Cuarto Técnico",tamaño:"Mediana",sistemas:["intrusion","cctv","ccaa"]},
+  {codigo:"23E016S001",nombre:"Las Madrigueras Par",provincia:"Jaén",tipo:"Cuarto Técnico",tamaño:"Mediana",sistemas:["intrusion","cctv","ccaa"]},
+  {codigo:"23E017S001",nombre:"Jabalquinto Par",provincia:"Jaén",tipo:"Cuarto Técnico",tamaño:"Mediana",sistemas:["intrusion","cctv","ccaa"]},
+  {codigo:"23E018S001",nombre:"Mengibar Par",provincia:"Jaén",tipo:"Cuarto Técnico",tamaño:"Mediana",sistemas:["intrusion","cctv","ccaa"]},
+  {codigo:"23E019S001",nombre:"Espeluy Bifurcación",provincia:"Jaén",tipo:"Cuarto Técnico",tamaño:"Mediana",sistemas:["intrusion","cctv","ccaa"]},
+  {codigo:"29E008S001",nombre:"Los Prados (Base)",provincia:"Málaga",tipo:"Base Mantenimiento",tamaño:"Grande",sistemas:["intrusion","cctv","ccaa","interfonia"]},
+  {codigo:"29E008S002",nombre:"Los Prados (S/E)",provincia:"Málaga",tipo:"Subestación Eléctrica",tamaño:"Grande",sistemas:["intrusion","cctv","ccaa","interfonia"]},
+  {codigo:"29E015S001",nombre:"Pizarra",provincia:"Málaga",tipo:"Subestación Eléctrica",tamaño:"Grande",sistemas:["intrusion","cctv","ccaa","interfonia"]},
+  {codigo:"29E016S001",nombre:"Bobadilla",provincia:"Málaga",tipo:"Subestación Eléctrica",tamaño:"Grande",sistemas:["intrusion","cctv","ccaa","interfonia"]},
+  {codigo:"29E017S001",nombre:"Carvajal",provincia:"Málaga",tipo:"Subestación Eléctrica",tamaño:"Grande",sistemas:["intrusion","cctv","ccaa","interfonia"]},
+  {codigo:"29E018S001",nombre:"El Chorro",provincia:"Málaga",tipo:"Subestación Eléctrica",tamaño:"Grande",sistemas:["intrusion","cctv","ccaa","interfonia"]},
+  {codigo:"29E019S001",nombre:"La Comba",provincia:"Málaga",tipo:"Subestación Eléctrica",tamaño:"Grande",sistemas:["intrusion","cctv","ccaa","interfonia"]},
+  {codigo:"41E001S001",nombre:"San Pablo",provincia:"Sevilla",tipo:"Almacén",tamaño:"Mediana",sistemas:["intrusion","pci"]},
+  {codigo:"41E003S001",nombre:"Sevilla Negrilla",provincia:"Sevilla",tipo:"Almacén",tamaño:"Mediana",sistemas:["intrusion","pci"]},
+  {codigo:"41E005S001",nombre:"Utrera (Base)",provincia:"Sevilla",tipo:"Base Mantenimiento",tamaño:"Mediana",sistemas:["intrusion","cctv"]},
+  {codigo:"41E005S002",nombre:"Utrera (S/E)",provincia:"Sevilla",tipo:"Subestación Eléctrica",tamaño:"Grande",sistemas:["intrusion","cctv","ccaa","interfonia"]},
+  {codigo:"41E006S001",nombre:"Tamarguillo P. Alcosa",provincia:"Sevilla",tipo:"Cuarto Técnico",tamaño:"Pequeña",sistemas:["intrusion"]},
+  {codigo:"41E008S001",nombre:"Dos Hermanas",provincia:"Sevilla",tipo:"Subestación Eléctrica",tamaño:"Mediana",sistemas:["intrusion","cctv"]},
+  {codigo:"41E013S001",nombre:"La Salud",provincia:"Sevilla",tipo:"Subestación Eléctrica",tamaño:"Grande",sistemas:["intrusion","cctv","ccaa","interfonia"]},
+  {codigo:"41E014S001",nombre:"Las Cabezas",provincia:"Sevilla",tipo:"Subestación Eléctrica",tamaño:"Grande",sistemas:["intrusion","cctv","ccaa","interfonia"]},
+  {codigo:"41E015S001",nombre:"Villanueva Ariscal",provincia:"Sevilla",tipo:"Subestación Eléctrica",tamaño:"Grande",sistemas:["intrusion","cctv","ccaa","interfonia"]},
+  {codigo:"41E016S001",nombre:"Huevar",provincia:"Sevilla",tipo:"Subestación Eléctrica",tamaño:"Grande",sistemas:["intrusion","cctv","ccaa","interfonia"]},
+  {codigo:"41E017S001",nombre:"La Roda de Andalucía",provincia:"Sevilla",tipo:"Subestación Eléctrica",tamaño:"Grande",sistemas:["intrusion","cctv","ccaa","interfonia"]},
+  {codigo:"41E019S001",nombre:"Brenes",provincia:"Sevilla",tipo:"Subestación Eléctrica",tamaño:"Grande",sistemas:["intrusion","cctv","ccaa","interfonia"]},
+  {codigo:"41E020S001",nombre:"Guadajoz",provincia:"Sevilla",tipo:"Subestación Eléctrica",tamaño:"Grande",sistemas:["intrusion","cctv","ccaa","interfonia"]},
+  {codigo:"41E021S001",nombre:"Lora del Río",provincia:"Sevilla",tipo:"Subestación Eléctrica",tamaño:"Grande",sistemas:["intrusion","cctv","ccaa","interfonia"]},
+  {codigo:"41E022S001",nombre:"Majarabique (S/E)",provincia:"Sevilla",tipo:"Subestación Eléctrica",tamaño:"Grande",sistemas:["intrusion","cctv","ccaa","interfonia"]},
+  {codigo:"41E023S001",nombre:"Salteras",provincia:"Sevilla",tipo:"Subestación Eléctrica",tamaño:"Grande",sistemas:["intrusion","cctv","ccaa","interfonia"]},
+  {codigo:"41E027S001",nombre:"El Cuervo",provincia:"Sevilla",tipo:"Subestación Eléctrica",tamaño:"Pequeña",sistemas:["intrusion"]},
+  {codigo:"41E028S001",nombre:"Majarabique (CC)",provincia:"Sevilla",tipo:"Cuarto Comunicaciones",tamaño:"Pequeña",sistemas:["intrusion"]},
+  {codigo:"41E034S001",nombre:"Lebrija",provincia:"Sevilla",tipo:"Subestación Eléctrica",tamaño:"Grande",sistemas:["intrusion","cctv","ccaa","interfonia"]},
+  {codigo:"41E035S001",nombre:"Las Alcantarillas",provincia:"Sevilla",tipo:"Subestación Eléctrica",tamaño:"Grande",sistemas:["intrusion","cctv","ccaa","interfonia"]},
+  {codigo:"41E037S001",nombre:"Majarabique (Caseta)",provincia:"Sevilla",tipo:"Caseta de Señalización",tamaño:"Mediana",sistemas:["intrusion","cctv","ccaa"]},
+];
+
+// ═══════════════════════════════════════════════════════════════════════
+// CONFIGURACIÓN Y CONEXIÓN CORELINK
+// ═══════════════════════════════════════════════════════════════════════
+const CORELINK_URL = 'https://corelink-adif.fjesusdel.workers.dev';
+
+function setEstadoCorelink(estado) {
+  const badge = document.getElementById('corelinkBadge');
+  if (!badge) return;
+  if (estado === 'ok') {
+    badge.innerHTML = '☁ Conectado';
+    badge.className = 'corelink-badge ok';
+  } else if (estado === 'sync') {
+    badge.innerHTML = '☁ Sincronizando...';
+    badge.className = 'corelink-badge sync';
+  } else {
+    badge.innerHTML = '☁ Sin conexión';
+    badge.className = 'corelink-badge off';
+  }
+}
+
+let toastTimer;
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 2500);
+}
+
+// ── Llamadas a CoreLink (lectura de todos los datos que ya existen) ───
+async function corelinkGet(ruta) {
+  try {
+    setEstadoCorelink('sync');
+    const resp = await fetch(CORELINK_URL + ruta);
+    const data = await resp.json();
+    setEstadoCorelink(data.ok ? 'ok' : 'off');
+    return data.ok ? data : null;
+  } catch (e) {
+    setEstadoCorelink('off');
+    return null;
+  }
+}
+
+async function corelinkPost(ruta, body) {
+  try {
+    setEstadoCorelink('sync');
+    const resp = await fetch(CORELINK_URL + ruta, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    const data = await resp.json();
+    setEstadoCorelink(data.ok ? 'ok' : 'off');
+    return data;
+  } catch (e) {
+    setEstadoCorelink('off');
+    return { ok: false, error: 'Sin conexión' };
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// NAVEGACIÓN ENTRE SECCIONES
+// ═══════════════════════════════════════════════════════════════════════
+let seccionActual = 'resumen';
+
+function cambiarSeccion(seccion) {
+  seccionActual = seccion;
+  ['Resumen','Instalaciones','Averias','Agenda','Stock','Notas','Kilometraje'].forEach(s => {
+    const tab = document.getElementById('tab' + s);
+    const cont = document.getElementById('seccion' + s);
+    if (tab) tab.classList.toggle('active', s.toLowerCase() === seccion);
+    if (cont) cont.classList.toggle('hidden', s.toLowerCase() !== seccion);
+  });
+
+  if (seccion === 'resumen') cargarResumen();
+  if (seccion === 'instalaciones') cargarInstalaciones();
+  if (seccion === 'averias') cargarAverias();
+  if (seccion === 'agenda') cargarAgenda();
+  if (seccion === 'stock') cargarStockPanel();
+  if (seccion === 'notas') cargarNotas();
+  if (seccion === 'kilometraje') cargarKilometraje();
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// RESUMEN
+// ═══════════════════════════════════════════════════════════════════════
+async function cargarResumen() {
+  const statGrid = document.getElementById('resumenStatGrid');
+  const sinVisitarEl = document.getElementById('resumenSinVisitar');
+  const averiasCriticasEl = document.getElementById('resumenAveriasCriticas');
+
+  const [fichasData, incidenciasData, agendaData] = await Promise.all([
+    corelinkGet('/api/fichas'),
+    corelinkGet('/api/incidencias'),
+    corelinkGet('/api/agenda')
+  ]);
+
+  if (!fichasData && !incidenciasData && !agendaData) {
+    statGrid.innerHTML = '<div class="empty-state">⚠ Sin conexión. No se pudo cargar el resumen.</div>';
+    sinVisitarEl.innerHTML = '';
+    averiasCriticasEl.innerHTML = '';
+    return;
+  }
+
+  const fichas = fichasData ? fichasData.fichas : {};
+  const incidencias = incidenciasData ? incidenciasData.incidencias : {};
+  const agenda = agendaData ? agendaData.tareas : {};
+
+  const totalInstalaciones = INSTALACIONES.length;
+  const visitadas = Object.keys(fichas).length;
+  const abiertas = Object.values(incidencias).filter(i => i.estado === 'abierta');
+  const criticas = abiertas.filter(i => (i.prioridad || 'normal') === 'critica');
+
+  const hoy = new Date();
+  const inicioSemana = new Date(hoy); inicioSemana.setDate(hoy.getDate() - hoy.getDay() + 1);
+  const finSemana = new Date(inicioSemana); finSemana.setDate(inicioSemana.getDate() + 6);
+  const visitasEstaSemana = Object.values(agenda).filter(t => {
+    if (t.estado === 'completada') return false;
+    const f = new Date(t.fecha + 'T00:00:00');
+    return f >= inicioSemana && f <= finSemana;
+  });
+
+  statGrid.innerHTML = `
+    <div class="stat-box info"><div class="stat-num">${visitadas}/${totalInstalaciones}</div><div class="stat-label">Instalaciones con datos</div></div>
+    <div class="stat-box ${criticas.length>0?'critical':'ok'}"><div class="stat-num">${abiertas.length}</div><div class="stat-label">Averías abiertas</div></div>
+    <div class="stat-box ${criticas.length>0?'critical':'ok'}"><div class="stat-num">${criticas.length}</div><div class="stat-label">Críticas</div></div>
+    <div class="stat-box warn"><div class="stat-num">${visitasEstaSemana.length}</div><div class="stat-label">Tareas esta semana</div></div>
+  `;
+
+  // Instalaciones sin visitar hace más tiempo (o nunca visitadas)
+  const conFecha = INSTALACIONES.map(inst => {
+    const ficha = fichas[inst.codigo];
+    const fechaAct = ficha && ficha._actualizado ? new Date(ficha._actualizado) : null;
+    return { inst, fechaAct };
+  }).sort((a, b) => {
+    if (!a.fechaAct && !b.fechaAct) return 0;
+    if (!a.fechaAct) return -1;
+    if (!b.fechaAct) return 1;
+    return a.fechaAct - b.fechaAct;
+  }).slice(0, 8);
+
+  sinVisitarEl.innerHTML = conFecha.map(({inst, fechaAct}) => `
+    <div class="simple-list-item">
+      <div class="left">${inst.nombre} <span style="color:var(--gris-medio);font-weight:400">(${inst.codigo})</span></div>
+      <div class="right">${fechaAct ? fechaAct.toLocaleDateString('es-ES') : 'Sin datos nunca'}</div>
+    </div>
+  `).join('') || '<div class="empty-state">Sin datos</div>';
+
+  // Averías críticas
+  if (criticas.length === 0) {
+    averiasCriticasEl.innerHTML = '<div class="empty-state">✓ No hay averías críticas abiertas</div>';
+  } else {
+    averiasCriticasEl.innerHTML = criticas.map(a => `
+      <div class="simple-list-item" style="background:#fef2f2">
+        <div class="left">${a.nombreInstalacion}: ${a.descripcion || a.nombrePunto}</div>
+        <div class="right">${new Date(a.fechaApertura + 'T12:00:00').toLocaleDateString('es-ES')}</div>
+      </div>
+    `).join('');
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// INSTALACIONES
+// ═══════════════════════════════════════════════════════════════════════
+let cacheFichas = null;
+let cacheIncidencias = null;
+let cacheContactos = null;
+let instProvinciaActiva = 'Todas';
+let instEstadoActivo = 'todas';
+let instalacionAbierta = null;
+
+async function cargarInstalaciones() {
+  const cont = document.getElementById('instalacionesListContainer');
+  cont.innerHTML = '<div class="empty-state">Cargando...</div>';
+
+  const [fichasData, incidenciasData] = await Promise.all([
+    corelinkGet('/api/fichas'),
+    corelinkGet('/api/incidencias')
+  ]);
+
+  cacheFichas = fichasData ? fichasData.fichas : {};
+  cacheIncidencias = incidenciasData ? incidenciasData.incidencias : {};
+
+  renderPillsInstalaciones();
+  renderListaInstalaciones();
+}
+
+function renderPillsInstalaciones() {
+  const provincias = ['Todas', ...new Set(INSTALACIONES.map(i => i.provincia))];
+  document.getElementById('instProvinciaPills').innerHTML = provincias.map(p =>
+    `<button class="pill ${p===instProvinciaActiva?'active':''}" onclick="setInstProvincia('${p}')">${p}</button>`
+  ).join('');
+
+  const estados = [
+    {id:'todas', label:'Todas'},
+    {id:'visitada', label:'🟢 Con datos'},
+    {id:'pendiente', label:'⚪ Sin datos'},
+    {id:'con-averia', label:'🔴 Con avería'}
+  ];
+  document.getElementById('instEstadoPills').innerHTML = estados.map(e =>
+    `<button class="pill ${e.id===instEstadoActivo?'active':''}" onclick="setInstEstado('${e.id}')">${e.label}</button>`
+  ).join('');
+}
+
+function setInstProvincia(p) { instProvinciaActiva = p; renderPillsInstalaciones(); renderListaInstalaciones(); }
+function setInstEstado(e) { instEstadoActivo = e; renderPillsInstalaciones(); renderListaInstalaciones(); }
+
+function estadoDeInstalacion(codigo) {
+  const tieneAveria = cacheIncidencias && Object.values(cacheIncidencias).some(i => i.codigoInstalacion === codigo && i.estado === 'abierta');
+  if (tieneAveria) return 'con-averia';
+  const tieneFicha = cacheFichas && cacheFichas[codigo];
+  return tieneFicha ? 'visitada' : 'pendiente';
+}
+
+function renderListaInstalaciones() {
+  const q = document.getElementById('instSearch').value.toLowerCase();
+  const lista = INSTALACIONES.filter(i => {
+    const matchProv = instProvinciaActiva === 'Todas' || i.provincia === instProvinciaActiva;
+    const matchQ = !q || i.nombre.toLowerCase().includes(q) || i.codigo.toLowerCase().includes(q);
+    const estado = estadoDeInstalacion(i.codigo);
+    const matchEstado = instEstadoActivo === 'todas' || estado === instEstadoActivo;
+    return matchProv && matchQ && matchEstado;
+  });
+
+  const cont = document.getElementById('instalacionesListContainer');
+  if (lista.length === 0) {
+    cont.innerHTML = '<div class="empty-state">No se encontraron instalaciones</div>';
+    return;
+  }
+
+  cont.innerHTML = '<div class="inst-grid">' + lista.map(i => {
+    const estado = estadoDeInstalacion(i.codigo);
+    const ficha = cacheFichas ? cacheFichas[i.codigo] : null;
+    const fechaTxt = ficha && ficha._actualizado ? new Date(ficha._actualizado).toLocaleDateString('es-ES') : 'Sin datos';
+    return `<div class="inst-card-panel" onclick="abrirModalInstalacion('${i.codigo}')">
+      <div class="nombre"><span class="estado-dot ${estado}"></span>${i.nombre}</div>
+      <div class="meta">${i.codigo} · ${i.provincia}</div>
+      <div class="meta">Última actualización: ${fechaTxt}</div>
+    </div>`;
+  }).join('') + '</div>';
+}
+
+// ── Modal de edición de instalación ──────────────────────────────────
+function abrirModalInstalacion(codigo) {
+  instalacionAbierta = INSTALACIONES.find(i => i.codigo === codigo);
+  document.getElementById('modalInstNombre').textContent = instalacionAbierta.nombre;
+  document.getElementById('modalInstMeta').textContent = `${instalacionAbierta.codigo} · ${instalacionAbierta.provincia} · ${instalacionAbierta.tipo}`;
+  document.getElementById('modalInstalacion').classList.remove('hidden');
+  cambiarModalTab('ficha');
+}
+
+function cerrarModalInstalacion() {
+  document.getElementById('modalInstalacion').classList.add('hidden');
+  instalacionAbierta = null;
+}
+
+function cambiarModalTab(tab) {
+  ['ficha','contacto','historial'].forEach(t => {
+    document.getElementById('modalTab' + t.charAt(0).toUpperCase() + t.slice(1)).classList.toggle('active', t === tab);
+    document.getElementById('modalPanel' + t.charAt(0).toUpperCase() + t.slice(1)).classList.toggle('hidden', t !== tab);
+  });
+  if (tab === 'ficha') renderPanelFicha();
+  if (tab === 'contacto') renderPanelContacto();
+  if (tab === 'historial') renderPanelHistorial();
+}
+
+function renderPanelFicha() {
+  const inst = instalacionAbierta;
+  const ficha = (cacheFichas && cacheFichas[inst.codigo]) || {};
+  const campos = [
+    {id:'ip_grabador', label:'IP Grabador CCTV', cond: inst.sistemas.includes('cctv')},
+    {id:'puerto_grabador', label:'Puerto acceso remoto', cond: inst.sistemas.includes('cctv')},
+    {id:'user_grabador', label:'Usuario grabador', cond: inst.sistemas.includes('cctv')},
+    {id:'pass_grabador', label:'Contraseña grabador', cond: inst.sistemas.includes('cctv')},
+    {id:'ip_central', label:'IP Central de Alarma', cond: true},
+    {id:'modelo_central', label:'Modelo central alarma', cond: true},
+    {id:'codigo_arm', label:'Código armado/desarmado', cond: true},
+    {id:'codigo_inst', label:'Código instalador / ingeniero', cond: true},
+    {id:'ip_uca', label:'IP UCA / Controlador', cond: inst.sistemas.includes('ccaa')},
+    {id:'ip_pci', label:'IP Central PCI', cond: inst.sistemas.includes('pci')},
+  ].filter(c => c.cond);
+
+  let html = '<div class="ficha-grid">';
+  campos.forEach(c => {
+    html += `<div class="ficha-field"><label>${c.label}</label><input type="text" id="pf_${c.id}" value="${ficha[c.id]||''}"></div>`;
+  });
+  html += '</div>';
+  html += `<div class="ficha-field" style="margin-top:10px"><label>Notas</label><textarea id="pf_notas" rows="3">${ficha.notas||''}</textarea></div>`;
+  html += `<button class="btn-primary" style="margin-top:14px;width:100%" onclick="guardarFichaDesdePanel()">Guardar ficha técnica</button>`;
+  document.getElementById('modalPanelFicha').innerHTML = html;
+}
+
+async function guardarFichaDesdePanel() {
+  const inst = instalacionAbierta;
+  const datos = {};
+  document.querySelectorAll('[id^="pf_"]').forEach(el => {
+    datos[el.id.replace('pf_', '')] = el.value;
+  });
+  toast('Guardando ficha...');
+  const resp = await corelinkPost('/api/fichas', { codigo: inst.codigo, datos: datos });
+  if (resp.ok) {
+    toast('Ficha guardada ✓');
+    if (!cacheFichas) cacheFichas = {};
+    cacheFichas[inst.codigo] = { ...datos, _actualizado: new Date().toISOString() };
+    renderListaInstalaciones();
+  } else {
+    toast('Sin conexión, no se pudo guardar');
+  }
+}
+
+function renderPanelContacto() {
+  const inst = instalacionAbierta;
+  const contacto = (cacheContactos && cacheContactos[inst.codigo]) || {};
+  document.getElementById('modalPanelContacto').innerHTML = `
+    <div class="ficha-field" style="margin-bottom:10px"><label>Nombre de contacto</label><input type="text" id="pc_nombre" value="${contacto.nombre||''}" placeholder="Persona a llamar para acceso"></div>
+    <div class="ficha-field" style="margin-bottom:10px"><label>Teléfono</label><input type="text" id="pc_telefono" value="${contacto.telefono||''}" placeholder="Ej: 600 123 456"></div>
+    <div class="ficha-field" style="margin-bottom:10px"><label>Notas de acceso</label><textarea id="pc_notas" rows="3" placeholder="Horarios, particularidades, código de entrada...">${contacto.notas||''}</textarea></div>
+    <button class="btn-primary" style="width:100%" onclick="guardarContactoDesdePanel()">Guardar contacto</button>
+  `;
+}
+
+async function guardarContactoDesdePanel() {
+  const inst = instalacionAbierta;
+  const datos = {
+    nombre: document.getElementById('pc_nombre').value,
+    telefono: document.getElementById('pc_telefono').value,
+    notas: document.getElementById('pc_notas').value
+  };
+  toast('Guardando contacto...');
+  const resp = await corelinkPost('/api/contactos', { codigo: inst.codigo, datos: datos });
+  if (resp.ok) {
+    toast('Contacto guardado ✓');
+    if (!cacheContactos) cacheContactos = {};
+    cacheContactos[inst.codigo] = datos;
+  } else {
+    toast('Sin conexión, no se pudo guardar');
+  }
+}
+
+function renderPanelHistorial() {
+  const inst = instalacionAbierta;
+  const incidenciasInst = cacheIncidencias ?
+    Object.values(cacheIncidencias).filter(i => i.codigoInstalacion === inst.codigo) : [];
+
+  if (incidenciasInst.length === 0) {
+    document.getElementById('modalPanelHistorial').innerHTML = '<div class="empty-state">Sin incidencias registradas en esta instalación</div>';
+    return;
+  }
+
+  const ordenadas = incidenciasInst.sort((a,b) => new Date(b.fechaApertura) - new Date(a.fechaApertura));
+  document.getElementById('modalPanelHistorial').innerHTML = ordenadas.map(i => `
+    <div class="simple-list-item" style="flex-direction:column;align-items:flex-start;gap:4px;margin-bottom:8px">
+      <div style="display:flex;justify-content:space-between;width:100%">
+        <strong style="font-size:13px">${i.estado === 'abierta' ? '🔴 Abierta' : '✓ Resuelta'}</strong>
+        <span style="font-size:11px;color:var(--gris-medio)">${new Date(i.fechaApertura+'T12:00:00').toLocaleDateString('es-ES')}</span>
+      </div>
+      <div style="font-size:13px">${i.nombrePunto || 'Avería'}</div>
+      ${i.descripcion ? `<div style="font-size:12px;color:var(--gris-medio)">→ ${i.descripcion}</div>` : ''}
+      ${i.observacionesCierre ? `<div style="font-size:12px;color:var(--verde)">✓ ${i.observacionesCierre}</div>` : ''}
+    </div>
+  `).join('');
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// AVERÍAS
+// ═══════════════════════════════════════════════════════════════════════
+const ORDEN_PRIORIDAD = { critica: 0, normal: 1, leve: 2 };
+let prioridadSeleccionada = 'normal';
+let instalacionAveriaSeleccionada = null;
+
+async function cargarAverias() {
+  const cont = document.getElementById('averiasListContainer');
+  cont.innerHTML = '<div class="empty-state">Cargando...</div>';
+
+  const data = await corelinkGet('/api/incidencias');
+  if (!data) {
+    cont.innerHTML = '<div class="empty-state">⚠ Sin conexión</div>';
+    return;
+  }
+  cacheIncidencias = data.incidencias;
+  actualizarBadge('averiasBadgeTab', Object.values(cacheIncidencias).filter(a => a.estado === 'abierta').length);
+
+  const abiertas = Object.entries(cacheIncidencias)
+    .filter(([id, a]) => a.estado === 'abierta')
+    .sort((a, b) => {
+      const pa = ORDEN_PRIORIDAD[a[1].prioridad] ?? 1;
+      const pb = ORDEN_PRIORIDAD[b[1].prioridad] ?? 1;
+      if (pa !== pb) return pa - pb;
+      return new Date(a[1].fechaApertura) - new Date(b[1].fechaApertura);
+    });
+
+  if (abiertas.length === 0) {
+    cont.innerHTML = '<div class="empty-state">✓ No hay averías abiertas</div>';
+    return;
+  }
+
+  const labelPrio = { critica: '🔴 Crítica', normal: '🟠 Normal', leve: '🟡 Leve' };
+  cont.innerHTML = abiertas.map(([id, a]) => {
+    const fecha = new Date(a.fechaApertura + 'T12:00:00');
+    const dias = Math.floor((new Date() - fecha) / 86400000);
+    const prio = a.prioridad || 'normal';
+    return `<div class="item-card prio-${prio}">
+      <span class="item-tag prio-${prio}">${labelPrio[prio]}</span>
+      <div class="item-card-titulo">${a.nombreInstalacion}</div>
+      ${a.nombrePunto && a.nombrePunto !== 'Avería de guardia' ? `<div style="font-size:11px;color:var(--gris-medio);font-weight:600">${a.codigoPunto||''} ${a.nombrePunto}</div>` : ''}
+      ${a.descripcion ? `<div class="item-card-desc">→ ${a.descripcion}</div>` : ''}
+      <div class="item-card-meta">Abierta el ${fecha.toLocaleDateString('es-ES')} (hace ${dias} día${dias!==1?'s':''})</div>
+      <div class="item-card-btns">
+        <button class="btn-mini verde" onclick="cerrarAveriaPanel('${id}')">✓ Marcar resuelta</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function actualizarBadge(elId, n) {
+  const el = document.getElementById(elId);
+  if (n > 0) { el.textContent = n; el.classList.remove('hidden'); }
+  else { el.classList.add('hidden'); }
+}
+
+async function cerrarAveriaPanel(id) {
+  const obs = prompt('Observaciones de cierre (opcional):') || '';
+  toast('Cerrando avería...');
+  const resp = await corelinkPost('/api/incidencias/cerrar', { id, observaciones: obs, fechaResolucion: new Date().toISOString().split('T')[0] });
+  if (resp.ok) { toast('Avería cerrada ✓'); cargarAverias(); }
+  else { toast('Sin conexión'); }
+}
+
+function abrirFormNuevaAveria() {
+  document.getElementById('formNuevaAveria').classList.remove('hidden');
+  document.getElementById('averiaInstSearch').value = '';
+  document.getElementById('averiaDesc').value = '';
+  instalacionAveriaSeleccionada = null;
+  document.getElementById('averiaInstSeleccionada').classList.add('hidden');
+  document.getElementById('averiaInstList').innerHTML = '';
+  seleccionarPrioridad('normal', document.querySelector('.prio-btn.prio-normal'));
+}
+function cerrarFormNuevaAveria() { document.getElementById('formNuevaAveria').classList.add('hidden'); }
+function seleccionarPrioridad(p, btn) {
+  prioridadSeleccionada = p;
+  document.querySelectorAll('.prio-btn').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+}
+function filtrarInstalacionesAveria() {
+  const q = document.getElementById('averiaInstSearch').value.toLowerCase();
+  const listEl = document.getElementById('averiaInstList');
+  if (!q) { listEl.innerHTML = ''; return; }
+  const resultados = INSTALACIONES.filter(i => i.nombre.toLowerCase().includes(q) || i.codigo.toLowerCase().includes(q)).slice(0, 8);
+  listEl.innerHTML = resultados.map(i => `<div class="inst-item-mini" onclick="seleccionarInstalacionAveria('${i.codigo}')"><div>${i.nombre}</div><div class="meta">${i.provincia} · ${i.codigo}</div></div>`).join('');
+}
+function seleccionarInstalacionAveria(codigo) {
+  instalacionAveriaSeleccionada = INSTALACIONES.find(i => i.codigo === codigo);
+  document.getElementById('averiaInstList').innerHTML = '';
+  document.getElementById('averiaInstSearch').value = '';
+  const chip = document.getElementById('averiaInstSeleccionada');
+  chip.classList.remove('hidden');
+  chip.innerHTML = `<span>${instalacionAveriaSeleccionada.nombre}</span><button onclick="document.getElementById('averiaInstSeleccionada').classList.add('hidden');instalacionAveriaSeleccionada=null">×</button>`;
+}
+async function guardarNuevaAveriaPanel() {
+  if (!instalacionAveriaSeleccionada) { toast('Selecciona una instalación'); return; }
+  const desc = document.getElementById('averiaDesc').value.trim();
+  if (!desc) { toast('Escribe una descripción'); return; }
+  toast('Guardando avería...');
+  const resp = await corelinkPost('/api/incidencias', {
+    incidencias: [{
+      codigoInstalacion: instalacionAveriaSeleccionada.codigo,
+      nombreInstalacion: instalacionAveriaSeleccionada.nombre,
+      codigoPunto: null, nombrePunto: 'Avería de guardia',
+      descripcion: desc, fechaApertura: new Date().toISOString().split('T')[0],
+      prioridad: prioridadSeleccionada
+    }]
+  });
+  if (resp.ok) { toast('Avería registrada ✓'); cerrarFormNuevaAveria(); cargarAverias(); }
+  else { toast('Sin conexión'); }
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// AGENDA
+// ═══════════════════════════════════════════════════════════════════════
+const LABEL_TIPO_TAREA = { anual: '🔧 Anual', trimestral: '💻 Trimestral', 'pci-trim': '🔥 Trim. PCI', averia: '⚠ Avería' };
+let instalacionTareaSeleccionada = null;
+let cacheAgenda = null;
+
+function etiquetaDia(fechaStr) {
+  const hoy = new Date(); hoy.setHours(0,0,0,0);
+  const manana = new Date(hoy); manana.setDate(manana.getDate() + 1);
+  const fecha = new Date(fechaStr + 'T00:00:00');
+  if (fecha.getTime() === hoy.getTime()) return 'Hoy';
+  if (fecha.getTime() === manana.getTime()) return 'Mañana';
+  if (fecha < hoy) return 'Atrasada — ' + fecha.toLocaleDateString('es-ES', {day:'numeric', month:'long'});
+  return fecha.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' });
+}
+
+async function cargarAgenda() {
+  const cont = document.getElementById('agendaListContainer');
+  cont.innerHTML = '<div class="empty-state">Cargando...</div>';
+
+  const data = await corelinkGet('/api/agenda');
+  if (!data) { cont.innerHTML = '<div class="empty-state">⚠ Sin conexión</div>'; return; }
+  cacheAgenda = data.tareas;
+
+  const hoyStr = new Date().toISOString().split('T')[0];
+  actualizarBadge('agendaBadgeTab', Object.values(cacheAgenda).filter(t => t.fecha === hoyStr && t.estado !== 'completada').length);
+
+  const activas = Object.entries(cacheAgenda).filter(([id, t]) => t.estado !== 'completada');
+  if (activas.length === 0) { cont.innerHTML = '<div class="empty-state">✓ No hay tareas pendientes</div>'; return; }
+
+  const porFecha = {};
+  activas.forEach(([id, t]) => { (porFecha[t.fecha] = porFecha[t.fecha] || []).push([id, t]); });
+  const fechas = Object.keys(porFecha).sort();
+
+  let html = '';
+  fechas.forEach(fecha => {
+    html += `<div class="agenda-dia-titulo">${etiquetaDia(fecha)}</div>`;
+    porFecha[fecha].forEach(([id, t]) => {
+      html += `<div class="item-card">
+        <span class="item-tag" style="background:var(--gris-fondo);color:var(--gris-medio)">${LABEL_TIPO_TAREA[t.tipo]||t.tipo}</span>
+        <div class="item-card-titulo">${t.nombreInstalacion || t.codigoInstalacion}</div>
+        ${t.nota ? `<div class="item-card-desc">→ ${t.nota}</div>` : ''}
+        <div class="item-card-btns">
+          <button class="btn-mini ${t.estado==='en_curso'?'activo-amarillo':''}" onclick="cambiarEstadoTareaPanel('${id}','en_curso')">▶ En curso</button>
+          <button class="btn-mini ${t.estado==='completada'?'activo':''}" onclick="cambiarEstadoTareaPanel('${id}','completada')">✓ Completada</button>
+        </div>
+      </div>`;
+    });
+  });
+  cont.innerHTML = html;
+}
+
+async function cambiarEstadoTareaPanel(id, estado) {
+  toast('Actualizando...');
+  const resp = await corelinkPost('/api/agenda/estado', { id, estado });
+  if (resp.ok) { toast('Actualizado ✓'); cargarAgenda(); }
+  else { toast('Sin conexión'); }
+}
+
+function abrirFormNuevaTarea() {
+  document.getElementById('formNuevaTarea').classList.remove('hidden');
+  document.getElementById('tareaInstSearch').value = '';
+  document.getElementById('tareaNota').value = '';
+  document.getElementById('tareaFecha').value = new Date().toISOString().split('T')[0];
+  document.getElementById('tareaTipo').value = 'anual';
+  instalacionTareaSeleccionada = null;
+  document.getElementById('tareaInstSeleccionada').classList.add('hidden');
+  document.getElementById('tareaInstList').innerHTML = '';
+}
+function cerrarFormNuevaTarea() { document.getElementById('formNuevaTarea').classList.add('hidden'); }
+function filtrarInstalacionesTarea() {
+  const q = document.getElementById('tareaInstSearch').value.toLowerCase();
+  const listEl = document.getElementById('tareaInstList');
+  if (!q) { listEl.innerHTML = ''; return; }
+  const resultados = INSTALACIONES.filter(i => i.nombre.toLowerCase().includes(q) || i.codigo.toLowerCase().includes(q)).slice(0, 8);
+  listEl.innerHTML = resultados.map(i => `<div class="inst-item-mini" onclick="seleccionarInstalacionTarea('${i.codigo}')"><div>${i.nombre}</div><div class="meta">${i.provincia} · ${i.codigo}</div></div>`).join('');
+}
+function seleccionarInstalacionTarea(codigo) {
+  instalacionTareaSeleccionada = INSTALACIONES.find(i => i.codigo === codigo);
+  document.getElementById('tareaInstList').innerHTML = '';
+  document.getElementById('tareaInstSearch').value = '';
+  const chip = document.getElementById('tareaInstSeleccionada');
+  chip.classList.remove('hidden');
+  chip.innerHTML = `<span>${instalacionTareaSeleccionada.nombre}</span><button onclick="document.getElementById('tareaInstSeleccionada').classList.add('hidden');instalacionTareaSeleccionada=null">×</button>`;
+}
+async function guardarNuevaTareaPanel() {
+  if (!instalacionTareaSeleccionada) { toast('Selecciona una instalación'); return; }
+  const fecha = document.getElementById('tareaFecha').value;
+  if (!fecha) { toast('Selecciona una fecha'); return; }
+  toast('Guardando tarea...');
+  const resp = await corelinkPost('/api/agenda', {
+    codigoInstalacion: instalacionTareaSeleccionada.codigo,
+    nombreInstalacion: instalacionTareaSeleccionada.nombre,
+    fecha: fecha,
+    tipo: document.getElementById('tareaTipo').value,
+    nota: document.getElementById('tareaNota').value.trim()
+  });
+  if (resp.ok) { toast('Tarea añadida ✓'); cerrarFormNuevaTarea(); cargarAgenda(); }
+  else { toast('Sin conexión'); }
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// NOTAS
+// ═══════════════════════════════════════════════════════════════════════
+async function cargarNotas() {
+  const cont = document.getElementById('notasListContainer');
+  cont.innerHTML = '<div class="empty-state">Cargando...</div>';
+
+  const data = await corelinkGet('/api/notas');
+  if (!data) { cont.innerHTML = '<div class="empty-state">⚠ Sin conexión</div>'; return; }
+
+  const notas = data.notas;
+  actualizarBadge('notasBadgeTab', Object.values(notas).filter(n => !n.hecha).length);
+
+  const entradas = Object.entries(notas).sort((a, b) => {
+    if (a[1].hecha !== b[1].hecha) return a[1].hecha ? 1 : -1;
+    return new Date(b[1].creada) - new Date(a[1].creada);
+  });
+
+  if (entradas.length === 0) { cont.innerHTML = '<div class="empty-state">Sin notas todavía</div>'; return; }
+
+  cont.innerHTML = entradas.map(([id, n]) => `
+    <div class="item-card nota-card ${n.hecha?'hecha':''}">
+      <div class="item-card-titulo" style="${n.hecha?'text-decoration:line-through':''}">${n.texto}</div>
+      ${n.fecha ? `<div class="item-card-meta">📅 ${new Date(n.fecha+'T12:00:00').toLocaleDateString('es-ES')}</div>` : ''}
+      <div class="item-card-btns">
+        <button class="btn-mini ${n.hecha?'activo':''}" onclick="toggleNota('${id}', ${!n.hecha})">${n.hecha ? '↺ Reabrir' : '✓ Hecha'}</button>
+        <button class="btn-mini" onclick="borrarNota('${id}')">🗑 Borrar</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+async function guardarNuevaNota() {
+  const texto = document.getElementById('notaTexto').value.trim();
+  if (!texto) { toast('Escribe el texto de la nota'); return; }
+  const fecha = document.getElementById('notaFecha').value || null;
+  toast('Guardando nota...');
+  const resp = await corelinkPost('/api/notas', { texto, fecha });
+  if (resp.ok) {
+    toast('Nota añadida ✓');
+    document.getElementById('notaTexto').value = '';
+    document.getElementById('notaFecha').value = '';
+    cargarNotas();
+  } else { toast('Sin conexión'); }
+}
+
+async function toggleNota(id, nuevoHecha) {
+  toast('Actualizando...');
+  const resp = await corelinkPost('/api/notas/estado', { id, accion: nuevoHecha ? 'marcar' : 'desmarcar' });
+  if (resp.ok) { cargarNotas(); } else { toast('Sin conexión'); }
+}
+
+async function borrarNota(id) {
+  if (!confirm('¿Borrar esta nota?')) return;
+  toast('Borrando...');
+  const resp = await corelinkPost('/api/notas/estado', { id, accion: 'borrar' });
+  if (resp.ok) { toast('Nota borrada ✓'); cargarNotas(); } else { toast('Sin conexión'); }
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// STOCK (panel) — gestión de almacén central y furgón de Jesús
+// ═══════════════════════════════════════════════════════════════════════
+let cachePanelStock = null;
+let materialAjusteActual = null; // id del material que se está editando en el modal
+
+async function cargarStockPanel() {
+  const cont = document.getElementById('stockPanelListContainer');
+  cont.innerHTML = '<div class="empty-state">Cargando...</div>';
+
+  const data = await corelinkGet('/api/stock');
+  if (!data) { cont.innerHTML = '<div class="empty-state">⚠ Sin conexión</div>'; return; }
+
+  cachePanelStock = data.stock;
+  const materiales = Object.entries(cachePanelStock.materiales);
+  const bajos = materiales.filter(([id, m]) => m.furgon <= m.minimoFurgon);
+  actualizarBadge('stockBadgeTab', bajos.length);
+
+  cont.innerHTML = materiales.map(([id, m]) => {
+    const bajo = m.furgon <= m.minimoFurgon;
+    return `<div class="material-card-panel ${bajo?'bajo-minimo':''}" onclick="abrirModalAjusteStock('${id}')">
+      <div class="nombre">${m.nombre}</div>
+      <div class="cantidades">
+        <div class="cant-box"><div class="cant-num">${m.almacen}</div><div class="cant-label">Almacén</div></div>
+        <div class="cant-box"><div class="cant-num ${bajo?'bajo':''}">${m.furgon}</div><div class="cant-label">Furgón</div></div>
+        <div class="cant-box"><div class="cant-num" style="color:var(--gris-medio);font-size:14px">${m.minimoFurgon}</div><div class="cant-label">Mínimo</div></div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function abrirModalAjusteStock(materialId) {
+  materialAjusteActual = materialId;
+  const m = cachePanelStock.materiales[materialId];
+  document.getElementById('modalAjusteStockNombre').textContent = m.nombre;
+  document.getElementById('ajusteAlmacen').value = m.almacen;
+  document.getElementById('ajusteFurgon').value = m.furgon;
+  document.getElementById('ajusteMinimo').value = m.minimoFurgon;
+  document.getElementById('reponerCantidad').value = '';
+  document.getElementById('modalAjusteStock').classList.remove('hidden');
+}
+
+function cerrarModalAjusteStock() {
+  document.getElementById('modalAjusteStock').classList.add('hidden');
+  materialAjusteActual = null;
+}
+
+async function guardarAjusteStock() {
+  if (!materialAjusteActual) return;
+  toast('Guardando...');
+  const resp = await corelinkPost('/api/stock/ajustar', {
+    materialId: materialAjusteActual,
+    almacen: parseInt(document.getElementById('ajusteAlmacen').value, 10) || 0,
+    furgon: parseInt(document.getElementById('ajusteFurgon').value, 10) || 0,
+    minimoFurgon: parseInt(document.getElementById('ajusteMinimo').value, 10) || 0
+  });
+  if (resp.ok) { toast('Stock actualizado ✓'); cerrarModalAjusteStock(); cargarStockPanel(); }
+  else { toast('Sin conexión'); }
+}
+
+async function reponerAFurgon() {
+  if (!materialAjusteActual) return;
+  const cantidad = parseInt(document.getElementById('reponerCantidad').value, 10);
+  if (!cantidad || cantidad < 1) { toast('Indica una cantidad válida'); return; }
+  toast('Reponiendo...');
+  const resp = await corelinkPost('/api/stock/reponer', { materialId: materialAjusteActual, cantidad });
+  if (resp.ok) { toast('Repuesto al furgón ✓'); cerrarModalAjusteStock(); cargarStockPanel(); }
+  else { toast('Sin conexión'); }
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// KILOMETRAJE (solo coordinador)
+// ═══════════════════════════════════════════════════════════════════════
+let instalacionKmSeleccionada = null;
+
+async function cargarKilometraje() {
+  document.getElementById('kmFecha').value = new Date().toISOString().split('T')[0];
+  const cont = document.getElementById('kmListContainer');
+  cont.innerHTML = '<div class="empty-state">Cargando...</div>';
+
+  const data = await corelinkGet('/api/kilometraje');
+  if (!data) { cont.innerHTML = '<div class="empty-state">⚠ Sin conexión</div>'; document.getElementById('kmResumenStats').innerHTML=''; return; }
+
+  const registros = Object.entries(data.registros).sort((a,b) => new Date(b[1].fecha) - new Date(a[1].fecha));
+
+  const totalKm = registros.reduce((sum, [id, r]) => sum + r.km, 0);
+  const hoy = new Date();
+  const inicioMes = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
+  const kmEsteMes = registros.filter(([id, r]) => new Date(r.fecha + 'T00:00:00') >= inicioMes).reduce((sum, [id, r]) => sum + r.km, 0);
+
+  document.getElementById('kmResumenStats').innerHTML = `
+    <div class="stat-box info"><div class="stat-num">${totalKm}</div><div class="stat-label">Total km registrados</div></div>
+    <div class="stat-box ok"><div class="stat-num">${kmEsteMes}</div><div class="stat-label">Km este mes</div></div>
+    <div class="stat-box warn"><div class="stat-num">${registros.length}</div><div class="stat-label">Registros</div></div>
+  `;
+
+  if (registros.length === 0) { cont.innerHTML = '<div class="empty-state">Sin registros todavía</div>'; return; }
+
+  cont.innerHTML = registros.map(([id, r]) => `
+    <div class="km-item">
+      <div class="info">
+        <strong>${new Date(r.fecha+'T12:00:00').toLocaleDateString('es-ES')}</strong>
+        ${r.nombreInstalacion ? ` · ${r.nombreInstalacion}` : ''}
+        ${r.nota ? `<div style="color:var(--gris-medio);font-size:12px">${r.nota}</div>` : ''}
+      </div>
+      <div style="display:flex;align-items:center;gap:12px">
+        <span class="km-num">${r.km} km</span>
+        <button class="borrar-km" onclick="borrarRegistroKm('${id}')">🗑</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function filtrarInstalacionesKm() {
+  const q = document.getElementById('kmInstSearch').value.toLowerCase();
+  const listEl = document.getElementById('kmInstList');
+  if (!q) { listEl.innerHTML = ''; return; }
+  const resultados = INSTALACIONES.filter(i => i.nombre.toLowerCase().includes(q) || i.codigo.toLowerCase().includes(q)).slice(0, 8);
+  listEl.innerHTML = resultados.map(i => `<div class="inst-item-mini" onclick="seleccionarInstalacionKm('${i.codigo}')"><div>${i.nombre}</div><div class="meta">${i.provincia} · ${i.codigo}</div></div>`).join('');
+}
+function seleccionarInstalacionKm(codigo) {
+  instalacionKmSeleccionada = INSTALACIONES.find(i => i.codigo === codigo);
+  document.getElementById('kmInstList').innerHTML = '';
+  document.getElementById('kmInstSearch').value = '';
+  const chip = document.getElementById('kmInstSeleccionada');
+  chip.classList.remove('hidden');
+  chip.innerHTML = `<span>${instalacionKmSeleccionada.nombre}</span><button onclick="document.getElementById('kmInstSeleccionada').classList.add('hidden');instalacionKmSeleccionada=null">×</button>`;
+}
+
+async function guardarRegistroKm() {
+  const fecha = document.getElementById('kmFecha').value;
+  const km = parseInt(document.getElementById('kmCantidad').value, 10);
+  if (!fecha || !km || km < 1) { toast('Indica fecha y kilómetros válidos'); return; }
+
+  toast('Guardando...');
+  const resp = await corelinkPost('/api/kilometraje', {
+    fecha, km,
+    codigoInstalacion: instalacionKmSeleccionada ? instalacionKmSeleccionada.codigo : null,
+    nombreInstalacion: instalacionKmSeleccionada ? instalacionKmSeleccionada.nombre : null,
+    nota: document.getElementById('kmNota').value.trim()
+  });
+  if (resp.ok) {
+    toast('Registro añadido ✓');
+    document.getElementById('kmCantidad').value = '';
+    document.getElementById('kmNota').value = '';
+    document.getElementById('kmInstSeleccionada').classList.add('hidden');
+    instalacionKmSeleccionada = null;
+    cargarKilometraje();
+  } else { toast('Sin conexión'); }
+}
+
+async function borrarRegistroKm(id) {
+  if (!confirm('¿Borrar este registro de kilometraje?')) return;
+  toast('Borrando...');
+  const resp = await corelinkPost('/api/kilometraje/borrar', { id });
+  if (resp.ok) { toast('Borrado ✓'); cargarKilometraje(); } else { toast('Sin conexión'); }
+}
+
+// ── Carga inicial ───────────────────────────────────────────────────
+cargarResumen();
+</script>
+</body>
+</html>
