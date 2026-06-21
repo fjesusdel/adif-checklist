@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Panel Coordinador · ADIF · Ilunion Seguridad</title>
+<style>
+:root {
+  --azul:     #003087;
+  --azul-mid: #00408a;
+  --azul-claro: #e8eef8;
+  --amarillo: #FFD100;
+  --gris-oscuro: #2d2d2d;
+  --gris-medio: #6b6b6b;
+  --gris-borde: #d1d5db;
+  --gris-fondo: #f4f6fa;
+  --blanco: #ffffff;
+  --verde:   #16a34a;
+  --rojo:    #dc2626;
+  --naranja: #ea580c;
+  --radio:   10px;
+  --sombra:  0 2px 12px rgba(0,48,135,0.10);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'Segoe UI', Arial, sans-serif;
+  background: var(--gris-fondo);
+  color: var(--gris-oscuro);
+  min-height: 100vh;
+  font-size: 15px;
+}
+
+/* ── HEADER ─────────────────────────────────── */
+header {
+  background: var(--azul);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+}
+.header-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 20px;
+  max-width: 1100px;
+  margin: 0 auto;
+}
+.header-title h1 { color: var(--blanco); font-size: 16px; font-weight: 700; }
+.header-title p { color: var(--amarillo); font-size: 11px; margin-top: 1px; }
+.header-bar { background: var(--amarillo); height: 4px; }
+
+/* ── NAV TABS ───────────────────────────────── */
+.nav-tabs {
+  display: flex;
+  max-width: 1100px;
+  margin: 0 auto;
+  background: var(--blanco);
+  border-bottom: 1.5px solid var(--gris-borde);
+  position: sticky;
+  top: 0;
+  z-index: 95;
+  overflow-x: auto;
+}
+.nav-tab {
+  flex: 1;
+  min-width: 110px;
+  padding: 13px 10px;
+  background: none;
+  border: none;
+  border-bottom: 3px solid transparent;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--gris-medio);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+.nav-tab.active { color: var(--azul); border-bottom-color: var(--azul); }
+.nav-tab-badge {
+  background: var(--rojo);
+  color: var(--blanco);
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 99px;
+  min-width: 16px;
+  text-align: center;
+}
+
+.container { max-width: 1100px; margin: 0 auto; padding: 18px; }
+.hidden { display: none !important; }
+
+/* ── CARDS ──────────────────────────────────── */
+.card {
+  background: var(--blanco);
+  border-radius: var(--radio);
+  box-shadow: var(--sombra);
+  padding: 20px;
+  margin-bottom: 16px;
+}
+.card-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--azul);
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.card-title::before {
+  content: '';
+  display: block;
+  width: 3px;
+  height: 16px;
+  background: var(--amarillo);
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+/* ── RESUMEN: STAT GRID ─────────────────────── */
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
+}
+.stat-box {
+  text-align: center;
+  padding: 18px 10px;
+  border-radius: var(--radio);
+  background: var(--gris-fondo);
+}
+.stat-box .stat-num { font-size: 30px; font-weight: 800; line-height: 1; }
+.stat-box .stat-label { font-size: 11px; font-weight: 700; color: var(--gris-medio); margin-top: 6px; text-transform: uppercase; letter-spacing: 0.3px; }
+.stat-box.ok       .stat-num { color: var(--verde); }
+.stat-box.warn     .stat-num { color: var(--naranja); }
+.stat-box.critical .stat-num { color: var(--rojo); }
+.stat-box.info     .stat-num { color: var(--azul); }
+
+/* ── LISTA SIMPLE (instalaciones sin tocar / averías recientes en resumen) ── */
+.simple-list { display: flex; flex-direction: column; gap: 8px; }
+.simple-list-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 14px;
+  background: var(--gris-fondo);
+  border-radius: 8px;
+  font-size: 13px;
+}
+.simple-list-item .left { font-weight: 600; }
+.simple-list-item .right { font-size: 12px; color: var(--gris-medio); white-space: nowrap; }
+
+/* ── LOADING / EMPTY STATES ─────────────────── */
+.empty-state { text-align: center; padding: 30px 10px; color: var(--gris-medio); font-size: 13px; }
+
+/* ── TOAST ──────────────────────────────────── */
+#toast {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%) translateY(80px);
+  background: var(--gris-oscuro);
+  color: var(--blanco);
+  padding: 11px 20px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  z-index: 999;
+  transition: transform 0.3s ease;
+  white-space: nowrap;
+  pointer-events: none;
+}
+#toast.show { transform: translateX(-50%) translateY(0); }
+
+/* ── BOTONES ────────────────────────────────── */
+.btn-primary {
+  display: inline-block;
+  padding: 10px 18px;
+  background: var(--azul);
+  color: var(--blanco);
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.btn-primary:hover { background: #00205e; }
+.btn-secondary {
+  display: inline-block;
+  padding: 9px 16px;
+  background: var(--blanco);
+  color: var(--azul);
+  border: 1.5px solid var(--azul);
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.btn-secondary:hover { background: var(--azul-claro); }
+
+/* ── CORELINK STATUS BADGE ──────────────────── */
+.corelink-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 3px 9px;
+  border-radius: 99px;
+}
+.corelink-badge.ok   { background: rgba(22,163,74,0.18); color: #bbf7d0; }
+.corelink-badge.sync { background: rgba(255,209,0,0.18); color: var(--amarillo); }
+.corelink-badge.off  { background: rgba(220,38,38,0.2); color: #fecaca; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-inner">
+    <div class="header-title">
+      <h1>Panel Coordinador</h1>
+      <p>Contrato ADIF 4.26/28510.0005 · RC Sur</p>
+    </div>
+    <div id="corelinkBadge" class="corelink-badge off">☁ Sin conexión</div>
+  </div>
+  <div class="header-bar"></div>
+</header>
+
+<div class="nav-tabs">
+  <button class="nav-tab active" id="tabResumen" onclick="cambiarSeccion('resumen')">📊 Resumen</button>
+  <button class="nav-tab" id="tabInstalaciones" onclick="cambiarSeccion('instalaciones')">🏢 Instalaciones</button>
+  <button class="nav-tab" id="tabAverias" onclick="cambiarSeccion('averias')">⚠ Averías<span id="averiasBadgeTab" class="nav-tab-badge hidden">0</span></button>
+  <button class="nav-tab" id="tabAgenda" onclick="cambiarSeccion('agenda')">📅 Agenda<span id="agendaBadgeTab" class="nav-tab-badge hidden">0</span></button>
+  <button class="nav-tab" id="tabNotas" onclick="cambiarSeccion('notas')">📝 Notas<span id="notasBadgeTab" class="nav-tab-badge hidden">0</span></button>
+</div>
+
+<div id="toast"></div>
+
+<!-- ═══════════════════════════════════════════════════════ -->
+<!-- RESUMEN                                                 -->
+<!-- ═══════════════════════════════════════════════════════ -->
+<div id="seccionResumen" class="container">
+  <div class="card">
+    <div class="card-title">Vista general</div>
+    <div class="stat-grid" id="resumenStatGrid">
+      <div class="empty-state">Cargando datos...</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">⚠ Instalaciones sin visitar hace más tiempo</div>
+    <div class="simple-list" id="resumenSinVisitar">
+      <div class="empty-state">Cargando...</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">🔴 Averías críticas abiertas</div>
+    <div class="simple-list" id="resumenAveriasCriticas">
+      <div class="empty-state">Cargando...</div>
+    </div>
+  </div>
+</div>
+
+<!-- Las demás secciones (Instalaciones, Averías, Agenda, Notas) se añaden en los siguientes bloques -->
+
+<script>
+// ═══════════════════════════════════════════════════════════════════════
+// DATOS — mismas 78 instalaciones que la app de Jesús
+// ═══════════════════════════════════════════════════════════════════════
+const INSTALACIONES = [
+  {codigo:"04E002S001",nombre:"Huercal",provincia:"Almería",tipo:"Subestación Eléctrica",tamaño:"Pequeña",sistemas:["intrusion"]},
+  {codigo:"04E003S001",nombre:"Santa Fé",provincia:"Almería",tipo:"Subestación Eléctrica",tamaño:"Pequeña",sistemas:["intrusion"]},
+  {codigo:"04E004S001",nombre:"Fuente Santa",provincia:"Almería",tipo:"Subestación Eléctrica",tamaño:"Pequeña",sistemas:["intrusion"]},
+  {codigo:"04E005S001",nombre:"Nacimiento",provincia:"Almería",tipo:"Subestación Eléctrica",tamaño:"Pequeña",sistemas:["intrusion"]},
+  {codigo:"04E006S001",nombre:"Abla",provincia:"Almería",tipo:"Subestación Eléctrica",tamaño:"Pequeña",sistemas:["intrusion"]},
+  {codigo:"04E007S001",nombre:"Huéneja",provincia:"Almería",tipo:"Subestación Eléctrica",tamaño:"Pequeña",sistemas:["intrusion"]},
+  {codigo:"11E002S001",nombre:"Puerto Sta Maria",provincia:"Cádiz",tipo:"Equipo de Línea",tamaño:"Mediana",sistemas:["intrusion","cctv"]},
+  {codigo:"11E003S002",nombre:"Cádiz Edificio Técnico",provincia:"Cádiz",tipo:"Edificio Técnico",tamaño:"Mediana",sistemas:["intrusion","cctv"]},
+  {codigo:"11E004S002",nombre:"Jerez de la Frontera",provincia:"Cádiz",tipo:"Subestación Eléctrica",tamaño:"Grande",sistemas:["intrusion","cctv","ccaa","interfonia"]},
+  {codigo:"11E008S001",nombre:"El Portal",provincia:"Cádiz",tipo:"Subestación Eléctrica",tamaño:"Mediana",sistemas:["intrusion","cctv"]},
+  {codigo:"11E009S001",nombre:"Cortadura",provincia:"Cádiz",tipo:"Subestación Eléctrica",tamaño:"Mediana",sistemas:["intrusion","cctv"]},
+  {codigo:"11E010S001",nombre:"Puerto Real",provincia:"Cádiz",tipo:"Subestación Eléctrica",tamaño:"Grande",sistemas:["intrusion","cctv","ccaa","interfonia"]},
+  {codigo:"11E012S001",nombre:"Algeciras",provincia:"Cádiz",tipo:"Cuarto Técnico",tamaño:"Mediana",sistemas:["intrusion","cctv","ccaa"]},
+  {codigo:"11E013S001",nombre:"Los Barrios",provincia:"Cádiz",tipo:"Cuarto Técnico",tamaño:"Mediana",sistemas:["intrusion","cctv","ccaa"]},
+  {codigo:"11E014S001",nombre:"Jimena de la Frontera",provincia:"Cádiz",tipo:"Cuarto Técnico",tamaño:"Pequeña",sistemas:["intrusion"]},
+  {codigo:"11E015S001",nombre:"Castellar de la Frontera",provincia:"Cádiz",tipo:"Cuarto Técnico",tamaño:"Mediana",sistemas:["intrusion","cctv","ccaa"]},
+  {codigo:"11E016S001",nombre:"San Roque Viajeros",provincia:"Cádiz",tipo:"Cuarto Técnico",tamaño:"Mediana",sistemas:["intrusion","cctv","ccaa"]},
+  {codigo:"11E017S001",nombre:"San Roque Mercancías",provincia:"Cádiz",tipo:"Cuarto Técnico",tamaño:"Mediana",sistemas:["intrusion","cctv","ccaa"]},
+  {codigo:"53E001S009",nombre:"Torregorda S/E 22",provincia:"Cádiz",tipo:"Subestación Eléctrica",tamaño:"Pequeña",sistemas:["intrusion"]},
+  {codigo:"14E002S002",nombre:"Córdoba Mercancías Polivalente",provincia:"Córdoba",tipo:"Almacén",tamaño:"Mediana",sistemas:["intrusion","pci"]},
+  {codigo:"14E002S003",nombre:"Córdoba Mercancías Sectores",provincia:"Córdoba",tipo:"Base Mantenimiento",tamaño:"Pequeña",sistemas:["intrusion"]},
+  {codigo:"14E005S002",nombre:"Puente Genil",provincia:"Córdoba",tipo:"Subestación Eléctrica",tamaño:"Grande",sistemas:["intrusion","cctv","ccaa","interfonia"]},
+  {codigo:"14E006S001",nombre:"Villa del Río",provincia:"Córdoba",tipo:"Subestación Eléctrica",tamaño:"Grande",sistemas:["intrusion","cctv","ccaa","interfonia"]},
+  {codigo:"14E007S001",nombre:"Alcolea de Córdoba",provincia:"Córdoba",tipo:"Subestación Eléctrica",tamaño:"Grande",sistemas:["intrusion","cctv","ccaa","interfonia"]},
+  {codigo:"14E007S002",nombre:"Alcolea de Córdoba (Cambiador)",provincia:"Córdoba",tipo:"Cambiador de Anchos",tamaño:"Grande",sistemas:["intrusion","cctv","ccaa","interfonia"]},
+  {codigo:"14E008S001",nombre:"Posadas",provincia:"Córdoba",tipo:"Subestación Eléctrica",tamaño:"Grande",sistemas:["intrusion","cctv","ccaa","interfonia"]},
+  {codigo:"14E009S001",nombre:"Pedro Abad",provincia:"Córdoba",tipo:"Subestación Eléctrica",tamaño:"Grande",sistemas:["intrusion","cctv","ccaa","interfonia"]},
+  {codigo:"14E010S001",nombre:"Villarrubia",provincia:"Córdoba",tipo:"Subestación Eléctrica",tamaño:"Grande",sistemas:["intrusion","cctv","ccaa","interfonia"]},
+  {codigo:"14E011S001",nombre:"Palma del Río",provincia:"Córdoba",tipo:"Subestación Eléctrica",tamaño:"Grande",sistemas:["intrusion","cctv","ccaa","interfonia"]},
+  {codigo:"14E012S001",nombre:"Valchillón",provincia:"Córdoba",tipo:"Subestación Eléctrica",tamaño:"Grande",sistemas:["intrusion","cctv","ccaa","interfonia"]},
+  {codigo:"14E014S001",nombre:"Fernán Núñez",provincia:"Córdoba",tipo:"Subestación Eléctrica",tamaño:"Grande",sistemas:["intrusion","cctv","ccaa","interfonia"]},
+  {codigo:"14E016S001",nombre:"Aguilar de la Frontera",provincia:"Córdoba",tipo:"Subestación Eléctrica",tamaño:"Grande",sistemas:["intrusion","cctv","ccaa","interfonia"]},
+  {codigo:"21E001S002",nombre:"Huelva Cargas",provincia:"Huelva",tipo:"Subestación Eléctrica",tamaño:"Grande",sistemas:["intrusion","cctv","ccaa","interfonia"]},
+  {codigo:"21E005S001",nombre:"Niebla",provincia:"Huelva",tipo:"Subestación Eléctrica",tamaño:"Grande",sistemas:["intrusion","cctv","ccaa","interfonia"]},
+  {codigo:"21E006S001",nombre:"Villalba de Alcor",provincia:"Huelva",tipo:"Subestación Eléctrica",tamaño:"Grande",sistemas:["intrusion","cctv","ccaa","interfonia"]},
+  {codigo:"23E002S001",nombre:"Linares Baeza",provincia:"Jaén",tipo:"Almacén",tamaño:"Pequeña",sistemas:["intrusion"]},
+  {codigo:"23E006S001",nombre:"Grañena",provincia:"Jaén",tipo:"Subestación Eléctrica",tamaño:"Pequeña",sistemas:["intrusion"]},
+  {codigo:"23E007S001",nombre:"Jabalquinto",provincia:"Jaén",tipo:"Subestación Eléctrica",tamaño:"Pequeña",sistemas:["intrusion"]},
+  {codigo:"23E008S001",nombre:"Calancha",provincia:"Jaén",tipo:"Subestación Eléctrica",tamaño:"Pequeña",sistemas:["intrusion"]},
+  {codigo:"23E009S001",nombre:"Vadollano",provincia:"Jaén",tipo:"Subestación Eléctrica",tamaño:"Pequeña",sistemas:["intrusion"]},
+  {codigo:"23E010S001",nombre:"Arjonilla",provincia:"Jaén",tipo:"Subestación Eléctrica",tamaño:"Grande",sistemas:["intrusion","cctv","ccaa","interfonia"]},
+  {codigo:"23E011S001",nombre:"Villanueva de la Reina",provincia:"Jaén",tipo:"Subestación Eléctrica",tamaño:"Grande",sistemas:["intrusion","cctv","ccaa","interfonia"]},
+  {codigo:"23E012S001",nombre:"Vadollano (CT)",provincia:"Jaén",tipo:"Cuarto Técnico",tamaño:"Mediana",sistemas:["intrusion","cctv","ccaa"]},
+  {codigo:"23E013S001",nombre:"Torreblascopedro",provincia:"Jaén",tipo:"Cuarto Técnico",tamaño:"Mediana",sistemas:["intrusion","cctv","ccaa"]},
+  {codigo:"23E014S001",nombre:"Begijar",provincia:"Jaén",tipo:"Cuarto Técnico",tamaño:"Mediana",sistemas:["intrusion","cctv","ccaa"]},
+  {codigo:"23E015S001",nombre:"Los Propios y Cazorla",provincia:"Jaén",tipo:"Cuarto Técnico",tamaño:"Mediana",sistemas:["intrusion","cctv","ccaa"]},
+  {codigo:"23E016S001",nombre:"Las Madrigueras Par",provincia:"Jaén",tipo:"Cuarto Técnico",tamaño:"Mediana",sistemas:["intrusion","cctv","ccaa"]},
+  {codigo:"23E017S001",nombre:"Jabalquinto Par",provincia:"Jaén",tipo:"Cuarto Técnico",tamaño:"Mediana",sistemas:["intrusion","cctv","ccaa"]},
+  {codigo:"23E018S001",nombre:"Mengibar Par",provincia:"Jaén",tipo:"Cuarto Técnico",tamaño:"Mediana",sistemas:["intrusion","cctv","ccaa"]},
+  {codigo:"23E019S001",nombre:"Espeluy Bifurcación",provincia:"Jaén",tipo:"Cuarto Técnico",tamaño:"Mediana",sistemas:["intrusion","cctv","ccaa"]},
+  {codigo:"29E008S001",nombre:"Los Prados (Base)",provincia:"Málaga",tipo:"Base Mantenimiento",tamaño:"Grande",sistemas:["intrusion","cctv","ccaa","interfonia"]},
+  {codigo:"29E008S002",nombre:"Los Prados (S/E)",provincia:"Málaga",tipo:"Subestación Eléctrica",tamaño:"Grande",sistemas:["intrusion","cctv","ccaa","interfonia"]},
+  {codigo:"29E015S001",nombre:"Pizarra",provincia:"Málaga",tipo:"Subestación Eléctrica",tamaño:"Grande",sistemas:["intrusion","cctv","ccaa","interfonia"]},
+  {codigo:"29E016S001",nombre:"Bobadilla",provincia:"Málaga",tipo:"Subestación Eléctrica",tamaño:"Grande",sistemas:["intrusion","cctv","ccaa","interfonia"]},
+  {codigo:"29E017S001",nombre:"Carvajal",provincia:"Málaga",tipo:"Subestación Eléctrica",tamaño:"Grande",sistemas:["intrusion","cctv","ccaa","interfonia"]},
+  {codigo:"29E018S001",nombre:"El Chorro",provincia:"Málaga",tipo:"Subestación Eléctrica",tamaño:"Grande",sistemas:["intrusion","cctv","ccaa","interfonia"]},
+  {codigo:"29E019S001",nombre:"La Comba",provincia:"Málaga",tipo:"Subestación Eléctrica",tamaño:"Grande",sistemas:["intrusion","cctv","ccaa","interfonia"]},
+  {codigo:"41E001S001",nombre:"San Pablo",provincia:"Sevilla",tipo:"Almacén",tamaño:"Mediana",sistemas:["intrusion","pci"]},
+  {codigo:"41E003S001",nombre:"Sevilla Negrilla",provincia:"Sevilla",tipo:"Almacén",tamaño:"Mediana",sistemas:["intrusion","pci"]},
+  {codigo:"41E005S001",nombre:"Utrera (Base)",provincia:"Sevilla",tipo:"Base Mantenimiento",tamaño:"Mediana",sistemas:["intrusion","cctv"]},
+  {codigo:"41E005S002",nombre:"Utrera (S/E)",provincia:"Sevilla",tipo:"Subestación Eléctrica",tamaño:"Grande",sistemas:["intrusion","cctv","ccaa","interfonia"]},
+  {codigo:"41E006S001",nombre:"Tamarguillo P. Alcosa",provincia:"Sevilla",tipo:"Cuarto Técnico",tamaño:"Pequeña",sistemas:["intrusion"]},
+  {codigo:"41E008S001",nombre:"Dos Hermanas",provincia:"Sevilla",tipo:"Subestación Eléctrica",tamaño:"Mediana",sistemas:["intrusion","cctv"]},
+  {codigo:"41E013S001",nombre:"La Salud",provincia:"Sevilla",tipo:"Subestación Eléctrica",tamaño:"Grande",sistemas:["intrusion","cctv","ccaa","interfonia"]},
+  {codigo:"41E014S001",nombre:"Las Cabezas",provincia:"Sevilla",tipo:"Subestación Eléctrica",tamaño:"Grande",sistemas:["intrusion","cctv","ccaa","interfonia"]},
+  {codigo:"41E015S001",nombre:"Villanueva Ariscal",provincia:"Sevilla",tipo:"Subestación Eléctrica",tamaño:"Grande",sistemas:["intrusion","cctv","ccaa","interfonia"]},
+  {codigo:"41E016S001",nombre:"Huevar",provincia:"Sevilla",tipo:"Subestación Eléctrica",tamaño:"Grande",sistemas:["intrusion","cctv","ccaa","interfonia"]},
+  {codigo:"41E017S001",nombre:"La Roda de Andalucía",provincia:"Sevilla",tipo:"Subestación Eléctrica",tamaño:"Grande",sistemas:["intrusion","cctv","ccaa","interfonia"]},
+  {codigo:"41E019S001",nombre:"Brenes",provincia:"Sevilla",tipo:"Subestación Eléctrica",tamaño:"Grande",sistemas:["intrusion","cctv","ccaa","interfonia"]},
+  {codigo:"41E020S001",nombre:"Guadajoz",provincia:"Sevilla",tipo:"Subestación Eléctrica",tamaño:"Grande",sistemas:["intrusion","cctv","ccaa","interfonia"]},
+  {codigo:"41E021S001",nombre:"Lora del Río",provincia:"Sevilla",tipo:"Subestación Eléctrica",tamaño:"Grande",sistemas:["intrusion","cctv","ccaa","interfonia"]},
+  {codigo:"41E022S001",nombre:"Majarabique (S/E)",provincia:"Sevilla",tipo:"Subestación Eléctrica",tamaño:"Grande",sistemas:["intrusion","cctv","ccaa","interfonia"]},
+  {codigo:"41E023S001",nombre:"Salteras",provincia:"Sevilla",tipo:"Subestación Eléctrica",tamaño:"Grande",sistemas:["intrusion","cctv","ccaa","interfonia"]},
+  {codigo:"41E027S001",nombre:"El Cuervo",provincia:"Sevilla",tipo:"Subestación Eléctrica",tamaño:"Pequeña",sistemas:["intrusion"]},
+  {codigo:"41E028S001",nombre:"Majarabique (CC)",provincia:"Sevilla",tipo:"Cuarto Comunicaciones",tamaño:"Pequeña",sistemas:["intrusion"]},
+  {codigo:"41E034S001",nombre:"Lebrija",provincia:"Sevilla",tipo:"Subestación Eléctrica",tamaño:"Grande",sistemas:["intrusion","cctv","ccaa","interfonia"]},
+  {codigo:"41E035S001",nombre:"Las Alcantarillas",provincia:"Sevilla",tipo:"Subestación Eléctrica",tamaño:"Grande",sistemas:["intrusion","cctv","ccaa","interfonia"]},
+  {codigo:"41E037S001",nombre:"Majarabique (Caseta)",provincia:"Sevilla",tipo:"Caseta de Señalización",tamaño:"Mediana",sistemas:["intrusion","cctv","ccaa"]},
+];
+
+// ═══════════════════════════════════════════════════════════════════════
+// CONFIGURACIÓN Y CONEXIÓN CORELINK
+// ═══════════════════════════════════════════════════════════════════════
+const CORELINK_URL = 'https://corelink-adif.fjesusdel.workers.dev';
+
+function setEstadoCorelink(estado) {
+  const badge = document.getElementById('corelinkBadge');
+  if (!badge) return;
+  if (estado === 'ok') {
+    badge.innerHTML = '☁ Conectado';
+    badge.className = 'corelink-badge ok';
+  } else if (estado === 'sync') {
+    badge.innerHTML = '☁ Sincronizando...';
+    badge.className = 'corelink-badge sync';
+  } else {
+    badge.innerHTML = '☁ Sin conexión';
+    badge.className = 'corelink-badge off';
+  }
+}
+
+let toastTimer;
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 2500);
+}
+
+// ── Llamadas a CoreLink (lectura de todos los datos que ya existen) ───
+async function corelinkGet(ruta) {
+  try {
+    setEstadoCorelink('sync');
+    const resp = await fetch(CORELINK_URL + ruta);
+    const data = await resp.json();
+    setEstadoCorelink(data.ok ? 'ok' : 'off');
+    return data.ok ? data : null;
+  } catch (e) {
+    setEstadoCorelink('off');
+    return null;
+  }
+}
+
+async function corelinkPost(ruta, body) {
+  try {
+    setEstadoCorelink('sync');
+    const resp = await fetch(CORELINK_URL + ruta, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    const data = await resp.json();
+    setEstadoCorelink(data.ok ? 'ok' : 'off');
+    return data;
+  } catch (e) {
+    setEstadoCorelink('off');
+    return { ok: false, error: 'Sin conexión' };
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// NAVEGACIÓN ENTRE SECCIONES
+// ═══════════════════════════════════════════════════════════════════════
+let seccionActual = 'resumen';
+
+function cambiarSeccion(seccion) {
+  seccionActual = seccion;
+  ['Resumen','Instalaciones','Averias','Agenda','Notas'].forEach(s => {
+    const tab = document.getElementById('tab' + s);
+    const cont = document.getElementById('seccion' + s);
+    if (tab) tab.classList.toggle('active', s.toLowerCase() === seccion);
+    if (cont) cont.classList.toggle('hidden', s.toLowerCase() !== seccion);
+  });
+
+  if (seccion === 'resumen') cargarResumen();
+  if (seccion === 'instalaciones') cargarInstalaciones();
+  if (seccion === 'averias') cargarAverias();
+  if (seccion === 'agenda') cargarAgenda();
+  if (seccion === 'notas') cargarNotas();
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// RESUMEN
+// ═══════════════════════════════════════════════════════════════════════
+async function cargarResumen() {
+  const statGrid = document.getElementById('resumenStatGrid');
+  const sinVisitarEl = document.getElementById('resumenSinVisitar');
+  const averiasCriticasEl = document.getElementById('resumenAveriasCriticas');
+
+  const [fichasData, incidenciasData, agendaData] = await Promise.all([
+    corelinkGet('/api/fichas'),
+    corelinkGet('/api/incidencias'),
+    corelinkGet('/api/agenda')
+  ]);
+
+  if (!fichasData && !incidenciasData && !agendaData) {
+    statGrid.innerHTML = '<div class="empty-state">⚠ Sin conexión. No se pudo cargar el resumen.</div>';
+    sinVisitarEl.innerHTML = '';
+    averiasCriticasEl.innerHTML = '';
+    return;
+  }
+
+  const fichas = fichasData ? fichasData.fichas : {};
+  const incidencias = incidenciasData ? incidenciasData.incidencias : {};
+  const agenda = agendaData ? agendaData.tareas : {};
+
+  const totalInstalaciones = INSTALACIONES.length;
+  const visitadas = Object.keys(fichas).length;
+  const abiertas = Object.values(incidencias).filter(i => i.estado === 'abierta');
+  const criticas = abiertas.filter(i => (i.prioridad || 'normal') === 'critica');
+
+  const hoy = new Date();
+  const inicioSemana = new Date(hoy); inicioSemana.setDate(hoy.getDate() - hoy.getDay() + 1);
+  const finSemana = new Date(inicioSemana); finSemana.setDate(inicioSemana.getDate() + 6);
+  const visitasEstaSemana = Object.values(agenda).filter(t => {
+    if (t.estado === 'completada') return false;
+    const f = new Date(t.fecha + 'T00:00:00');
+    return f >= inicioSemana && f <= finSemana;
+  });
+
+  statGrid.innerHTML = `
+    <div class="stat-box info"><div class="stat-num">${visitadas}/${totalInstalaciones}</div><div class="stat-label">Instalaciones con datos</div></div>
+    <div class="stat-box ${criticas.length>0?'critical':'ok'}"><div class="stat-num">${abiertas.length}</div><div class="stat-label">Averías abiertas</div></div>
+    <div class="stat-box ${criticas.length>0?'critical':'ok'}"><div class="stat-num">${criticas.length}</div><div class="stat-label">Críticas</div></div>
+    <div class="stat-box warn"><div class="stat-num">${visitasEstaSemana.length}</div><div class="stat-label">Tareas esta semana</div></div>
+  `;
+
+  // Instalaciones sin visitar hace más tiempo (o nunca visitadas)
+  const conFecha = INSTALACIONES.map(inst => {
+    const ficha = fichas[inst.codigo];
+    const fechaAct = ficha && ficha._actualizado ? new Date(ficha._actualizado) : null;
+    return { inst, fechaAct };
+  }).sort((a, b) => {
+    if (!a.fechaAct && !b.fechaAct) return 0;
+    if (!a.fechaAct) return -1;
+    if (!b.fechaAct) return 1;
+    return a.fechaAct - b.fechaAct;
+  }).slice(0, 8);
+
+  sinVisitarEl.innerHTML = conFecha.map(({inst, fechaAct}) => `
+    <div class="simple-list-item">
+      <div class="left">${inst.nombre} <span style="color:var(--gris-medio);font-weight:400">(${inst.codigo})</span></div>
+      <div class="right">${fechaAct ? fechaAct.toLocaleDateString('es-ES') : 'Sin datos nunca'}</div>
+    </div>
+  `).join('') || '<div class="empty-state">Sin datos</div>';
+
+  // Averías críticas
+  if (criticas.length === 0) {
+    averiasCriticasEl.innerHTML = '<div class="empty-state">✓ No hay averías críticas abiertas</div>';
+  } else {
+    averiasCriticasEl.innerHTML = criticas.map(a => `
+      <div class="simple-list-item" style="background:#fef2f2">
+        <div class="left">${a.nombreInstalacion}: ${a.descripcion || a.nombrePunto}</div>
+        <div class="right">${new Date(a.fechaApertura + 'T12:00:00').toLocaleDateString('es-ES')}</div>
+      </div>
+    `).join('');
+  }
+}
+
+// ── Carga inicial ───────────────────────────────────────────────────
+cargarResumen();
+</script>
+</body>
+</html>
