@@ -1,0 +1,3444 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Panel Coordinador · ADIF · Ilunion Seguridad</title>
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Coordinador">
+<link rel="apple-touch-icon" href="icon-coordinador-192.png">
+<link rel="icon" type="image/png" href="icon-coordinador-192.png">
+<style>
+:root {
+  --azul:      #003087;
+  --azul-mid:  #00408a;
+  --azul-claro:#e8eef8;
+  --amarillo:  #FFD100;
+  --gris-oscuro:#2d2d2d;
+  --gris-medio: #6b6b6b;
+  --gris-borde: #d1d5db;
+  --gris-fondo: #f4f6fa;
+  --blanco:    #ffffff;
+  --verde:     #16a34a;
+  --rojo:      #dc2626;
+  --naranja:   #ea580c;
+  --radio:     10px;
+  --sombra:    0 2px 12px rgba(0,48,135,0.10);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Segoe UI', Arial, sans-serif; background: var(--gris-fondo); color: var(--gris-oscuro); min-height: 100vh; font-size: 15px; }
+
+/* ── HEADER ───────────────────────────────────── */
+header { background: var(--azul); position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 8px rgba(0,0,0,0.25); }
+.header-inner { display: flex; align-items: center; justify-content: space-between; padding: 12px 20px; max-width: 1100px; margin: 0 auto; }
+.header-title h1 { color: var(--blanco); font-size: 16px; font-weight: 700; }
+.header-title p  { color: var(--amarillo); font-size: 11px; margin-top: 1px; }
+.header-bar { background: var(--amarillo); height: 4px; }
+
+/* ── NAV TABS ─────────────────────────────────── */
+.nav-tabs { display: flex; max-width: 1100px; margin: 0 auto; background: var(--blanco); border-bottom: 1.5px solid var(--gris-borde); position: sticky; top: 0; z-index: 95; overflow-x: auto; }
+.nav-tab { flex: 1; min-width: 100px; padding: 13px 8px; background: none; border: none; border-bottom: 3px solid transparent; font-size: 12px; font-weight: 700; color: var(--gris-medio); cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 5px; white-space: nowrap; }
+.nav-tab.active { color: var(--azul); border-bottom-color: var(--azul); }
+.nav-tab-badge { background: var(--rojo); color: var(--blanco); font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 99px; min-width: 16px; text-align: center; }
+
+.container { max-width: 1100px; margin: 0 auto; padding: 18px; }
+.hidden { display: none !important; }
+
+/* ── CARDS ────────────────────────────────────── */
+.card { background: var(--blanco); border-radius: var(--radio); box-shadow: var(--sombra); padding: 20px; margin-bottom: 16px; }
+.card-title { font-size: 13px; font-weight: 700; color: var(--azul); text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 14px; display: flex; align-items: center; gap: 7px; }
+.card-title::before { content: ''; display: block; width: 3px; height: 16px; background: var(--amarillo); border-radius: 2px; flex-shrink: 0; }
+
+/* ── RESUMEN: STAT GRID ───────────────────────── */
+.stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+.stat-box { text-align: center; padding: 18px 10px; border-radius: var(--radio); background: var(--gris-fondo); }
+.stat-box .stat-num { font-size: 30px; font-weight: 800; line-height: 1; }
+.stat-box .stat-label { font-size: 11px; font-weight: 700; color: var(--gris-medio); margin-top: 6px; text-transform: uppercase; letter-spacing: 0.3px; }
+.stat-box.ok       .stat-num { color: var(--verde); }
+.stat-box.warn     .stat-num { color: var(--naranja); }
+.stat-box.critical .stat-num { color: var(--rojo); }
+.stat-box.info     .stat-num { color: var(--azul); }
+
+/* ── LISTA SIMPLE ─────────────────────────────── */
+.simple-list { display: flex; flex-direction: column; gap: 8px; }
+.simple-list-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: var(--gris-fondo); border-radius: 8px; font-size: 13px; }
+.simple-list-item .left { font-weight: 600; }
+.simple-list-item .right { font-size: 12px; color: var(--gris-medio); white-space: nowrap; }
+
+/* ── EMPTY / LOADING ──────────────────────────── */
+.empty-state { text-align: center; padding: 30px 10px; color: var(--gris-medio); font-size: 13px; }
+
+/* ── TOAST ────────────────────────────────────── */
+#toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%) translateY(80px); background: var(--gris-oscuro); color: var(--blanco); padding: 11px 20px; border-radius: 8px; font-size: 14px; font-weight: 500; z-index: 9999; transition: transform 0.3s ease; white-space: nowrap; pointer-events: none; }
+#toast.show { transform: translateX(-50%) translateY(0); }
+
+/* ── BOTONES ──────────────────────────────────── */
+.btn-primary { display: inline-block; padding: 10px 18px; background: var(--azul); color: var(--blanco); border: none; border-radius: 8px; font-size: 14px; font-weight: 700; cursor: pointer; }
+.btn-primary:hover { background: #00205e; }
+.btn-secondary { display: inline-block; padding: 9px 16px; background: var(--blanco); color: var(--azul); border: 1.5px solid var(--azul); border-radius: 8px; font-size: 13px; font-weight: 700; cursor: pointer; }
+.btn-secondary:hover { background: var(--azul-claro); }
+.btn-danger { display: inline-block; padding: 9px 16px; background: var(--blanco); color: var(--rojo); border: 1.5px solid var(--rojo); border-radius: 8px; font-size: 13px; font-weight: 700; cursor: pointer; }
+.btn-danger:hover { background: #fef2f2; }
+
+/* ── CORELINK STATUS BADGE ────────────────────── */
+.corelink-badge { display: inline-flex; align-items: center; gap: 5px; font-size: 10px; font-weight: 700; padding: 3px 9px; border-radius: 99px; }
+.corelink-badge.ok   { background: rgba(22,163,74,0.18); color: #bbf7d0; }
+.corelink-badge.sync { background: rgba(255,209,0,0.18); color: var(--amarillo); }
+.corelink-badge.off  { background: rgba(220,38,38,0.2);  color: #fecaca; }
+
+/* ── PILLS ────────────────────────────────────── */
+.pill { padding: 5px 12px; border: 1.5px solid var(--gris-borde); border-radius: 99px; font-size: 12px; font-weight: 600; cursor: pointer; background: var(--blanco); color: var(--gris-medio); }
+.pill.active { background: var(--azul); border-color: var(--azul); color: var(--blanco); }
+
+/* ── INSTALACIONES ────────────────────────────── */
+.inst-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 10px; }
+.inst-card-panel { border: 1.5px solid var(--gris-borde); border-radius: 9px; padding: 13px 15px; cursor: pointer; background: var(--blanco); transition: all 0.15s; }
+.inst-card-panel:hover { border-color: var(--azul); background: var(--azul-claro); }
+.inst-card-panel.no-disponible { border-color: var(--naranja); background: #fff7ed; }
+.inst-card-panel.anual-hecho   { border-color: var(--verde);   background: #f0fdf4; }
+.inst-card-panel .nombre { font-weight: 700; font-size: 14px; }
+.inst-card-panel .meta { font-size: 11px; color: var(--gris-medio); margin-top: 2px; }
+.estado-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
+.estado-dot.visitada   { background: var(--verde); }
+.estado-dot.pendiente  { background: var(--gris-borde); }
+.estado-dot.con-averia { background: var(--rojo); }
+
+/* ── MODAL GENÉRICO ───────────────────────────── */
+.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.55); z-index: 500; display: flex; align-items: center; justify-content: center; padding: 16px; }
+.modal-overlay.hidden { display: none; }
+.modal-box { background: var(--blanco); border-radius: 14px; max-width: 680px; width: 100%; max-height: 90vh; display: flex; flex-direction: column; overflow: hidden; }
+.modal-box-mini { background: var(--blanco); border-radius: 14px; padding: 22px; max-width: 440px; width: 100%; max-height: 90vh; overflow-y: auto; }
+.modal-header { background: var(--azul); color: var(--blanco); padding: 16px 20px; display: flex; justify-content: space-between; align-items: flex-start; flex-shrink: 0; }
+.modal-titulo { font-size: 17px; font-weight: 700; }
+.modal-subtitulo { font-size: 12px; opacity: 0.8; margin-top: 2px; }
+.modal-cerrar { background: none; border: none; color: var(--blanco); font-size: 24px; cursor: pointer; line-height: 1; flex-shrink: 0; }
+.modal-tabs { display: flex; border-bottom: 1.5px solid var(--gris-borde); flex-shrink: 0; overflow-x: auto; }
+.modal-tab { flex: 1; min-width: 90px; padding: 11px 8px; background: none; border: none; border-bottom: 3px solid transparent; font-size: 12px; font-weight: 700; color: var(--gris-medio); cursor: pointer; white-space: nowrap; }
+.modal-tab.active { color: var(--azul); border-bottom-color: var(--azul); }
+.modal-body { padding: 18px 20px; overflow-y: auto; flex: 1; }
+
+/* ── FORM FIELDS ──────────────────────────────── */
+.ficha-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.ficha-field label { display: block; font-size: 11px; font-weight: 700; color: var(--gris-medio); text-transform: uppercase; margin-bottom: 4px; }
+.ficha-field input, .ficha-field textarea, .ficha-field select { width: 100%; border: 1.5px solid var(--gris-borde); border-radius: 7px; padding: 9px 11px; font-size: 14px; outline: none; font-family: inherit; }
+.ficha-field input:focus, .ficha-field textarea:focus { border-color: var(--azul); }
+
+/* ── FORM FLOTANTE ────────────────────────────── */
+.form-flotante { background: var(--gris-fondo); border: 1.5px solid var(--gris-borde); border-radius: 9px; padding: 16px; }
+.inst-list-mini { max-height: 160px; overflow-y: auto; margin-top: 6px; }
+.inst-list-mini .inst-item-mini { padding: 8px 11px; border-radius: 6px; cursor: pointer; font-size: 13px; }
+.inst-list-mini .inst-item-mini:hover { background: var(--azul-claro); }
+.inst-list-mini .inst-item-mini .meta { font-size: 11px; color: var(--gris-medio); }
+.chip-seleccion { margin-top: 8px; background: var(--azul-claro); border-radius: 7px; padding: 8px 11px; font-size: 13px; font-weight: 600; color: var(--azul); display: flex; justify-content: space-between; align-items: center; }
+.chip-seleccion button { background: none; border: none; color: var(--azul); font-size: 16px; cursor: pointer; }
+
+/* ── PRIORIDAD ────────────────────────────────── */
+.prioridad-selector { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; }
+.prio-btn { padding: 9px 4px; border: 2px solid var(--gris-borde); border-radius: 7px; font-size: 12px; font-weight: 700; cursor: pointer; background: var(--blanco); text-align: center; }
+.prio-btn.active.prio-critica { background: #fee2e2; border-color: var(--rojo);    color: var(--rojo); }
+.prio-btn.active.prio-normal  { background: #ffedd5; border-color: var(--naranja); color: var(--naranja); }
+.prio-btn.active.prio-leve    { background: #fef9c3; border-color: #ca8a04;        color: #ca8a04; }
+
+/* ── ITEM CARDS (averías, agenda, notas) ──────── */
+.item-card { border-radius: 9px; padding: 12px 14px; margin-bottom: 9px; background: var(--blanco); box-shadow: var(--sombra); border-left: 4px solid var(--gris-borde); }
+.item-card.prio-critica { border-left-color: var(--rojo);    background: #fef2f2; }
+.item-card.prio-normal  { border-left-color: var(--naranja); background: #fff7ed; }
+.item-card.prio-leve    { border-left-color: #ca8a04;        background: #fefce8; }
+.item-tag { display: inline-block; font-size: 10px; font-weight: 800; padding: 2px 8px; border-radius: 99px; text-transform: uppercase; margin-bottom: 6px; }
+.item-tag.prio-critica { background: var(--rojo);    color: var(--blanco); }
+.item-tag.prio-normal  { background: var(--naranja); color: var(--blanco); }
+.item-tag.prio-leve    { background: #ca8a04;        color: var(--blanco); }
+.item-card-titulo { font-size: 14px; font-weight: 700; }
+.item-card-desc   { font-size: 13px; color: var(--gris-oscuro); margin-top: 4px; }
+.item-card-meta   { font-size: 11px; color: var(--gris-medio); margin-top: 6px; }
+.item-card-btns   { display: flex; gap: 6px; margin-top: 9px; flex-wrap: wrap; }
+.btn-mini { flex: 1; min-width: 80px; padding: 7px 4px; border: 1.5px solid var(--gris-borde); border-radius: 6px; font-size: 11px; font-weight: 700; cursor: pointer; background: var(--blanco); color: var(--gris-medio); }
+.btn-mini.verde { border-color: var(--verde); color: var(--verde); }
+.btn-mini.verde:hover { background: #f0fdf4; }
+.btn-mini.rojo  { border-color: var(--rojo);  color: var(--rojo); }
+.btn-mini.rojo:hover  { background: #fef2f2; }
+.btn-mini.activo         { background: var(--verde);   border-color: var(--verde);   color: var(--blanco); }
+.btn-mini.activo-amarillo{ background: var(--amarillo); border-color: var(--amarillo); color: var(--azul); }
+
+/* ── AGENDA ───────────────────────────────────── */
+.agenda-dia-titulo { font-size: 12px; font-weight: 800; color: var(--azul); text-transform: uppercase; margin: 16px 0 8px; padding-bottom: 6px; border-bottom: 2px solid var(--azul-claro); }
+.agenda-dia-titulo:first-child { margin-top: 0; }
+
+/* ── CALENDARIO (M24) ─────────────────────────── */
+.cal-wrap { user-select: none; }
+.cal-nav { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.cal-nav button { background: none; border: none; font-size: 20px; cursor: pointer; color: var(--azul); padding: 4px 8px; border-radius: 6px; }
+.cal-nav button:hover { background: var(--azul-claro); }
+.cal-titulo { font-size: 15px; font-weight: 800; color: var(--azul); }
+.cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; }
+.cal-dia-cab { text-align: center; font-size: 10px; font-weight: 800; color: var(--gris-medio); padding: 4px 0; text-transform: uppercase; }
+.cal-dia {
+  aspect-ratio: 1;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  position: relative;
+  transition: background 0.15s;
+}
+.cal-dia:hover:not(.vacio) { background: var(--azul-claro); }
+.cal-dia.vacio { cursor: default; }
+.cal-dia.otro-mes { color: var(--gris-borde); cursor: default; }
+.cal-dia.hoy { background: var(--azul-claro); font-weight: 900; color: var(--azul); }
+.cal-dia.seleccionado { background: var(--azul); color: var(--blanco); }
+.cal-dia.con-tareas { background: #FFD100; color: #003087; font-weight: 800; }
+.cal-dia.con-tareas:hover { background: #f0c400; }
+.cal-dia.seleccionado.con-tareas { background: var(--azul); color: var(--blanco); }
+.cal-dia-agenda { margin-top: 16px; border-top: 2px solid var(--azul-claro); padding-top: 14px; }
+.cal-dia-agenda-titulo { font-size: 13px; font-weight: 800; color: var(--azul); margin-bottom: 10px; }
+
+/* ── NOTA ─────────────────────────────────────── */
+.nota-card.hecha { opacity: 0.5; }
+
+/* ── STOCK V2 ─────────────────────────────────── */
+.stock-categoria { margin-bottom:16px; }
+.stock-cat-titulo { display:flex; align-items:center; justify-content:space-between; font-size:13px; font-weight:800; color:var(--azul); text-transform:uppercase; letter-spacing:0.4px; border-bottom:2px solid var(--azul-claro); padding-bottom:6px; margin-bottom:10px; }
+.material-row { display:flex; align-items:center; gap:10px; padding:10px 14px; background:var(--blanco); border-radius:9px; margin-bottom:7px; box-shadow:var(--sombra); border-left:4px solid var(--gris-borde); cursor:pointer; }
+.material-row:hover { background:var(--azul-claro); }
+.material-row.alerta-furgon  { border-left-color:var(--rojo); }
+.material-row.alerta-almacen { border-left-color:var(--naranja); }
+.material-row .mat-nombre { font-size:14px; font-weight:700; flex:1; }
+.material-row .mat-codigo { font-size:11px; color:var(--gris-medio); }
+.mat-cant { text-align:center; min-width:48px; }
+.mat-cant-num { font-size:18px; font-weight:800; }
+.mat-cant-num.ok   { color:var(--verde); }
+.mat-cant-num.warn { color:var(--naranja); }
+.mat-cant-num.bad  { color:var(--rojo); }
+.mat-cant-label { font-size:9px; color:var(--gris-medio); text-transform:uppercase; font-weight:700; }
+.alerta-stock-box { background:#fef2f2; border:1.5px solid var(--rojo); border-radius:9px; padding:12px 14px; margin-bottom:12px; }
+.alerta-stock-titulo { font-size:12px; font-weight:800; color:var(--rojo); margin-bottom:6px; }
+.historial-row { display:flex; justify-content:space-between; align-items:center; padding:10px 14px; background:var(--blanco); border-radius:8px; margin-bottom:7px; box-shadow:var(--sombra); border-left:4px solid var(--gris-borde); }
+.historial-row.uso        { border-left-color:var(--rojo); }
+.historial-row.reposicion { border-left-color:var(--verde); }
+
+/* ── DOCUMENTOS (M32) ─────────────────────────── */
+.doc-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: var(--gris-fondo); border-radius: 8px; margin-bottom: 7px; }
+.doc-item .doc-nombre { font-size: 13px; font-weight: 600; word-break: break-word; flex: 1; }
+.doc-item .doc-meta   { font-size: 11px; color: var(--gris-medio); margin-top: 2px; }
+.doc-item .doc-btns   { display: flex; gap: 6px; flex-shrink: 0; margin-left: 10px; }
+
+/* ── CONTACTOS (M33) ──────────────────────────── */
+.contacto-card { background: var(--blanco); border-radius: 9px; border: 1.5px solid var(--gris-borde); padding: 14px 16px; margin-bottom: 10px; }
+.contacto-card .ctc-nombre { font-size: 15px; font-weight: 700; }
+.contacto-card .ctc-meta   { font-size: 12px; color: var(--gris-medio); margin-top: 4px; }
+.contacto-card .ctc-btns   { display: flex; gap: 6px; margin-top: 10px; }
+.provincia-grupo { margin-bottom: 22px; }
+.provincia-grupo-titulo { font-size: 13px; font-weight: 800; color: var(--azul); text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 2px solid var(--azul-claro); padding-bottom: 6px; margin-bottom: 10px; }
+
+/* ── AJUSTES (M25) ────────────────────────────── */
+.ajuste-row { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--gris-borde); }
+.ajuste-row:last-child { border-bottom: none; }
+.ajuste-label { font-size: 13px; font-weight: 600; }
+.ajuste-sub   { font-size: 11px; color: var(--gris-medio); }
+.ajuste-input-wrap { display: flex; align-items: center; gap: 6px; }
+.ajuste-input-wrap input { width: 70px; border: 1.5px solid var(--gris-borde); border-radius: 7px; padding: 7px 9px; font-size: 14px; text-align: center; }
+
+/* ── FOTO MODAL (M17) ─────────────────────────── */
+#fotoModal { position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 9000; display: flex; align-items: center; justify-content: center; }
+#fotoModal.hidden { display: none; }
+#fotoModal img { max-width: 95vw; max-height: 90vh; border-radius: 8px; }
+#fotoModal .cerrar-foto { position: absolute; top: 16px; right: 20px; background: none; border: none; color: #fff; font-size: 36px; cursor: pointer; }
+
+/* ── MENSAJES LIVE (M43) ──────────────────────────── */
+.msg-burbuja { max-width: 80%; padding: 10px 14px; border-radius: 12px; font-size: 14px; line-height: 1.5; }
+.msg-fran  { align-self: flex-end; background: var(--azul); color: var(--blanco); border-radius: 12px 12px 2px 12px; }
+.msg-jesus { align-self: flex-start; background: var(--gris-fondo); color: var(--gris-oscuro); border-radius: 12px 12px 12px 2px; border: 1px solid var(--gris-borde); }
+.msg-meta  { font-size: 10px; opacity: 0.65; margin-top: 4px; }
+.msg-wrap  { display: flex; flex-direction: column; }
+.msg-wrap.fran  { align-items: flex-end; }
+.msg-wrap.jesus { align-items: flex-start; }
+.ausencia-card { display: flex; justify-content: space-between; align-items: center; padding: 11px 14px; background: var(--blanco); border-radius: 9px; border-left: 4px solid var(--gris-borde); box-shadow: var(--sombra); margin-bottom: 8px; }
+.ausencia-card.vacaciones { border-left-color: #2563eb; }
+.ausencia-card.libre      { border-left-color: var(--verde); }
+.ausencia-card.baja       { border-left-color: var(--rojo); }
+.ausencia-card.festivo    { border-left-color: var(--amarillo); }
+.hora-mov { display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: var(--blanco); border-radius: 8px; border-left: 4px solid var(--gris-borde); box-shadow: var(--sombra); margin-bottom: 7px; }
+.hora-mov.positivo { border-left-color: var(--verde); }
+.hora-mov.negativo { border-left-color: var(--rojo); }
+.hora-num.pos { color: var(--verde); font-size: 16px; font-weight: 800; }
+.hora-num.neg { color: var(--rojo);  font-size: 16px; font-weight: 800; }
+.saldo-box { text-align: center; padding: 16px; background: var(--gris-fondo); border-radius: var(--radio); margin-bottom: 14px; }
+.saldo-num { font-size: 36px; font-weight: 800; }
+.saldo-num.positivo { color: var(--verde); }
+.saldo-num.negativo { color: var(--rojo); }
+.saldo-num.neutro   { color: var(--gris-medio); }
+
+/* ── LOGIN ────────────────────────────────────────── */
+#loginScreen { position:fixed;inset:0;background:var(--azul);z-index:9999;display:flex;align-items:center;justify-content:center;flex-direction:column;padding:20px; }
+.login-box { background:var(--blanco);border-radius:16px;padding:32px 28px;max-width:360px;width:100%;box-shadow:0 8px 32px rgba(0,0,0,0.25); }
+.login-logo { text-align:center;margin-bottom:20px; }
+.login-titulo { font-size:18px;font-weight:800;color:var(--azul);margin-bottom:4px;text-align:center; }
+.login-sub    { font-size:12px;color:var(--gris-medio);text-align:center;margin-bottom:20px; }
+.login-field  { margin-bottom:12px; }
+.login-field label { display:block;font-size:11px;font-weight:700;color:var(--gris-medio);text-transform:uppercase;margin-bottom:4px; }
+.login-field input { width:100%;border:1.5px solid var(--gris-borde);border-radius:8px;padding:11px 13px;font-size:15px;outline:none;font-family:inherit; }
+.login-field input:focus { border-color:var(--azul); }
+.login-error { color:var(--rojo);font-size:13px;text-align:center;margin-bottom:10px;min-height:20px; }
+.login-btn { width:100%;padding:13px;background:var(--azul);color:#fff;border:none;border-radius:8px;font-size:15px;font-weight:700;cursor:pointer;margin-top:4px; }
+.login-btn:hover { background:#00205e; }
+
+.search-wrap { position: relative; margin-bottom: 12px; }
+.search-wrap input { width: 100%; padding: 11px 14px; border: 1.5px solid var(--gris-borde); border-radius: 8px; font-size: 14px; outline: none; }
+.search-wrap input:focus { border-color: var(--azul); }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-inner">
+    <div style="display:flex;align-items:center;gap:12px">
+      <img src="icon-coordinador-192.png" alt="Ilunion Seguridad" style="width:38px;height:38px;border-radius:8px">
+      <div class="header-title">
+        <h1>Panel Coordinador</h1>
+        <p>Contrato ADIF 4.26/28510.0005 · RC Sur</p>
+      </div>
+    </div>
+    <div id="corelinkBadge" class="corelink-badge off">☁ Sin conexión</div>
+  </div>
+  <div class="header-bar"></div>
+</header>
+
+<div class="nav-tabs">
+  <button class="nav-tab active" id="tabResumen"       onclick="cambiarSeccion('resumen')">📊 Resumen</button>
+  <button class="nav-tab"        id="tabInstalaciones" onclick="cambiarSeccion('instalaciones')">🏢 Instalaciones</button>
+  <button class="nav-tab"        id="tabAverias"       onclick="cambiarSeccion('averias')">⚠ Averías<span id="averiasBadgeTab" class="nav-tab-badge hidden">0</span></button>
+  <button class="nav-tab"        id="tabAgenda"        onclick="cambiarSeccion('agenda')">📅 Agenda<span id="agendaBadgeTab" class="nav-tab-badge hidden">0</span></button>
+  <button class="nav-tab"        id="tabStock"         onclick="cambiarSeccion('stock')">📦 Stock<span id="stockBadgeTab" class="nav-tab-badge hidden">0</span></button>
+  <button class="nav-tab"        id="tabNotas"         onclick="cambiarSeccion('notas')">📝 Notas<span id="notasBadgeTab" class="nav-tab-badge hidden">0</span></button>
+  <button class="nav-tab"        id="tabContactos"     onclick="cambiarSeccion('contactos')">📞 Contactos</button>
+  <button class="nav-tab"        id="tabMensajes"      onclick="cambiarSeccion('mensajes')">💬 Mensajes LIVE<span id="mensajesBadgeTab" class="nav-tab-badge hidden">0</span></button>
+  <button class="nav-tab"        id="tabHoras"         onclick="cambiarSeccion('horas')">⏱ Horas</button>
+  <button class="nav-tab"        id="tabTrimestral"    onclick="cambiarSeccion('trimestral')">📋 Trimestral</button>
+  <button class="nav-tab"        id="tabAjustes"       onclick="cambiarSeccion('ajustes')">⚙ Ajustes</button>
+</div>
+
+<!-- ════════════════════════════════════════════════ -->
+<!-- PANTALLA DE LOGIN                                -->
+<!-- ════════════════════════════════════════════════ -->
+<div id="loginScreen">
+  <div class="login-box">
+    <div class="login-logo">
+      <img src="icon-coordinador-192.png" alt="Ilunion" style="width:60px;height:60px;border-radius:12px">
+    </div>
+    <div class="login-titulo">Panel Coordinador</div>
+    <div class="login-sub">Ilunion Seguridad · ADIF RC Sur</div>
+    <div class="login-field">
+      <label>Usuario</label>
+      <input type="text" id="loginUsuario" placeholder="Tu usuario" autocomplete="username" onkeydown="if(event.key==='Enter')document.getElementById('loginPassword').focus()">
+    </div>
+    <div class="login-field">
+      <label>Contraseña</label>
+      <input type="password" id="loginPassword" placeholder="••••••••" autocomplete="current-password" onkeydown="if(event.key==='Enter')iniciarSesionPNC()">
+    </div>
+    <div class="login-error" id="loginError"></div>
+    <button class="login-btn" onclick="iniciarSesionPNC()">Entrar</button>
+  </div>
+</div>
+
+<div id="appContent" class="hidden">
+
+<!-- ════════════════════════════════════════════════ -->
+<!-- RESUMEN                                          -->
+<!-- ════════════════════════════════════════════════ -->
+<div id="seccionResumen" class="container">
+  <div class="card">
+    <div class="card-title">Vista general</div>
+    <div class="stat-grid" id="resumenStatGrid"><div class="empty-state">Cargando datos...</div></div>
+  </div>
+  <div class="card">
+    <div class="card-title">🔔 Incidencias detectadas en checklists</div>
+    <div id="resumenIncidenciasChecklist"><div class="empty-state">Cargando...</div></div>
+  </div>
+  <div class="card">
+    <div class="card-title">📅 Próximas tareas</div>
+    <div id="resumenProximasTareas"><div class="empty-state">Cargando...</div></div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════ -->
+<!-- INSTALACIONES                                    -->
+<!-- ════════════════════════════════════════════════ -->
+<div id="seccionInstalaciones" class="container hidden">
+  <div class="card">
+    <div class="card-title">🏢 Instalaciones (78)</div>
+    <div class="search-wrap">
+      <input type="text" id="instSearch" placeholder="Buscar por nombre o código..." oninput="renderListaInstalaciones()">
+    </div>
+    <div style="display:flex;flex-wrap:wrap;gap:6px;margin:0 0 8px" id="instProvinciaPills"></div>
+    <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px" id="instEstadoPills"></div>
+    <div id="instalacionesListContainer"></div>
+  </div>
+</div>
+
+<!-- Modal de instalación (ficha, documentos, historial) -->
+<div id="modalInstalacion" class="modal-overlay hidden">
+  <div class="modal-box">
+    <div class="modal-header">
+      <div>
+        <div class="modal-titulo" id="modalInstNombre"></div>
+        <div class="modal-subtitulo" id="modalInstMeta"></div>
+      </div>
+      <button class="modal-cerrar" onclick="cerrarModalInstalacion()">×</button>
+    </div>
+    <div class="modal-tabs">
+      <button class="modal-tab active" id="modalTabFicha"      onclick="cambiarModalTab('ficha')">Ficha técnica</button>
+      <button class="modal-tab"        id="modalTabDocumentos" onclick="cambiarModalTab('documentos')">📎 Docs</button>
+      <button class="modal-tab"        id="modalTabVisitas"    onclick="cambiarModalTab('visitas')">📋 Visitas</button>
+      <button class="modal-tab"        id="modalTabHistorial"  onclick="cambiarModalTab('historial')">⚠ Averías</button>
+    </div>
+    <div class="modal-body">
+      <div id="modalPanelFicha"></div>
+      <div id="modalPanelDocumentos" class="hidden"></div>
+      <div id="modalPanelVisitas"    class="hidden"></div>
+      <div id="modalPanelHistorial"  class="hidden"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════ -->
+<!-- AVERÍAS                                          -->
+<!-- ════════════════════════════════════════════════ -->
+<div id="seccionAverias" class="container hidden">
+  <div class="card">
+    <div class="card-title">⚠ Averías</div>
+    <button class="btn-primary" onclick="abrirFormNuevaAveria()" style="margin-bottom:14px">+ Nueva avería</button>
+    <div id="formNuevaAveria" class="form-flotante hidden" style="margin-bottom:14px">
+      <div class="ficha-field" style="margin-bottom:10px">
+        <label>Instalación</label>
+        <input type="text" id="averiaInstSearch" placeholder="Buscar instalación..." oninput="filtrarInstalacionesAveria()">
+        <div class="inst-list-mini" id="averiaInstList"></div>
+        <div id="averiaInstSeleccionada" class="chip-seleccion hidden"></div>
+      </div>
+      <div class="ficha-field" style="margin-bottom:10px"><label>Descripción</label><textarea id="averiaDesc" rows="3"></textarea></div>
+      <div class="ficha-field" style="margin-bottom:10px"><label>Quién avisó (opcional)</label><input type="text" id="averiaQuienAviso" placeholder="Ej: Responsable de zona..."></div>
+      <div class="ficha-field" style="margin-bottom:10px">
+        <label>Prioridad</label>
+        <div class="prioridad-selector">
+          <button class="prio-btn prio-critica" onclick="seleccionarPrioridad('critica',this)">🔴 Crítica</button>
+          <button class="prio-btn prio-normal active" onclick="seleccionarPrioridad('normal',this)">🟠 Normal</button>
+          <button class="prio-btn prio-leve"    onclick="seleccionarPrioridad('leve',this)">🟡 Leve</button>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="btn-secondary" onclick="cerrarFormNuevaAveria()">Cancelar</button>
+        <button class="btn-primary"   onclick="guardarNuevaAveriaPanel()">Guardar avería</button>
+      </div>
+    </div>
+    <!-- Filtro abiertas/cerradas -->
+    <div style="display:flex;gap:8px;margin-bottom:14px">
+      <button class="pill active" id="filtroAveriaAbiertas"   onclick="setFiltroAveria('abiertas')">Abiertas</button>
+      <button class="pill"        id="filtroAveriaCerradas"   onclick="setFiltroAveria('cerradas')">Cerradas</button>
+      <button class="pill"        id="filtroAveriaDescartadas" onclick="setFiltroAveria('descartadas')">Descartadas</button>
+    </div>
+    <div id="averiasListContainer"></div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════ -->
+<!-- AGENDA (con calendario M24)                      -->
+<!-- ════════════════════════════════════════════════ -->
+<div id="seccionAgenda" class="container hidden">
+  <div class="card">
+    <div class="card-title">📅 Agenda de Jesús</div>
+    <!-- Selector vista -->
+    <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">
+      <button class="pill active" id="vistaAgendaLista"       onclick="setVistaAgenda('lista')">Lista</button>
+      <button class="pill"        id="vistaAgendaCalendario"  onclick="setVistaAgenda('calendario')">Calendario</button>
+      <button class="pill"        id="vistaAgendaAusencias"   onclick="setVistaAgenda('ausencias')">🏖 Ausencias</button>
+    </div>
+    <!-- Vista lista -->
+    <div id="agendaVistaLista">
+      <button class="btn-primary" onclick="abrirFormNuevaTarea()" style="margin-bottom:14px">+ Nueva tarea</button>
+      <div style="display:flex;gap:8px;margin-bottom:14px">
+        <button class="pill active" id="filtroAgendaPendientes"  onclick="setFiltroAgenda('pendientes')">Pendientes</button>
+        <button class="pill"        id="filtroAgendaCompletadas" onclick="setFiltroAgenda('completadas')">Completadas</button>
+      </div>
+      <div id="formNuevaTarea" class="form-flotante hidden" style="margin-bottom:14px">
+        <div class="ficha-field" style="margin-bottom:10px">
+          <label>Instalación (opcional)</label>
+          <input type="text" id="tareaInstSearch" placeholder="Buscar instalación..." oninput="filtrarInstalacionesTarea()">
+          <div class="inst-list-mini" id="tareaInstList"></div>
+          <div id="tareaInstSeleccionada" class="chip-seleccion hidden"></div>
+        </div>
+        <div class="ficha-field" style="margin-bottom:10px">
+          <label>Descripción de la tarea</label>
+          <input type="text" id="tareaDescripcion" placeholder="Ej: Pasar ITV al vehículo, Recoger material en delegación...">
+        </div>
+        <div class="ficha-grid" style="margin-bottom:10px">
+          <div class="ficha-field"><label>Fecha</label><input type="date" id="tareaFecha"></div>
+          <div class="ficha-field">
+            <label>Tipo</label>
+            <select id="tareaTipo">
+              <option value="anual">🔧 Anual</option>
+              <option value="trimestral">💻 Trimestral</option>
+              <option value="pci-trim">🔥 Trimestral PCI</option>
+              <option value="averia">⚠ Avería</option>
+              <option value="libre">📌 Tarea</option>
+            </select>
+          </div>
+        </div>
+        <div class="ficha-field" style="margin-bottom:10px"><label>Nota adicional</label><textarea id="tareaNota" rows="2"></textarea></div>
+        <div style="display:flex;gap:8px">
+          <button class="btn-secondary" onclick="cerrarFormNuevaTarea()">Cancelar</button>
+          <button class="btn-primary"   onclick="guardarNuevaTareaPanel()">Guardar tarea</button>
+        </div>
+      </div>
+      <div id="agendaListContainer"></div>
+    </div>
+    <!-- Vista calendario -->
+    <div id="agendaVistaCalendario" class="hidden">
+      <div class="cal-wrap">
+        <div class="cal-nav">
+          <button onclick="calMes(-1)">‹</button>
+          <span class="cal-titulo" id="calTitulo"></span>
+          <button onclick="calMes(+1)">›</button>
+        </div>
+        <div class="cal-grid" id="calGrid"></div>
+        <div class="cal-dia-agenda hidden" id="calDiaAgenda">
+          <div class="cal-dia-agenda-titulo" id="calDiaAgendaTitulo"></div>
+          <div id="calDiaAgendaLista"></div>
+        </div>
+      </div>
+    </div>
+    <!-- Vista ausencias -->
+    <div id="agendaVistaAusencias" class="hidden">
+      <button class="btn-primary" onclick="abrirModalNuevaAusencia()" style="margin-bottom:14px">+ Añadir ausencia</button>
+      <div id="ausenciasListContainer"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal nueva ausencia -->
+<div id="modalAusencia" class="modal-overlay hidden">
+  <div class="modal-box-mini">
+    <div class="modal-titulo" style="margin-bottom:14px">Nueva ausencia</div>
+    <div class="ficha-field" style="margin-bottom:10px">
+      <label>Tipo</label>
+      <select id="ausenciaTipo" style="width:100%;border:1.5px solid var(--gris-borde);border-radius:7px;padding:9px 11px;font-size:14px;font-family:inherit">
+        <option value="vacaciones">🏖 Vacaciones</option>
+        <option value="libre">📅 Día libre</option>
+        <option value="baja">🏥 Baja</option>
+        <option value="festivo">🎉 Festivo</option>
+      </select>
+    </div>
+    <div class="ficha-grid" style="margin-bottom:10px">
+      <div class="ficha-field"><label>Fecha inicio</label><input type="date" id="ausenciaInicio"></div>
+      <div class="ficha-field"><label>Fecha fin</label><input type="date" id="ausenciaFin"></div>
+    </div>
+    <div class="ficha-field" style="margin-bottom:14px"><label>Nota (opcional)</label><input type="text" id="ausenciaNota" placeholder="Ej: Vacaciones de verano..."></div>
+    <div style="display:flex;gap:8px">
+      <button class="btn-secondary" style="flex:1" onclick="cerrarModalAusencia()">Cancelar</button>
+      <button class="btn-primary"   style="flex:1" onclick="guardarAusencia()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════ -->
+<!-- NOTAS                                            -->
+<!-- ════════════════════════════════════════════════ -->
+<div id="seccionNotas" class="container hidden">
+  <div class="card">
+    <div class="card-title">📝 Notas y recordatorios</div>
+    <div class="form-flotante" style="margin-bottom:14px">
+      <div class="ficha-field" style="margin-bottom:10px"><label>Nota</label><textarea id="notaTexto" rows="2" placeholder="Ej: Llamar para confirmar protocolo..."></textarea></div>
+      <div class="ficha-field" style="margin-bottom:10px"><label>Fecha (opcional)</label><input type="date" id="notaFecha"></div>
+      <button class="btn-primary" onclick="guardarNuevaNota()">+ Añadir nota</button>
+    </div>
+    <div id="notasListContainer"></div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════ -->
+<!-- STOCK                                            -->
+<!-- ════════════════════════════════════════════════ -->
+<div id="seccionStock" class="container hidden">
+  <!-- Cabecera con selector de vista -->
+  <div class="card" style="margin-bottom:12px">
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+      <div class="card-title" style="margin-bottom:0">📦 Stock</div>
+      <div style="display:flex;gap:8px">
+        <button class="pill active" id="stockVistaStock"     onclick="setVistaStock('stock')">📦 Materiales</button>
+        <button class="pill"        id="stockVistaHistorial" onclick="setVistaStock('historial')">📋 Historial</button>
+        <button class="pill"        id="stockVistaPedidos"   onclick="setVistaStock('pedidos')">🛒 Pedido</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Vista materiales -->
+  <div id="stockPanelMateriales">
+    <!-- Alertas -->
+    <div id="stockAlertasBox"></div>
+    <!-- Categorías -->
+    <div id="stockCategoriasContainer"></div>
+    <!-- Botón añadir material -->
+    <button class="btn-primary" onclick="abrirModalMaterial(null)" style="margin-bottom:8px">+ Nuevo material</button>
+    <button class="btn-secondary" onclick="abrirModalCategoria(null)" style="margin-bottom:16px">+ Nueva categoría</button>
+  </div>
+
+  <!-- Vista pedidos -->
+  <div id="stockPanelPedidos" class="hidden">
+    <div class="card">
+      <div class="card-title">🛒 Generar solicitud de pedido</div>
+      <p style="font-size:13px;color:var(--gris-medio);margin-bottom:14px">Rellena los campos de cada material que necesites pedir. Puedes editar el nombre, indicar el proveedor y la referencia por ítem. Los marcados en rojo están bajo mínimo.</p>
+      <div class="ficha-field" style="margin-bottom:10px">
+        <label>Notas generales del pedido (opcional)</label>
+        <textarea id="pedidoNotas" rows="2" placeholder="Ej: Entrega urgente, referencia de contrato, instrucciones especiales..."></textarea>
+      </div>
+      <div id="pedidoListaMateriales"></div>
+
+      <!-- Productos manuales -->
+      <div id="pedidoManualContainer" style="margin-top:8px"></div>
+      <button class="btn-secondary" onclick="añadirProductoManual()" style="margin-bottom:12px;width:100%">➕ Añadir producto que no está en stock</button>
+
+      <div style="display:flex;gap:8px;margin-top:4px">
+        <button class="btn-secondary" onclick="limpiarPedido()">🗑 Limpiar</button>
+        <button class="btn-primary" onclick="generarPDFPedido()">📄 Generar PDF</button>
+      </div>
+    </div>
+  </div>
+  <!-- Vista historial -->
+  <div id="stockPanelHistorial" class="hidden">
+    <div class="card">
+      <div class="card-title">📋 Historial de movimientos</div>
+      <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+        <select id="historialFiltroMaterial" onchange="renderHistorial()" style="border:1.5px solid var(--gris-borde);border-radius:7px;padding:8px 10px;font-size:13px;font-family:inherit">
+          <option value="">Todos los materiales</option>
+        </select>
+        <select id="historialFiltroTipo" onchange="renderHistorial()" style="border:1.5px solid var(--gris-borde);border-radius:7px;padding:8px 10px;font-size:13px;font-family:inherit">
+          <option value="">Todos los tipos</option>
+          <option value="uso">Usos</option>
+          <option value="reposicion">Reposiciones</option>
+        </select>
+      </div>
+      <div id="historialContainer"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal material (nuevo/editar) -->
+<div id="modalMaterial" class="modal-overlay hidden">
+  <div class="modal-box-mini" style="max-height:90vh;overflow-y:auto">
+    <div class="modal-titulo" id="modalMaterialTitulo" style="margin-bottom:14px">Nuevo material</div>
+    <div class="ficha-field" style="margin-bottom:10px"><label>Nombre *</label><input type="text" id="matNombre" placeholder="Ej: Batería 12V 7Ah"></div>
+    <div class="ficha-field" style="margin-bottom:10px"><label>Código de proveedor</label><input type="text" id="matCodigo" placeholder="Ej: BAT-12V-7AH-001"></div>
+    <div class="ficha-field" style="margin-bottom:10px">
+      <label>Categoría *</label>
+      <select id="matCategoria" style="width:100%;border:1.5px solid var(--gris-borde);border-radius:7px;padding:9px 11px;font-size:14px;font-family:inherit"></select>
+    </div>
+    <div class="ficha-grid" style="margin-bottom:10px">
+      <div class="ficha-field"><label>Almacén (uds)</label><input type="number" id="matAlmacen" min="0" value="0"></div>
+      <div class="ficha-field"><label>Furgón (uds)</label><input type="number" id="matFurgon" min="0" value="0"></div>
+    </div>
+    <div class="ficha-grid" style="margin-bottom:14px">
+      <div class="ficha-field"><label>Mínimo almacén</label><input type="number" id="matMinAlmacen" min="0" value="0"></div>
+      <div class="ficha-field"><label>Mínimo furgón</label><input type="number" id="matMinFurgon" min="0" value="0"></div>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="btn-secondary" style="flex:1" onclick="cerrarModalMaterial()">Cancelar</button>
+      <button class="btn-primary"   style="flex:1" onclick="guardarMaterial()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal categoría (nueva/editar) -->
+<div id="modalCategoria" class="modal-overlay hidden">
+  <div class="modal-box-mini">
+    <div class="modal-titulo" id="modalCategoriaTitulo" style="margin-bottom:14px">Nueva categoría</div>
+    <div class="ficha-field" style="margin-bottom:10px"><label>Icono (emoji)</label><input type="text" id="catIcono" placeholder="Ej: 🔋" maxlength="4" style="font-size:22px;width:70px;text-align:center"></div>
+    <div class="ficha-field" style="margin-bottom:14px"><label>Nombre *</label><input type="text" id="catNombre" placeholder="Ej: Baterías y pilas"></div>
+    <div style="display:flex;gap:8px">
+      <button class="btn-secondary" style="flex:1" onclick="cerrarModalCategoria()">Cancelar</button>
+      <button class="btn-primary"   style="flex:1" onclick="guardarCategoria()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal detalle material (ajuste cantidades + reposición) -->
+<div id="modalDetalleStock" class="modal-overlay hidden">
+  <div class="modal-box-mini">
+    <div class="modal-titulo" id="modalDetalleNombre" style="margin-bottom:4px"></div>
+    <div id="modalDetalleCodigo" style="font-size:12px;color:var(--gris-medio);margin-bottom:14px"></div>
+    <!-- Ajuste cantidades -->
+    <div style="background:var(--gris-fondo);border-radius:8px;padding:12px;margin-bottom:12px">
+      <div style="font-size:11px;font-weight:700;color:var(--gris-medio);text-transform:uppercase;margin-bottom:8px">Ajuste manual de cantidades</div>
+      <div class="ficha-grid">
+        <div class="ficha-field"><label>Almacén</label><input type="number" id="detalleAlmacen" min="0"></div>
+        <div class="ficha-field"><label>Furgón</label><input type="number" id="detalleFurgon" min="0"></div>
+      </div>
+      <button class="btn-primary" style="width:100%;margin-top:8px" onclick="guardarAjusteStockV2()">Guardar cantidades</button>
+    </div>
+    <!-- Reposición -->
+    <div style="background:var(--gris-fondo);border-radius:8px;padding:12px;margin-bottom:12px">
+      <div style="font-size:11px;font-weight:700;color:var(--gris-medio);text-transform:uppercase;margin-bottom:8px">Reponer almacén → furgón</div>
+      <div style="display:flex;gap:8px;align-items:center">
+        <input type="number" id="detalleReponer" min="1" placeholder="Cantidad" style="flex:1;border:1.5px solid var(--gris-borde);border-radius:7px;padding:9px 11px;font-size:14px">
+        <button class="btn-secondary" style="margin:0;white-space:nowrap" onclick="reponerStockV2()">→ Reponer</button>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="btn-secondary" style="flex:1" onclick="cerrarModalDetalleStock()">Cerrar</button>
+      <button class="btn-secondary" style="flex:1" onclick="editarMaterialDesdeDetalle()">✏ Editar</button>
+      <button class="btn-danger"    style="flex:1" onclick="eliminarMaterialConfirm()">🗑 Eliminar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════ -->
+<!-- CONTACTOS (M33)                                  -->
+<!-- ════════════════════════════════════════════════ -->
+<div id="seccionContactos" class="container hidden">
+  <div class="card">
+    <div class="card-title">📞 Contactos por provincia</div>
+    <button class="btn-primary" onclick="abrirModalNuevoContacto()" style="margin-bottom:16px">+ Añadir contacto</button>
+    <div id="contactosListContainer"><div class="empty-state">Cargando...</div></div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════ -->
+<!-- MENSAJES LIVE (M43)                              -->
+<!-- ════════════════════════════════════════════════ -->
+<div id="seccionMensajes" class="container hidden">
+  <div class="card" style="display:flex;flex-direction:column;height:70vh">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+      <div class="card-title" style="margin-bottom:0">💬 Mensajes LIVE</div>
+      <button class="btn-danger" style="font-size:11px;padding:6px 10px" onclick="borrarTodoChat()">🗑 Borrar todo</button>
+    </div>
+    <div id="mensajesListContainer" style="flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:8px;padding-bottom:8px"></div>
+    <div style="display:flex;gap:8px;margin-top:12px;padding-top:12px;border-top:1.5px solid var(--gris-borde)">
+      <input type="text" id="mensajeTexto" placeholder="Escribe un mensaje para Jesús..." style="flex:1;border:1.5px solid var(--gris-borde);border-radius:8px;padding:10px 14px;font-size:14px;font-family:inherit" onkeydown="if(event.key==='Enter')enviarMensaje()">
+      <button class="btn-primary" onclick="enviarMensaje()">Enviar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════ -->
+<!-- BOLSA DE HORAS (M36)                            -->
+<!-- ════════════════════════════════════════════════ -->
+<div id="seccionHoras" class="container hidden">
+  <div class="card">
+    <div class="card-title">⏱ Bolsa de horas extra</div>
+    <div id="horasSaldoBox" style="text-align:center;padding:18px 0 10px"></div>
+    <div class="form-flotante" style="margin-bottom:14px">
+      <div class="ficha-grid" style="margin-bottom:10px">
+        <div class="ficha-field">
+          <label>Horas (+ suma / - descuento)</label>
+          <input type="number" id="horasValor" step="0.5" placeholder="Ej: 2 o -1.5">
+        </div>
+        <div class="ficha-field">
+          <label>Fecha</label>
+          <input type="date" id="horasFecha">
+        </div>
+      </div>
+      <div class="ficha-field" style="margin-bottom:10px">
+        <label>Motivo</label>
+        <input type="text" id="horasMotivo" placeholder="Ej: Visita urgente Puente Genil...">
+      </div>
+      <div class="ficha-field" style="margin-bottom:10px">
+        <label>Instalación relacionada (opcional)</label>
+        <input type="text" id="horasInstSearch" placeholder="Buscar instalación..." oninput="filtrarInstalacionesHoras()">
+        <div class="inst-list-mini" id="horasInstList"></div>
+        <div id="horasInstSeleccionada" class="chip-seleccion hidden"></div>
+      </div>
+      <button class="btn-primary" onclick="guardarMovimientoHoras()">+ Añadir movimiento</button>
+    </div>
+    <div id="horasHistorialContainer"></div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════ -->
+<!-- RESUMEN TRIMESTRAL (M42)                         -->
+<!-- ════════════════════════════════════════════════ -->
+<div id="seccionTrimestral" class="container hidden">
+  <div class="card">
+    <div class="card-title">📋 Resumen trimestral</div>
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap">
+      <select id="trimestralSelector" onchange="cargarResumenTrimestral()" style="border:1.5px solid var(--gris-borde);border-radius:8px;padding:9px 12px;font-size:14px;font-family:inherit"></select>
+      <button class="btn-secondary" onclick="cargarResumenTrimestral()">Actualizar</button>
+    </div>
+    <div id="trimestralContenido"><div class="empty-state">Selecciona un trimestre</div></div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════ -->
+<!-- AJUSTES (M25 + M38)                             -->
+<!-- ════════════════════════════════════════════════ -->
+<div id="seccionAjustes" class="container hidden">
+  <!-- Submenú de ajustes -->
+  <div class="card" style="margin-bottom:12px;padding:12px 16px">
+    <div style="display:flex;flex-wrap:wrap;gap:8px">
+      <button class="pill active" id="ajusteTab_accesos"   onclick="setAjusteTab('accesos')">👥 Usuarios y acceso</button>
+      <button class="pill"        id="ajusteTab_general"   onclick="setAjusteTab('general')">⚙️ General</button>
+      <button class="pill"        id="ajusteTab_informes"  onclick="setAjusteTab('informes')">📄 Informes</button>
+      <button class="pill"        id="ajusteTab_contrato"  onclick="setAjusteTab('contrato')">📋 Contrato</button>
+      <button class="pill"        id="ajusteTab_tiempos"   onclick="setAjusteTab('tiempos')">⏱ Tiempos</button>
+    </div>
+  </div>
+
+  <!-- 👥 Usuarios y acceso -->
+  <div id="ajustePanel_accesos">
+    <div class="card">
+      <div class="card-title">👤 Usuarios del Panel Coordinador</div>
+      <div id="usuariosPNCContainer"></div>
+      <button class="btn-primary" style="margin-top:12px" onclick="abrirModalUsuarioPNC(null)">+ Nuevo usuario</button>
+    </div>
+    <div class="card">
+      <div class="card-title">🔧 Técnicos (app de campo)</div>
+      <div id="tecnicosPNTContainer"></div>
+      <button class="btn-primary" style="margin-top:12px" onclick="abrirModalTecnicoPNT(null)">+ Nuevo técnico</button>
+    </div>
+    <div class="card">
+      <div class="card-title">🕐 Registro de accesos</div>
+      <p style="font-size:13px;color:var(--gris-medio);margin-bottom:14px">Cada vez que alguien entra a cualquiera de las apps queda registrado aquí.</p>
+      <div id="logAccesosContainer"><div class="empty-state">Cargando...</div></div>
+    </div>
+  </div>
+
+  <!-- ⚙️ General -->
+  <div id="ajustePanel_general" class="hidden">
+    <div class="card">
+      <div class="card-title">👤 Técnico por defecto (para informes)</div>
+      <div class="ficha-grid">
+        <div class="ficha-field"><label>Nombre completo</label><input type="text" id="ajusteTecnicoNombre" placeholder="Jesús Ángel Muñoz"></div>
+        <div class="ficha-field"><label>Matrícula vehículo</label><input type="text" id="ajusteTecnicoMatricula" placeholder="8756LFL"></div>
+      </div>
+      <button class="btn-primary" style="margin-top:14px" onclick="guardarAjustesTecnico()">Guardar</button>
+    </div>
+    <div class="card">
+      <div class="card-title">💬 Mensaje del día para Jesús</div>
+      <p style="font-size:13px;color:var(--gris-medio);margin-bottom:10px">Jesús verá este mensaje al abrir la app. Déjalo vacío si no hay aviso.</p>
+      <div class="ficha-field" style="margin-bottom:14px"><textarea id="ajusteMensajeDia" rows="3" placeholder="Ej: Buenas Jesús! Hoy hay lluvia en Jaén, conduce con precaución..."></textarea></div>
+      <button class="btn-primary" onclick="guardarMensajeDelDia()">Guardar mensaje</button>
+    </div>
+    <div class="card">
+      <div class="card-title">ℹ️ Sistema</div>
+      <div class="ajuste-row">
+        <div><div class="ajuste-label">Versión de CoreLink</div></div>
+        <div style="font-size:13px;font-weight:700;color:var(--azul)">v3.7</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 📄 Informes -->
+  <div id="ajustePanel_informes" class="hidden">
+    <div class="card">
+      <div class="card-title">📄 Configuración de informes</div>
+      <div class="ficha-field" style="margin-bottom:10px"><label>Nombre de empresa en informes</label><input type="text" id="ajusteEmpresa" placeholder="Ilunion Seguridad"></div>
+      <div class="ficha-field" style="margin-bottom:14px"><label>Pie de página</label><textarea id="ajustePiePagina" rows="2" placeholder="Texto que aparece al pie de cada informe impreso..."></textarea></div>
+      <button class="btn-primary" onclick="guardarAjustesInforme()">Guardar</button>
+    </div>
+  </div>
+
+  <!-- 📋 Contrato -->
+  <div id="ajustePanel_contrato" class="hidden">
+    <div class="card">
+      <div class="card-title">📋 Datos del contrato</div>
+      <div class="ajuste-row">
+        <div><div class="ajuste-label">Visitas trimestrales obligatorias / año</div></div>
+        <div class="ajuste-input-wrap"><input type="number" id="ajusteVisitasTrim" min="1" step="1"></div>
+      </div>
+      <div class="ajuste-row">
+        <div><div class="ajuste-label">Visitas anuales obligatorias / año</div></div>
+        <div class="ajuste-input-wrap"><input type="number" id="ajusteVisitasAnual" min="1" step="1"></div>
+      </div>
+      <button class="btn-primary" style="margin-top:14px" onclick="guardarAjustesContrato()">Guardar</button>
+    </div>
+  </div>
+
+  <!-- ⏱ Tiempos -->
+  <div id="ajustePanel_tiempos" class="hidden">
+    <div class="card">
+      <div class="card-title">⏱ Tiempos estimados por tamaño</div>
+      <p style="font-size:13px;color:var(--gris-medio);margin-bottom:16px">Tiempo en minutos. Se pueden sobrescribir por instalación individual más abajo.</p>
+      <div class="ajuste-row">
+        <div><div class="ajuste-label">Instalación Pequeña</div><div class="ajuste-sub">Cuartos técnicos, casetas pequeñas</div></div>
+        <div class="ajuste-input-wrap"><input type="number" id="ajusteTiempoPequena" min="0" step="5"> <span style="font-size:12px;color:var(--gris-medio)">min</span></div>
+      </div>
+      <div class="ajuste-row">
+        <div><div class="ajuste-label">Instalación Mediana</div><div class="ajuste-sub">Equipos de línea, almacenes</div></div>
+        <div class="ajuste-input-wrap"><input type="number" id="ajusteTiempoMediana" min="0" step="5"> <span style="font-size:12px;color:var(--gris-medio)">min</span></div>
+      </div>
+      <div class="ajuste-row">
+        <div><div class="ajuste-label">Instalación Grande</div><div class="ajuste-sub">Subestaciones eléctricas completas</div></div>
+        <div class="ajuste-input-wrap"><input type="number" id="ajusteTiempoGrande" min="0" step="5"> <span style="font-size:12px;color:var(--gris-medio)">min</span></div>
+      </div>
+      <button class="btn-primary" style="margin-top:16px" onclick="guardarTiemposPorTamano()">Guardar tiempos</button>
+    </div>
+    <div class="card">
+      <div class="card-title">🏢 Tiempo individual por instalación</div>
+      <p style="font-size:13px;color:var(--gris-medio);margin-bottom:14px">Si una instalación necesita más o menos tiempo, asígnale uno aquí.</p>
+      <div class="search-wrap"><input type="text" id="ajusteInstSearch" placeholder="Buscar instalación..." oninput="renderAjusteInstalaciones()"></div>
+      <div id="ajusteInstListContainer"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal usuario PNC -->
+<div id="modalUsuarioPNC" class="modal-overlay hidden">
+  <div class="modal-box-mini">
+    <div class="modal-titulo" id="modalUsuarioPNCTitulo" style="margin-bottom:14px">Nuevo usuario</div>
+    <div class="ficha-field" style="margin-bottom:10px"><label>Nombre completo</label><input type="text" id="uNombre" placeholder="Ej: María García"></div>
+    <div class="ficha-field" style="margin-bottom:10px"><label>Usuario (login)</label><input type="text" id="uUsuario" placeholder="Ej: maria"></div>
+    <div class="ficha-field" style="margin-bottom:10px"><label>Contraseña</label><input type="password" id="uPassword" placeholder="Dejar en blanco para no cambiar"></div>
+    <div class="ficha-field" style="margin-bottom:14px">
+      <label>Rol</label>
+      <select id="uRol" style="width:100%;border:1.5px solid var(--gris-borde);border-radius:7px;padding:9px 11px;font-size:14px;font-family:inherit">
+        <option value="editor">Editor — puede editar todo</option>
+        <option value="readonly">Solo lectura — solo puede ver</option>
+      </select>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="btn-secondary" style="flex:1" onclick="cerrarModalUsuarioPNC()">Cancelar</button>
+      <button class="btn-primary"   style="flex:1" onclick="guardarUsuarioPNC()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal técnico PNT -->
+<div id="modalTecnicoPNT" class="modal-overlay hidden">
+  <div class="modal-box-mini">
+    <div class="modal-titulo" id="modalTecnicoPNTTitulo" style="margin-bottom:14px">Nuevo técnico</div>
+    <div class="ficha-field" style="margin-bottom:10px"><label>Nombre completo</label><input type="text" id="tNombre" placeholder="Ej: Miguel López"></div>
+    <div class="ficha-field" style="margin-bottom:10px"><label>Matrícula vehículo</label><input type="text" id="tMatricula" placeholder="Ej: 1234ABC"></div>
+    <div class="ficha-field" style="margin-bottom:14px"><label>PIN (4 dígitos)</label><input type="password" id="tPin" placeholder="••••" maxlength="4" inputmode="numeric"></div>
+    <div style="display:flex;gap:8px">
+      <button class="btn-secondary" style="flex:1" onclick="cerrarModalTecnicoPNT()">Cancelar</button>
+      <button class="btn-primary"   style="flex:1" onclick="guardarTecnicoPNT()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- Modal descartar avería -->
+<div id="modalDescartarAveria" class="modal-overlay hidden">
+  <div class="modal-box-mini">
+    <div class="modal-titulo" style="margin-bottom:6px">Descartar avería</div>
+    <p style="font-size:13px;color:var(--gris-medio);margin-bottom:14px" id="modalDescartarNombre"></p>
+    <div class="ficha-field" style="margin-bottom:14px">
+      <label>Motivo del descarte (opcional)</label>
+      <textarea id="descartarMotivo" rows="3" placeholder="Ej: Falsa alarma, ya estaba resuelta..."></textarea>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="btn-secondary" style="flex:1" onclick="cerrarModalDescartarAveria()">Cancelar</button>
+      <button class="btn-primary"   style="flex:1" onclick="confirmarDescartarAveria()">Descartar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal añadir avería a agenda -->
+<div id="modalAgendaAveria" class="modal-overlay hidden">
+  <div class="modal-box-mini">
+    <div class="modal-titulo" style="margin-bottom:6px">Añadir a agenda de Jesús</div>
+    <p style="font-size:13px;color:var(--gris-medio);margin-bottom:14px" id="modalAgendaAveriaNombre"></p>
+    <div class="ficha-field" style="margin-bottom:10px">
+      <label>Fecha de la visita</label>
+      <input type="date" id="agendaAveriaFecha">
+    </div>
+    <div class="ficha-field" style="margin-bottom:14px">
+      <label>Comentario del coordinador (opcional)</label>
+      <textarea id="agendaAveriaComentario" rows="3" placeholder="Ej: Revisar también el sistema CCTV mientras estés allí..."></textarea>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="btn-secondary" style="flex:1" onclick="cerrarModalAgendaAveria()">Cancelar</button>
+      <button class="btn-primary"   style="flex:1" onclick="confirmarAgendaAveria()">Añadir a agenda</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal cierre avería (M22) -->
+<div id="modalCierreAveria" class="modal-overlay hidden">
+  <div class="modal-box-mini">
+    <div class="modal-titulo" style="margin-bottom:6px">Cerrar avería</div>
+    <p style="font-size:13px;color:var(--gris-medio);margin-bottom:14px" id="modalCierreAveriaNombre"></p>
+    <div class="ficha-field" style="margin-bottom:10px"><label>Observaciones de cierre (opcional)</label><textarea id="cierreObs" rows="3" placeholder="Describe la reparación realizada..."></textarea></div>
+    <div class="ficha-field" style="margin-bottom:14px"><label>Nombre de quien cierra (opcional)</label><input type="text" id="cierrePor" placeholder="Ej: Fran, Jesús..."></div>
+    <div style="display:flex;gap:8px">
+      <button class="btn-secondary" style="flex:1" onclick="cerrarModalCierreAveria()">Cancelar</button>
+      <button class="btn-primary"   style="flex:1" onclick="confirmarCierreAveria()">Cerrar avería</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal nuevo/editar contacto (M33) -->
+<div id="modalContacto" class="modal-overlay hidden">
+  <div class="modal-box-mini">
+    <div class="modal-titulo" id="modalContactoTitulo" style="margin-bottom:14px">Nuevo contacto</div>
+    <div class="ficha-field" style="margin-bottom:10px">
+      <label>Provincia</label>
+      <select id="contactoProvincia">
+        <option value="">— Selecciona provincia —</option>
+      </select>
+    </div>
+    <div class="ficha-field" style="margin-bottom:10px"><label>Nombre</label><input type="text" id="contactoNombre" placeholder="Nombre del responsable"></div>
+    <div class="ficha-field" style="margin-bottom:10px"><label>Teléfono</label><input type="tel" id="contactoTelefono" placeholder="Ej: 600 123 456"></div>
+    <div class="ficha-field" style="margin-bottom:10px"><label>Email</label><input type="email" id="contactoEmail" placeholder="Ej: responsable@adif.es"></div>
+    <div class="ficha-field" style="margin-bottom:10px"><label>Horarios de disponibilidad</label><input type="text" id="contactoHorarios" placeholder="Ej: L-V 8:00-17:00"></div>
+    <div class="ficha-field" style="margin-bottom:14px"><label>Notas adicionales</label><textarea id="contactoNotas" rows="2" placeholder="Particularidades, protocolo de acceso..."></textarea></div>
+    <div style="display:flex;gap:8px">
+      <button class="btn-secondary" style="flex:1" onclick="cerrarModalContacto()">Cancelar</button>
+      <button class="btn-primary"   style="flex:1" onclick="guardarContacto()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Foto ampliada (M17) -->
+<div id="fotoModal" class="hidden" onclick="cerrarFotoModal()">
+  <button class="cerrar-foto">×</button>
+  <img id="fotoModalImg" src="" alt="Foto ampliada">
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════════════
+// DATOS — 78 instalaciones
+// ═══════════════════════════════════════════════════════════════════════
+const INSTALACIONES = [
+  {codigo:"04E002S001",nombre:"Huercal",provincia:"Almería",tipo:"Subestación Eléctrica",tamaño:"Pequeña",sistemas:["intrusion"]},
+  {codigo:"04E003S001",nombre:"Santa Fé",provincia:"Almería",tipo:"Subestación Eléctrica",tamaño:"Pequeña",sistemas:["intrusion"]},
+  {codigo:"04E004S001",nombre:"Fuente Santa",provincia:"Almería",tipo:"Subestación Eléctrica",tamaño:"Pequeña",sistemas:["intrusion"]},
+  {codigo:"04E005S001",nombre:"Nacimiento",provincia:"Almería",tipo:"Subestación Eléctrica",tamaño:"Pequeña",sistemas:["intrusion"]},
+  {codigo:"04E006S001",nombre:"Abla",provincia:"Almería",tipo:"Subestación Eléctrica",tamaño:"Pequeña",sistemas:["intrusion"]},
+  {codigo:"04E007S001",nombre:"Huéneja",provincia:"Almería",tipo:"Subestación Eléctrica",tamaño:"Pequeña",sistemas:["intrusion"]},
+  {codigo:"11E002S001",nombre:"Puerto Sta Maria",provincia:"Cádiz",tipo:"Equipo de Línea",tamaño:"Mediana",sistemas:["intrusion","cctv"]},
+  {codigo:"11E003S002",nombre:"Cádiz Edificio Técnico",provincia:"Cádiz",tipo:"Edificio Técnico",tamaño:"Mediana",sistemas:["intrusion","cctv"]},
+  {codigo:"11E004S002",nombre:"Jerez de la Frontera",provincia:"Cádiz",tipo:"Subestación Eléctrica",tamaño:"Grande",sistemas:["intrusion","cctv","ccaa","interfonia"]},
+  {codigo:"11E008S001",nombre:"El Portal",provincia:"Cádiz",tipo:"Subestación Eléctrica",tamaño:"Mediana",sistemas:["intrusion","cctv"]},
+  {codigo:"11E009S001",nombre:"Cortadura",provincia:"Cádiz",tipo:"Subestación Eléctrica",tamaño:"Mediana",sistemas:["intrusion","cctv"]},
+  {codigo:"11E010S001",nombre:"Puerto Real",provincia:"Cádiz",tipo:"Subestación Eléctrica",tamaño:"Grande",sistemas:["intrusion","cctv","ccaa","interfonia"]},
+  {codigo:"11E012S001",nombre:"Algeciras",provincia:"Cádiz",tipo:"Cuarto Técnico",tamaño:"Mediana",sistemas:["intrusion","cctv","ccaa"]},
+  {codigo:"11E013S001",nombre:"Los Barrios",provincia:"Cádiz",tipo:"Cuarto Técnico",tamaño:"Mediana",sistemas:["intrusion","cctv","ccaa"]},
+  {codigo:"11E014S001",nombre:"Jimena de la Frontera",provincia:"Cádiz",tipo:"Cuarto Técnico",tamaño:"Pequeña",sistemas:["intrusion"]},
+  {codigo:"11E015S001",nombre:"Castellar de la Frontera",provincia:"Cádiz",tipo:"Cuarto Técnico",tamaño:"Mediana",sistemas:["intrusion","cctv","ccaa"]},
+  {codigo:"11E016S001",nombre:"San Roque Viajeros",provincia:"Cádiz",tipo:"Cuarto Técnico",tamaño:"Mediana",sistemas:["intrusion","cctv","ccaa"]},
+  {codigo:"11E017S001",nombre:"San Roque Mercancías",provincia:"Cádiz",tipo:"Cuarto Técnico",tamaño:"Mediana",sistemas:["intrusion","cctv","ccaa"]},
+  {codigo:"53E001S009",nombre:"Torregorda S/E 22",provincia:"Cádiz",tipo:"Subestación Eléctrica",tamaño:"Pequeña",sistemas:["intrusion"]},
+  {codigo:"14E002S002",nombre:"Córdoba Mercancías Polivalente",provincia:"Córdoba",tipo:"Almacén",tamaño:"Mediana",sistemas:["intrusion","pci"]},
+  {codigo:"14E002S003",nombre:"Córdoba Mercancías Sectores",provincia:"Córdoba",tipo:"Base Mantenimiento",tamaño:"Pequeña",sistemas:["intrusion"]},
+  {codigo:"14E005S002",nombre:"Puente Genil",provincia:"Córdoba",tipo:"Subestación Eléctrica",tamaño:"Grande",sistemas:["intrusion","cctv","ccaa","interfonia"]},
+  {codigo:"14E006S001",nombre:"Villa del Río",provincia:"Córdoba",tipo:"Subestación Eléctrica",tamaño:"Grande",sistemas:["intrusion","cctv","ccaa","interfonia"]},
+  {codigo:"14E007S001",nombre:"Alcolea de Córdoba",provincia:"Córdoba",tipo:"Subestación Eléctrica",tamaño:"Grande",sistemas:["intrusion","cctv","ccaa","interfonia"]},
+  {codigo:"14E007S002",nombre:"Alcolea de Córdoba (Cambiador)",provincia:"Córdoba",tipo:"Cambiador de Anchos",tamaño:"Grande",sistemas:["intrusion","cctv","ccaa","interfonia"]},
+  {codigo:"14E008S001",nombre:"Posadas",provincia:"Córdoba",tipo:"Subestación Eléctrica",tamaño:"Grande",sistemas:["intrusion","cctv","ccaa","interfonia"]},
+  {codigo:"14E009S001",nombre:"Pedro Abad",provincia:"Córdoba",tipo:"Subestación Eléctrica",tamaño:"Grande",sistemas:["intrusion","cctv","ccaa","interfonia"]},
+  {codigo:"14E010S001",nombre:"Villarrubia",provincia:"Córdoba",tipo:"Subestación Eléctrica",tamaño:"Grande",sistemas:["intrusion","cctv","ccaa","interfonia"]},
+  {codigo:"14E011S001",nombre:"Palma del Río",provincia:"Córdoba",tipo:"Subestación Eléctrica",tamaño:"Grande",sistemas:["intrusion","cctv","ccaa","interfonia"]},
+  {codigo:"14E012S001",nombre:"Valchillón",provincia:"Córdoba",tipo:"Subestación Eléctrica",tamaño:"Grande",sistemas:["intrusion","cctv","ccaa","interfonia"]},
+  {codigo:"14E014S001",nombre:"Fernán Núñez",provincia:"Córdoba",tipo:"Subestación Eléctrica",tamaño:"Grande",sistemas:["intrusion","cctv","ccaa","interfonia"]},
+  {codigo:"14E016S001",nombre:"Aguilar de la Frontera",provincia:"Córdoba",tipo:"Subestación Eléctrica",tamaño:"Grande",sistemas:["intrusion","cctv","ccaa","interfonia"]},
+  {codigo:"21E001S002",nombre:"Huelva Cargas",provincia:"Huelva",tipo:"Subestación Eléctrica",tamaño:"Grande",sistemas:["intrusion","cctv","ccaa","interfonia"]},
+  {codigo:"21E005S001",nombre:"Niebla",provincia:"Huelva",tipo:"Subestación Eléctrica",tamaño:"Grande",sistemas:["intrusion","cctv","ccaa","interfonia"]},
+  {codigo:"21E006S001",nombre:"Villalba de Alcor",provincia:"Huelva",tipo:"Subestación Eléctrica",tamaño:"Grande",sistemas:["intrusion","cctv","ccaa","interfonia"]},
+  {codigo:"23E002S001",nombre:"Linares Baeza",provincia:"Jaén",tipo:"Almacén",tamaño:"Pequeña",sistemas:["intrusion"]},
+  {codigo:"23E006S001",nombre:"Grañena",provincia:"Jaén",tipo:"Subestación Eléctrica",tamaño:"Pequeña",sistemas:["intrusion"]},
+  {codigo:"23E007S001",nombre:"Jabalquinto",provincia:"Jaén",tipo:"Subestación Eléctrica",tamaño:"Pequeña",sistemas:["intrusion"]},
+  {codigo:"23E008S001",nombre:"Calancha",provincia:"Jaén",tipo:"Subestación Eléctrica",tamaño:"Pequeña",sistemas:["intrusion"]},
+  {codigo:"23E009S001",nombre:"Vadollano",provincia:"Jaén",tipo:"Subestación Eléctrica",tamaño:"Pequeña",sistemas:["intrusion"]},
+  {codigo:"23E010S001",nombre:"Arjonilla",provincia:"Jaén",tipo:"Subestación Eléctrica",tamaño:"Grande",sistemas:["intrusion","cctv","ccaa","interfonia"]},
+  {codigo:"23E011S001",nombre:"Villanueva de la Reina",provincia:"Jaén",tipo:"Subestación Eléctrica",tamaño:"Grande",sistemas:["intrusion","cctv","ccaa","interfonia"]},
+  {codigo:"23E012S001",nombre:"Vadollano (CT)",provincia:"Jaén",tipo:"Cuarto Técnico",tamaño:"Mediana",sistemas:["intrusion","cctv","ccaa"]},
+  {codigo:"23E013S001",nombre:"Torreblascopedro",provincia:"Jaén",tipo:"Cuarto Técnico",tamaño:"Mediana",sistemas:["intrusion","cctv","ccaa"]},
+  {codigo:"23E014S001",nombre:"Begijar",provincia:"Jaén",tipo:"Cuarto Técnico",tamaño:"Mediana",sistemas:["intrusion","cctv","ccaa"]},
+  {codigo:"23E015S001",nombre:"Los Propios y Cazorla",provincia:"Jaén",tipo:"Cuarto Técnico",tamaño:"Mediana",sistemas:["intrusion","cctv","ccaa"]},
+  {codigo:"23E016S001",nombre:"Las Madrigueras Par",provincia:"Jaén",tipo:"Cuarto Técnico",tamaño:"Mediana",sistemas:["intrusion","cctv","ccaa"]},
+  {codigo:"23E017S001",nombre:"Jabalquinto Par",provincia:"Jaén",tipo:"Cuarto Técnico",tamaño:"Mediana",sistemas:["intrusion","cctv","ccaa"]},
+  {codigo:"23E018S001",nombre:"Mengibar Par",provincia:"Jaén",tipo:"Cuarto Técnico",tamaño:"Mediana",sistemas:["intrusion","cctv","ccaa"]},
+  {codigo:"23E019S001",nombre:"Espeluy Bifurcación",provincia:"Jaén",tipo:"Cuarto Técnico",tamaño:"Mediana",sistemas:["intrusion","cctv","ccaa"]},
+  {codigo:"29E008S001",nombre:"Los Prados (Base)",provincia:"Málaga",tipo:"Base Mantenimiento",tamaño:"Grande",sistemas:["intrusion","cctv","ccaa","interfonia"]},
+  {codigo:"29E008S002",nombre:"Los Prados (S/E)",provincia:"Málaga",tipo:"Subestación Eléctrica",tamaño:"Grande",sistemas:["intrusion","cctv","ccaa","interfonia"]},
+  {codigo:"29E015S001",nombre:"Pizarra",provincia:"Málaga",tipo:"Subestación Eléctrica",tamaño:"Grande",sistemas:["intrusion","cctv","ccaa","interfonia"]},
+  {codigo:"29E016S001",nombre:"Bobadilla",provincia:"Málaga",tipo:"Subestación Eléctrica",tamaño:"Grande",sistemas:["intrusion","cctv","ccaa","interfonia"]},
+  {codigo:"29E017S001",nombre:"Carvajal",provincia:"Málaga",tipo:"Subestación Eléctrica",tamaño:"Grande",sistemas:["intrusion","cctv","ccaa","interfonia"]},
+  {codigo:"29E018S001",nombre:"El Chorro",provincia:"Málaga",tipo:"Subestación Eléctrica",tamaño:"Grande",sistemas:["intrusion","cctv","ccaa","interfonia"]},
+  {codigo:"29E019S001",nombre:"La Comba",provincia:"Málaga",tipo:"Subestación Eléctrica",tamaño:"Grande",sistemas:["intrusion","cctv","ccaa","interfonia"]},
+  {codigo:"41E001S001",nombre:"San Pablo",provincia:"Sevilla",tipo:"Almacén",tamaño:"Mediana",sistemas:["intrusion","pci"]},
+  {codigo:"41E003S001",nombre:"Sevilla Negrilla",provincia:"Sevilla",tipo:"Almacén",tamaño:"Mediana",sistemas:["intrusion","pci"]},
+  {codigo:"41E005S001",nombre:"Utrera (Base)",provincia:"Sevilla",tipo:"Base Mantenimiento",tamaño:"Mediana",sistemas:["intrusion","cctv"]},
+  {codigo:"41E005S002",nombre:"Utrera (S/E)",provincia:"Sevilla",tipo:"Subestación Eléctrica",tamaño:"Grande",sistemas:["intrusion","cctv","ccaa","interfonia"]},
+  {codigo:"41E006S001",nombre:"Tamarguillo P. Alcosa",provincia:"Sevilla",tipo:"Cuarto Técnico",tamaño:"Pequeña",sistemas:["intrusion"]},
+  {codigo:"41E008S001",nombre:"Dos Hermanas",provincia:"Sevilla",tipo:"Subestación Eléctrica",tamaño:"Mediana",sistemas:["intrusion","cctv"]},
+  {codigo:"41E013S001",nombre:"La Salud",provincia:"Sevilla",tipo:"Subestación Eléctrica",tamaño:"Grande",sistemas:["intrusion","cctv","ccaa","interfonia"]},
+  {codigo:"41E014S001",nombre:"Las Cabezas",provincia:"Sevilla",tipo:"Subestación Eléctrica",tamaño:"Grande",sistemas:["intrusion","cctv","ccaa","interfonia"]},
+  {codigo:"41E015S001",nombre:"Villanueva Ariscal",provincia:"Sevilla",tipo:"Subestación Eléctrica",tamaño:"Grande",sistemas:["intrusion","cctv","ccaa","interfonia"]},
+  {codigo:"41E016S001",nombre:"Huevar",provincia:"Sevilla",tipo:"Subestación Eléctrica",tamaño:"Grande",sistemas:["intrusion","cctv","ccaa","interfonia"]},
+  {codigo:"41E017S001",nombre:"La Roda de Andalucía",provincia:"Sevilla",tipo:"Subestación Eléctrica",tamaño:"Grande",sistemas:["intrusion","cctv","ccaa","interfonia"]},
+  {codigo:"41E019S001",nombre:"Brenes",provincia:"Sevilla",tipo:"Subestación Eléctrica",tamaño:"Grande",sistemas:["intrusion","cctv","ccaa","interfonia"]},
+  {codigo:"41E020S001",nombre:"Guadajoz",provincia:"Sevilla",tipo:"Subestación Eléctrica",tamaño:"Grande",sistemas:["intrusion","cctv","ccaa","interfonia"]},
+  {codigo:"41E021S001",nombre:"Lora del Río",provincia:"Sevilla",tipo:"Subestación Eléctrica",tamaño:"Grande",sistemas:["intrusion","cctv","ccaa","interfonia"]},
+  {codigo:"41E022S001",nombre:"Majarabique (S/E)",provincia:"Sevilla",tipo:"Subestación Eléctrica",tamaño:"Grande",sistemas:["intrusion","cctv","ccaa","interfonia"]},
+  {codigo:"41E023S001",nombre:"Salteras",provincia:"Sevilla",tipo:"Subestación Eléctrica",tamaño:"Grande",sistemas:["intrusion","cctv","ccaa","interfonia"]},
+  {codigo:"41E027S001",nombre:"El Cuervo",provincia:"Sevilla",tipo:"Subestación Eléctrica",tamaño:"Pequeña",sistemas:["intrusion"]},
+  {codigo:"41E028S001",nombre:"Majarabique (CC)",provincia:"Sevilla",tipo:"Cuarto Comunicaciones",tamaño:"Pequeña",sistemas:["intrusion"]},
+  {codigo:"41E034S001",nombre:"Lebrija",provincia:"Sevilla",tipo:"Subestación Eléctrica",tamaño:"Grande",sistemas:["intrusion","cctv","ccaa","interfonia"]},
+  {codigo:"41E035S001",nombre:"Las Alcantarillas",provincia:"Sevilla",tipo:"Subestación Eléctrica",tamaño:"Grande",sistemas:["intrusion","cctv","ccaa","interfonia"]},
+  {codigo:"41E037S001",nombre:"Majarabique (Caseta)",provincia:"Sevilla",tipo:"Caseta de Señalización",tamaño:"Mediana",sistemas:["intrusion","cctv","ccaa"]},
+];
+
+const PROVINCIAS = [...new Set(INSTALACIONES.map(i => i.provincia))].sort();
+
+// ═══════════════════════════════════════════════════════════════════════
+// CONFIGURACIÓN Y CONEXIÓN CORELINK
+// ═══════════════════════════════════════════════════════════════════════
+const CORELINK_URL = 'https://corelink-adif.fjesusdel.workers.dev';
+// ── Clave de acceso a la API. Debe coincidir con CORELINK_API_KEY en Cloudflare. ──
+const CORELINK_API_KEY = 'ilunion2025adif';
+
+function setEstadoCorelink(estado) {
+  const badge = document.getElementById('corelinkBadge');
+  if (!badge) return;
+  if (estado === 'ok')   { badge.innerHTML = '☁ Conectado';       badge.className = 'corelink-badge ok'; }
+  else if (estado === 'sync') { badge.innerHTML = '☁ Sincronizando...'; badge.className = 'corelink-badge sync'; }
+  else                   { badge.innerHTML = '☁ Sin conexión';    badge.className = 'corelink-badge off'; }
+}
+
+let toastTimer;
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 2500);
+}
+
+async function corelinkGet(ruta) {
+  try {
+    setEstadoCorelink('sync');
+    const resp = await fetch(CORELINK_URL + ruta, {
+      headers: { 'X-CoreLink-Key': CORELINK_API_KEY }
+    });
+    const data = await resp.json();
+    setEstadoCorelink(data.ok ? 'ok' : 'off');
+    return data.ok ? data : null;
+  } catch (e) { setEstadoCorelink('off'); return null; }
+}
+
+async function corelinkPost(ruta, body) {
+  try {
+    setEstadoCorelink('sync');
+    const resp = await fetch(CORELINK_URL + ruta, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CoreLink-Key': CORELINK_API_KEY },
+      body: JSON.stringify(body)
+    });
+    const data = await resp.json();
+    setEstadoCorelink(data.ok ? 'ok' : 'off');
+    return data;
+  } catch (e) { setEstadoCorelink('off'); return { ok: false, error: 'Sin conexión' }; }
+}
+
+// Subida de archivo binario via base64
+async function corelinkSubirArchivo(ruta, file, extraBody = {}) {
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      const base64 = e.target.result.split(',')[1];
+      const result = await corelinkPost(ruta, {
+        ...extraBody,
+        nombreArchivo: file.name,
+        contenidoBase64: base64,
+        mimeType: file.type || 'application/octet-stream'
+      });
+      resolve(result);
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// NAVEGACIÓN
+// ═══════════════════════════════════════════════════════════════════════
+let seccionActual = 'resumen';
+
+function cambiarSeccion(seccion) {
+  seccionActual = seccion;
+  ['Resumen','Instalaciones','Averias','Agenda','Stock','Notas','Contactos','Mensajes','Horas','Trimestral','Ajustes'].forEach(s => {
+    const tab  = document.getElementById('tab' + s);
+    const cont = document.getElementById('seccion' + s);
+    if (tab)  tab.classList.toggle('active', s.toLowerCase() === seccion);
+    if (cont) cont.classList.toggle('hidden', s.toLowerCase() !== seccion);
+  });
+  if (seccion === 'resumen')        cargarResumen();
+  if (seccion === 'instalaciones')  cargarInstalaciones();
+  if (seccion === 'averias')        cargarAverias();
+  if (seccion === 'agenda')         cargarAgenda();
+  if (seccion === 'stock')          cargarStockPanel();
+  if (seccion === 'notas')          cargarNotas();
+  if (seccion === 'contactos')      cargarContactos();
+  if (seccion === 'mensajes')       cargarMensajes();
+  if (seccion === 'horas')          cargarHoras();
+  if (seccion === 'trimestral')     iniciarTrimestral();
+  if (seccion === 'ajustes')        cargarAjustes();
+}
+
+function actualizarBadge(elId, n) {
+  const el = document.getElementById(elId);
+  if (!el) return;
+  if (n > 0) { el.textContent = n; el.classList.remove('hidden'); }
+  else { el.classList.add('hidden'); }
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// RESUMEN
+// ═══════════════════════════════════════════════════════════════════════
+async function cargarResumen() {
+  const statGrid = document.getElementById('resumenStatGrid');
+  statGrid.innerHTML = '<div class="empty-state">Cargando...</div>';
+
+  const [incidenciasData, agendaData, stockData, checklistsData] = await Promise.all([
+    corelinkGet('/api/incidencias'),
+    corelinkGet('/api/agenda'),
+    corelinkGet('/api/stock'),
+    corelinkGet('/api/checklists')
+  ]);
+
+  const incidencias = incidenciasData ? incidenciasData.incidencias : {};
+  const agenda      = agendaData      ? agendaData.tareas           : {};
+  const stock       = stockData       ? stockData.stock             : { materiales: {}, movimientos: {} };
+  const checklists  = checklistsData  ? checklistsData.checklists   : {};
+
+  const abiertas = Object.values(incidencias).filter(i => i.estado === 'abierta');
+  const criticas = abiertas.filter(i => (i.prioridad||'normal') === 'critica');
+
+  const hoyStr = new Date().toISOString().split('T')[0];
+  const tareasPendientesHoy = Object.values(agenda).filter(t =>
+    t.fecha === hoyStr && t.estado !== 'completada'
+  );
+
+  // Instalaciones con anual hecho en el año del contrato (desde 1-jul-2026)
+  const anioContrato = 2026;
+  const inicioContrato = '2026-07-01';
+  const anualHechas = new Set(
+    Object.values(checklists)
+      .filter(c => c.tipo === 'anual')
+      .map(c => c.codigoInstalacion)
+  );
+  const totalInst = INSTALACIONES.length;
+  const pendientesAnual = totalInst - anualHechas.size;
+
+  // Materiales bajo mínimo
+  const materiales = Object.values(stock.materiales || {});
+  const bajoMinimo = materiales.filter(m => m.furgon <= m.minimoFurgon).length;
+
+  statGrid.innerHTML = `
+    <div class="stat-box ${abiertas.length>0?'warn':'ok'}">
+      <div class="stat-num">${abiertas.length}${criticas.length>0?` <span style="font-size:16px;color:var(--rojo)">(${criticas.length}🔴)</span>`:''}</div>
+      <div class="stat-label">Averías abiertas</div>
+    </div>
+    <div class="stat-box ${tareasPendientesHoy.length>0?'warn':'ok'}">
+      <div class="stat-num">${tareasPendientesHoy.length}</div>
+      <div class="stat-label">Tareas pendientes hoy</div>
+    </div>
+    <div class="stat-box ${pendientesAnual>0?'warn':'ok'}">
+      <div class="stat-num">${pendientesAnual}</div>
+      <div class="stat-label">Sin anual este año</div>
+    </div>
+    <div class="stat-box ${bajoMinimo>0?'critical':'ok'}">
+      <div class="stat-num">${bajoMinimo}</div>
+      <div class="stat-label">Materiales bajo mínimo</div>
+    </div>
+  `;
+
+  // ── Feed incidencias de checklist ────────────────────────────────────
+  const incCheck = Object.entries(incidencias)
+    .filter(([id,i]) => i.codigoPunto && i.codigoPunto !== 'MANUAL')
+    .sort((a,b) => new Date(b[1].fechaApertura) - new Date(a[1].fechaApertura))
+    .slice(0, 20);
+
+  const feedEl = document.getElementById('resumenIncidenciasChecklist');
+  if (incCheck.length === 0) {
+    feedEl.innerHTML = '<div class="empty-state">✓ Sin incidencias de checklist</div>';
+  } else {
+    feedEl.innerHTML = incCheck.map(([id,i]) => {
+      const abierta = i.estado === 'abierta';
+      const urgente = i.urgente;
+      return `<div class="simple-list-item" style="flex-direction:column;align-items:flex-start;gap:3px;margin-bottom:6px;padding:10px 14px;border-radius:9px;background:${urgente?'#fef2f2':abierta?'#fff7ed':'var(--gris-fondo)'};border-left:4px solid ${urgente?'var(--rojo)':abierta?'var(--naranja)':'var(--gris-borde)'}">
+        <div style="display:flex;justify-content:space-between;width:100%;align-items:center">
+          <span style="font-size:13px;font-weight:700">${i.nombreInstalacion}</span>
+          <span style="font-size:10px;font-weight:700;padding:2px 8px;border-radius:99px;background:${urgente?'var(--rojo)':abierta?'var(--naranja)':'var(--gris-borde)'};color:${abierta||urgente?'#fff':'var(--gris-medio)'}">${urgente?'🚨 URGENTE':abierta?'Abierta':'Cerrada'}</span>
+        </div>
+        <div style="font-size:12px;color:var(--gris-medio);font-weight:600">${i.codigoPunto} · ${i.nombrePunto||''}</div>
+        ${i.descripcion?`<div style="font-size:13px">→ ${i.descripcion}</div>`:''}
+        <div style="font-size:11px;color:var(--gris-medio)">${new Date(i.fechaApertura+'T12:00:00').toLocaleDateString('es-ES')}</div>
+      </div>`;
+    }).join('');
+  }
+
+  // ── Próximas 5 tareas ────────────────────────────────────────────────
+  const hoy = new Date(); hoy.setHours(0,0,0,0);
+  const proximas = Object.entries(agenda)
+    .filter(([id,t]) => t.estado !== 'completada' && new Date(t.fecha+'T00:00:00') >= hoy)
+    .sort((a,b) => a[1].fecha < b[1].fecha ? -1 : 1)
+    .slice(0, 5);
+
+  const proximasEl = document.getElementById('resumenProximasTareas');
+  if (proximas.length === 0) {
+    proximasEl.innerHTML = '<div class="empty-state">Sin tareas próximas</div>';
+  } else {
+    proximasEl.innerHTML = proximas.map(([id,t]) => `
+      <div class="simple-list-item">
+        <div class="left">
+          <span style="font-size:11px;font-weight:700;color:var(--gris-medio)">${LABEL_TIPO_TAREA[t.tipo]||t.tipo}</span>
+          <div style="font-size:13px;font-weight:600">${t.nombreInstalacion||'Tarea libre'}</div>
+          ${t.nota?`<div style="font-size:11px;color:var(--gris-medio)">→ ${t.nota}</div>`:''}
+        </div>
+        <div class="right" style="white-space:nowrap;text-align:right">
+          <div style="font-weight:700;color:var(--azul)">${new Date(t.fecha+'T12:00:00').toLocaleDateString('es-ES',{day:'numeric',month:'short'})}</div>
+          <div style="font-size:11px;color:var(--gris-medio)">${etiquetaDia(t.fecha)}</div>
+        </div>
+      </div>
+    `).join('');
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// INSTALACIONES
+// ═══════════════════════════════════════════════════════════════════════
+let cacheFichas      = null;
+let cacheIncidencias = null;
+let cacheChecklists  = null;
+let instProvinciaActiva = 'Todas';
+let instEstadoActivo    = 'todas';
+let instalacionAbierta  = null;
+
+async function cargarInstalaciones() {
+  document.getElementById('instalacionesListContainer').innerHTML = '<div class="empty-state">Cargando...</div>';
+  const [fichasData, incidenciasData, checklistsData] = await Promise.all([
+    corelinkGet('/api/fichas'),
+    corelinkGet('/api/incidencias'),
+    corelinkGet('/api/checklists')
+  ]);
+  cacheFichas      = fichasData      ? fichasData.fichas          : {};
+  cacheIncidencias = incidenciasData ? incidenciasData.incidencias: {};
+  cacheChecklists  = checklistsData  ? checklistsData.checklists  : {};
+  renderPillsInstalaciones();
+  renderListaInstalaciones();
+}
+
+function renderPillsInstalaciones() {
+  const provincias = ['Todas', ...PROVINCIAS];
+  // Calcular anuales hechos por provincia (desde inicio contrato)
+  const inicioContrato = '2026-07-01';
+  const anualHechas = new Set(
+    Object.values(cacheChecklists || {})
+      .filter(c => c.tipo === 'anual')
+      .map(c => c.codigoInstalacion)
+  );
+  document.getElementById('instProvinciaPills').innerHTML = provincias.map(p => {
+    let badge = '';
+    if (p !== 'Todas') {
+      const instProv = INSTALACIONES.filter(i => i.provincia === p);
+      const hechas   = instProv.filter(i => anualHechas.has(i.codigo)).length;
+      const total    = instProv.length;
+      const pendientes = total - hechas;
+      badge = ` <span style="font-size:10px;font-weight:800;padding:1px 6px;border-radius:99px;background:${pendientes===0?'var(--verde)':'var(--naranja)'};color:#fff;margin-left:2px">${hechas}/${total}</span>`;
+    }
+    return `<button class="pill ${p===instProvinciaActiva?'active':''}" onclick="setInstProvincia('${p}')">${p}${badge}</button>`;
+  }).join('');
+  const estados = [{id:'todas',label:'Todas'},{id:'visitada',label:'🟢 Con datos'},{id:'pendiente',label:'⚪ Sin datos'},{id:'con-averia',label:'🔴 Con avería'}];
+  document.getElementById('instEstadoPills').innerHTML = estados.map(e =>
+    `<button class="pill ${e.id===instEstadoActivo?'active':''}" onclick="setInstEstado('${e.id}')">${e.label}</button>`
+  ).join('');
+}
+
+function setInstProvincia(p) { instProvinciaActiva = p; renderPillsInstalaciones(); renderListaInstalaciones(); }
+function setInstEstado(e)    { instEstadoActivo    = e; renderPillsInstalaciones(); renderListaInstalaciones(); }
+
+function estadoDeInstalacion(codigo) {
+  const tieneAveria = cacheIncidencias && Object.values(cacheIncidencias).some(i => i.codigoInstalacion === codigo && i.estado === 'abierta');
+  if (tieneAveria) return 'con-averia';
+  return (cacheFichas && cacheFichas[codigo]) ? 'visitada' : 'pendiente';
+}
+
+function renderListaInstalaciones() {
+  const q = (document.getElementById('instSearch').value || '').toLowerCase();
+  const lista = INSTALACIONES.filter(i => {
+    const matchProv   = instProvinciaActiva === 'Todas' || i.provincia === instProvinciaActiva;
+    const matchQ      = !q || i.nombre.toLowerCase().includes(q) || i.codigo.toLowerCase().includes(q);
+    const estado      = estadoDeInstalacion(i.codigo);
+    const matchEstado = instEstadoActivo === 'todas' || estado === instEstadoActivo;
+    return matchProv && matchQ && matchEstado;
+  });
+  const cont = document.getElementById('instalacionesListContainer');
+  if (lista.length === 0) { cont.innerHTML = '<div class="empty-state">No se encontraron instalaciones</div>'; return; }
+
+  cont.innerHTML = '<div class="inst-grid">' + lista.map(i => {
+    const estado    = estadoDeInstalacion(i.codigo);
+    const ficha     = cacheFichas ? cacheFichas[i.codigo] : null;
+    const noDisp    = ficha && ficha.noDisponible;
+    const fechaTxt  = ficha && ficha._actualizado ? new Date(ficha._actualizado).toLocaleDateString('es-ES') : 'Sin datos';
+    const anualHecho = cacheChecklists && Object.values(cacheChecklists).some(c => c.codigoInstalacion === i.codigo && c.tipo === 'anual');
+    // Último anual
+    const anualesFecha = cacheChecklists ? Object.values(cacheChecklists)
+      .filter(c => c.codigoInstalacion === i.codigo && c.tipo === 'anual')
+      .map(c => c.fecha).sort().reverse() : [];
+    const ultAnual = anualesFecha.length > 0 ? new Date(anualesFecha[0]+'T12:00:00').toLocaleDateString('es-ES',{day:'2-digit',month:'2-digit',year:'numeric'}) : null;
+    // Último trimestral
+    const trimsFecha = cacheChecklists ? Object.values(cacheChecklists)
+      .filter(c => c.codigoInstalacion === i.codigo && (c.tipo === 'trimestral' || c.tipo === 'pci-trim'))
+      .map(c => c.fecha).sort().reverse() : [];
+    const ultTrim = trimsFecha.length > 0 ? new Date(trimsFecha[0]+'T12:00:00').toLocaleDateString('es-ES',{day:'2-digit',month:'2-digit',year:'numeric'}) : null;
+    return `<div class="inst-card-panel ${noDisp?'no-disponible':''} ${anualHecho?'anual-hecho':''}" onclick="abrirModalInstalacion('${i.codigo}')">
+      <div class="nombre"><span class="estado-dot ${estado}"></span>${i.nombre}${noDisp?' <span style="font-size:10px;color:var(--naranja);font-weight:700">⚠ No disponible</span>':''}${anualHecho?' <span style="font-size:10px;color:var(--verde);font-weight:700;background:#dcfce7;padding:1px 6px;border-radius:99px">✓ Anual</span>':''}</div>
+      <div class="meta">${i.codigo} · ${i.provincia}</div>
+      <div class="meta">Actualizado: ${fechaTxt}</div>
+      ${ultAnual?`<div class="meta" style="color:var(--rojo);font-weight:600">Ult.Anual. ${ultAnual}</div>`:''}
+      ${ultTrim?`<div class="meta" style="color:var(--rojo);font-weight:600">Ult.Trim. ${ultTrim}</div>`:''}
+    </div>`;
+  }).join('') + '</div>';
+}
+
+// ── Modal instalación ─────────────────────────────────────────────────
+function abrirModalInstalacion(codigo) {
+  instalacionAbierta = INSTALACIONES.find(i => i.codigo === codigo);
+  document.getElementById('modalInstNombre').textContent = instalacionAbierta.nombre;
+  document.getElementById('modalInstMeta').textContent   = `${instalacionAbierta.codigo} · ${instalacionAbierta.provincia} · ${instalacionAbierta.tipo}`;
+  document.getElementById('modalInstalacion').classList.remove('hidden');
+  cambiarModalTab('ficha');
+}
+
+function cerrarModalInstalacion() {
+  document.getElementById('modalInstalacion').classList.add('hidden');
+  instalacionAbierta = null;
+}
+
+function cambiarModalTab(tab) {
+  ['ficha','documentos','visitas','historial'].forEach(t => {
+    document.getElementById('modalTab' + t.charAt(0).toUpperCase() + t.slice(1)).classList.toggle('active', t === tab);
+    document.getElementById('modalPanel' + t.charAt(0).toUpperCase() + t.slice(1)).classList.toggle('hidden', t !== tab);
+  });
+  if (tab === 'ficha')       renderPanelFicha();
+  if (tab === 'documentos')  renderPanelDocumentos();
+  if (tab === 'visitas')     renderPanelVisitas();
+  if (tab === 'historial')   renderPanelHistorial();
+}
+
+// ── Ficha técnica ─────────────────────────────────────────────────────
+function renderPanelFicha() {
+  const inst  = instalacionAbierta;
+  const ficha = (cacheFichas && cacheFichas[inst.codigo]) || {};
+  const campos = [
+    {id:'ip_grabador',    label:'IP Grabador CCTV',         cond: inst.sistemas.includes('cctv')},
+    {id:'puerto_grabador',label:'Puerto acceso remoto',      cond: inst.sistemas.includes('cctv')},
+    {id:'user_grabador',  label:'Usuario grabador',          cond: inst.sistemas.includes('cctv')},
+    {id:'pass_grabador',  label:'Contraseña grabador',       cond: inst.sistemas.includes('cctv')},
+    {id:'ip_central',     label:'IP Central de Alarma',      cond: true},
+    {id:'modelo_central', label:'Modelo central alarma',     cond: true},
+    {id:'codigo_arm',     label:'Código armado/desarmado',   cond: true},
+    {id:'codigo_inst',    label:'Código instalador',         cond: true},
+    {id:'ip_uca',         label:'IP UCA / Controlador',      cond: inst.sistemas.includes('ccaa')},
+    {id:'ip_pci',         label:'IP Central PCI',            cond: inst.sistemas.includes('pci')},
+  ].filter(c => c.cond);
+
+  const noDisp = ficha.noDisponible || false;
+  let html = `<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;padding:10px 14px;background:${noDisp?'#fff7ed':'#f0fdf4'};border-radius:8px;border:1.5px solid ${noDisp?'var(--naranja)':'var(--verde)'}">
+    <span style="font-size:13px;font-weight:700;color:${noDisp?'var(--naranja)':'var(--verde)'}">
+      ${noDisp ? '⚠ Instalación marcada como NO DISPONIBLE' : '✓ Instalación disponible'}
+    </span>
+    <button class="btn-mini" onclick="toggleNoDisponible()" style="flex:0">${noDisp ? 'Marcar disponible' : 'Marcar no disponible'}</button>
+  </div>`;
+  html += '<div class="ficha-grid">';
+  campos.forEach(c => {
+    html += `<div class="ficha-field"><label>${c.label}</label><input type="text" id="pf_${c.id}" value="${ficha[c.id]||''}"></div>`;
+  });
+  html += '</div>';
+  html += `<div class="ficha-field" style="margin-top:10px"><label>Notas</label><textarea id="pf_notas" rows="3">${ficha.notas||''}</textarea></div>`;
+  html += `<button class="btn-primary" style="margin-top:14px;width:100%" onclick="guardarFichaDesdePanel()">Guardar ficha técnica</button>`;
+  document.getElementById('modalPanelFicha').innerHTML = html;
+}
+
+async function toggleNoDisponible() {
+  const inst  = instalacionAbierta;
+  const ficha = (cacheFichas && cacheFichas[inst.codigo]) || {};
+  const nuevoEstado = !ficha.noDisponible;
+  toast('Guardando...');
+  const resp = await corelinkPost('/api/fichas', { codigo: inst.codigo, datos: { ...ficha, noDisponible: nuevoEstado } });
+  if (resp.ok) {
+    if (!cacheFichas) cacheFichas = {};
+    cacheFichas[inst.codigo] = { ...(cacheFichas[inst.codigo]||{}), noDisponible: nuevoEstado };
+    toast(nuevoEstado ? 'Marcada como no disponible ⚠' : 'Marcada como disponible ✓');
+    renderPanelFicha();
+    renderListaInstalaciones();
+  } else { toast('Sin conexión'); }
+}
+
+async function guardarFichaDesdePanel() {
+  const inst  = instalacionAbierta;
+  const ficha = (cacheFichas && cacheFichas[inst.codigo]) || {};
+  const datos = { noDisponible: ficha.noDisponible || false };
+  document.querySelectorAll('[id^="pf_"]').forEach(el => { datos[el.id.replace('pf_','')] = el.value; });
+  toast('Guardando ficha...');
+  const resp = await corelinkPost('/api/fichas', { codigo: inst.codigo, datos });
+  if (resp.ok) {
+    toast('Ficha guardada ✓');
+    if (!cacheFichas) cacheFichas = {};
+    cacheFichas[inst.codigo] = { ...datos, _actualizado: new Date().toISOString() };
+    renderListaInstalaciones();
+  } else { toast('Sin conexión, no se pudo guardar'); }
+}
+
+// ── Documentos por instalación (M32) ─────────────────────────────────
+async function renderPanelDocumentos() {
+  const inst = instalacionAbierta;
+  const panel = document.getElementById('modalPanelDocumentos');
+  panel.innerHTML = '<div class="empty-state">Cargando documentos...</div>';
+
+  const data = await corelinkGet(`/api/documentos?provincia=${encodeURIComponent(inst.provincia)}&instalacion=${encodeURIComponent(inst.nombre)}`);
+
+  let html = `<div style="margin-bottom:14px">
+    <label style="display:block;font-size:11px;font-weight:700;color:var(--gris-medio);text-transform:uppercase;margin-bottom:6px">Subir documento</label>
+    <div style="display:flex;gap:8px;align-items:center">
+      <input type="file" id="docFileInput" style="flex:1;font-size:13px">
+      <button class="btn-primary" style="white-space:nowrap" onclick="subirDocumento()">⬆ Subir</button>
+    </div>
+  </div>`;
+
+  if (!data || !data.documentos || data.documentos.length === 0) {
+    html += '<div class="empty-state">Sin documentos subidos todavía</div>';
+  } else {
+    data.documentos.forEach(doc => {
+      const fecha = doc.createdTime ? new Date(doc.createdTime).toLocaleDateString('es-ES') : '';
+      const tamaño = doc.size ? (doc.size > 1048576 ? (doc.size/1048576).toFixed(1)+' MB' : Math.round(doc.size/1024)+' KB') : '';
+      html += `<div class="doc-item">
+        <div style="flex:1">
+          <div class="doc-nombre">📄 ${doc.name}</div>
+          <div class="doc-meta">${fecha}${tamaño?' · '+tamaño:''}</div>
+        </div>
+        <div class="doc-btns">
+          <a href="https://drive.google.com/uc?export=download&id=${doc.id}" target="_blank" class="btn-mini verde" style="text-decoration:none;text-align:center">⬇ Descargar</a>
+          <button class="btn-mini rojo" onclick="borrarDocumento('${doc.id}','${doc.name.replace(/'/g,"\\'")}')">🗑</button>
+        </div>
+      </div>`;
+    });
+  }
+
+  panel.innerHTML = html;
+}
+
+async function subirDocumento() {
+  const inst  = instalacionAbierta;
+  const input = document.getElementById('docFileInput');
+  if (!input.files || input.files.length === 0) { toast('Selecciona un archivo primero'); return; }
+  const file = input.files[0];
+  toast('Subiendo documento...');
+  const resp = await corelinkSubirArchivo('/api/documentos', file, {
+    provincia:   inst.provincia,
+    instalacion: inst.nombre
+  });
+  if (resp.ok) { toast('Documento subido ✓'); renderPanelDocumentos(); }
+  else { toast('Error al subir el documento'); }
+}
+
+async function borrarDocumento(fileId, nombre) {
+  if (!confirm(`¿Borrar el documento "${nombre}"?`)) return;
+  toast('Borrando...');
+  const resp = await corelinkPost('/api/documentos/borrar', { fileId });
+  if (resp.ok) { toast('Documento borrado ✓'); renderPanelDocumentos(); }
+  else { toast('Error al borrar'); }
+}
+
+// ── Historial (incidencias + M22) ─────────────────────────────────────
+// ── Historial de visitas (A5) ─────────────────────────────────────────
+async function renderPanelVisitas() {
+  const inst  = instalacionAbierta;
+  const panel = document.getElementById('modalPanelVisitas');
+  panel.innerHTML = '<div class="empty-state">Cargando visitas...</div>';
+
+  const data = await corelinkGet('/api/checklists?codigo=' + encodeURIComponent(inst.codigo));
+  const checklists = data ? Object.values(data.checklists) : [];
+
+  if (checklists.length === 0) {
+    panel.innerHTML = '<div class="empty-state">Sin visitas registradas todavía</div>';
+    return;
+  }
+
+  const LABEL_TIPO = { anual:'🔧 Anual', trimestral:'💻 Trimestral', 'pci-trim':'🔥 Trim. PCI' };
+  const ordenadas  = checklists.sort((a,b) => b.fecha < a.fecha ? -1 : 1);
+
+  // Resumen rápido
+  const totalAnual = checklists.filter(c => c.tipo === 'anual').length;
+  const totalTrim  = checklists.filter(c => c.tipo === 'trimestral' || c.tipo === 'pci-trim').length;
+  const ultimaVisita = ordenadas[0];
+
+  let html = `
+    <div style="display:flex;gap:10px;margin-bottom:14px">
+      <div class="stat-box info" style="flex:1;padding:12px 8px"><div class="stat-num" style="font-size:22px">${checklists.length}</div><div class="stat-label">Total visitas</div></div>
+      <div class="stat-box info" style="flex:1;padding:12px 8px"><div class="stat-num" style="font-size:22px">${totalAnual}</div><div class="stat-label">Anuales</div></div>
+      <div class="stat-box info" style="flex:1;padding:12px 8px"><div class="stat-num" style="font-size:22px">${totalTrim}</div><div class="stat-label">Trimestrales</div></div>
+    </div>`;
+
+  html += ordenadas.map(c => {
+    const fecha    = new Date(c.fecha+'T12:00:00').toLocaleDateString('es-ES', { day:'numeric', month:'long', year:'numeric' });
+    const ok       = c.items ? c.items.filter(i => i.estado === 'ok').length : 0;
+    const inc      = c.items ? c.items.filter(i => i.estado === 'inc').length : 0;
+    const na       = c.items ? c.items.filter(i => i.estado === 'na').length : 0;
+    const duracion = c.horaIn && c.horaOut ? ` · ${c.horaIn} — ${c.horaOut}` : '';
+    return `<div style="background:var(--blanco);border-radius:9px;border-left:4px solid ${inc>0?'var(--naranja)':'var(--verde)'};padding:12px 14px;margin-bottom:8px;box-shadow:var(--sombra)">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px">
+        <div>
+          <span style="font-size:11px;font-weight:800;background:var(--azul-claro);color:var(--azul);padding:2px 8px;border-radius:99px">${LABEL_TIPO[c.tipo]||c.tipo}</span>
+          ${c.tecnico?`<span style="font-size:11px;color:var(--gris-medio);margin-left:6px">👤 ${c.tecnico}</span>`:''}
+        </div>
+        <span style="font-size:12px;color:var(--gris-medio);white-space:nowrap">${fecha}${duracion}</span>
+      </div>
+      <div style="display:flex;gap:12px;font-size:12px">
+        <span style="color:var(--verde)">✓ ${ok} correctos</span>
+        ${inc>0?`<span style="color:var(--naranja)">⚠ ${inc} incidencias</span>`:''}
+        ${na>0?`<span style="color:var(--gris-medio)">N/A: ${na}</span>`:''}
+      </div>
+      ${inc>0 && c.incidencias && c.incidencias.length>0 ? `
+        <div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--gris-borde)">
+          ${c.incidencias.map(i => `<div style="font-size:12px;color:var(--naranja)">→ ${i.codigo} ${i.nombre}${i.desc?' — '+i.desc:''}</div>`).join('')}
+        </div>` : ''}
+    </div>`;
+  }).join('');
+
+  panel.innerHTML = html;
+}
+
+function renderPanelHistorial() {
+  const inst = instalacionAbierta;
+  const incs = cacheIncidencias
+    ? Object.entries(cacheIncidencias).filter(([id,i]) => i.codigoInstalacion === inst.codigo)
+    : [];
+
+  if (incs.length === 0) {
+    document.getElementById('modalPanelHistorial').innerHTML = '<div class="empty-state">Sin incidencias registradas</div>';
+    return;
+  }
+
+  const ordenadas = incs.sort((a,b) => new Date(b[1].fechaApertura) - new Date(a[1].fechaApertura));
+  document.getElementById('modalPanelHistorial').innerHTML = ordenadas.map(([id,i]) => {
+    const abierta = i.estado === 'abierta';
+    return `<div class="simple-list-item" style="flex-direction:column;align-items:flex-start;gap:4px;margin-bottom:8px;${abierta?'background:#fef2f2':''}">
+      <div style="display:flex;justify-content:space-between;width:100%">
+        <strong style="font-size:13px">${abierta ? '🔴 Abierta' : '✓ Resuelta'}</strong>
+        <span style="font-size:11px;color:var(--gris-medio)">${new Date(i.fechaApertura+'T12:00:00').toLocaleDateString('es-ES')}</span>
+      </div>
+      <div style="font-size:13px">${i.nombrePunto||'Avería'}</div>
+      ${i.descripcion ? `<div style="font-size:12px;color:var(--gris-medio)">→ ${i.descripcion}</div>` : ''}
+      ${i.quienAviso  ? `<div style="font-size:11px;color:var(--gris-medio)">Avisó: ${i.quienAviso}</div>` : ''}
+      ${!abierta && i.observacionesCierre ? `<div style="font-size:12px;color:var(--verde)">✓ ${i.observacionesCierre}</div>` : ''}
+      ${!abierta && i.cierrePor     ? `<div style="font-size:11px;color:var(--gris-medio)">Cerrada por: ${i.cierrePor}</div>` : ''}
+      ${!abierta && i.cierreTimestamp ? `<div style="font-size:11px;color:var(--gris-medio)">${new Date(i.cierreTimestamp).toLocaleString('es-ES')}</div>` : ''}
+    </div>`;
+  }).join('');
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// AVERÍAS
+// ═══════════════════════════════════════════════════════════════════════
+const ORDEN_PRIORIDAD = { critica: 0, normal: 1, leve: 2 };
+const LABEL_PRIO      = { critica: '🔴 Crítica', normal: '🟠 Normal', leve: '🟡 Leve' };
+let prioridadSeleccionada       = 'normal';
+let instalacionAveriaSeleccionada = null;
+let filtroAveriaActual          = 'abiertas';
+let averiaACerrarId             = null;
+
+function setFiltroAveria(f) {
+  filtroAveriaActual = f;
+  document.getElementById('filtroAveriaAbiertas').classList.toggle('active', f === 'abiertas');
+  document.getElementById('filtroAveriaCerradas').classList.toggle('active', f === 'cerradas');
+  document.getElementById('filtroAveriaDescartadas').classList.toggle('active', f === 'descartadas');
+  renderAverias();
+}
+
+async function cargarAverias() {
+  document.getElementById('averiasListContainer').innerHTML = '<div class="empty-state">Cargando...</div>';
+  const data = await corelinkGet('/api/incidencias');
+  if (!data) { document.getElementById('averiasListContainer').innerHTML = '<div class="empty-state">⚠ Sin conexión</div>'; return; }
+  cacheIncidencias = data.incidencias;
+  actualizarBadge('averiasBadgeTab', Object.values(cacheIncidencias).filter(a => a.estado === 'abierta').length);
+  renderAverias();
+}
+
+function renderAverias() {
+  const cont = document.getElementById('averiasListContainer');
+  const esAbiertas = filtroAveriaActual === 'abiertas';
+  const lista = Object.entries(cacheIncidencias || {})
+    .filter(([id,a]) => {
+      if (filtroAveriaActual === 'abiertas')    return a.estado === 'abierta';
+      if (filtroAveriaActual === 'cerradas')    return a.estado === 'resuelta';
+      if (filtroAveriaActual === 'descartadas') return a.estado === 'descartada';
+      return false;
+    })
+    .sort((a,b) => {
+      const pa = ORDEN_PRIORIDAD[a[1].prioridad] ?? 1;
+      const pb = ORDEN_PRIORIDAD[b[1].prioridad] ?? 1;
+      if (pa !== pb) return pa - pb;
+      return filtroAveriaActual === 'abiertas'
+        ? new Date(a[1].fechaApertura) - new Date(b[1].fechaApertura)
+        : new Date(b[1].cierreTimestamp||b[1].fechaResolucion) - new Date(a[1].cierreTimestamp||a[1].fechaResolucion);
+    });
+
+  if (lista.length === 0) {
+    cont.innerHTML = `<div class="empty-state">✓ No hay averías ${filtroAveriaActual}</div>`;
+    return;
+  }
+
+  cont.innerHTML = lista.map(([id, a]) => {
+    const fecha = new Date(a.fechaApertura+'T12:00:00');
+    const dias  = Math.floor((new Date() - fecha) / 86400000);
+    const prio  = a.prioridad || 'normal';
+    if (esAbiertas) {
+      const instEsc = (a.nombreInstalacion+'').replace(/'/g,"\\'");
+      const descEsc = (a.descripcion+'').replace(/'/g,"\\'");
+      return `<div class="item-card prio-${prio}">
+        <span class="item-tag prio-${prio}">${LABEL_PRIO[prio]}</span>
+        ${a.numeroAveria?`<span style="font-size:11px;font-weight:800;color:var(--gris-medio);margin-left:4px">${a.numeroAveria}</span>`:''}
+        <div class="item-card-titulo">${a.nombreInstalacion}</div>
+        ${a.nombrePunto && a.nombrePunto !== 'Avería de guardia' ? `<div style="font-size:11px;color:var(--gris-medio);font-weight:600">${a.codigoPunto||''} ${a.nombrePunto}</div>` : ''}
+        ${a.descripcion ? `<div class="item-card-desc">→ ${a.descripcion}</div>` : ''}
+        ${a.quienAviso  ? `<div class="item-card-meta">📞 Avisó: ${a.quienAviso}</div>` : ''}
+        <div class="item-card-meta">Abierta el ${fecha.toLocaleDateString('es-ES')} (hace ${dias} día${dias!==1?'s':''})</div>
+        <div class="item-card-btns">
+          <button class="btn-mini verde" onclick="abrirModalCierreAveria('${id}','${instEsc}')">✓ Resuelta</button>
+          <button class="btn-mini" onclick="abrirModalAgendaAveria('${id}','${instEsc}','${a.codigoInstalacion}','${descEsc}')">📅 Agenda</button>
+          <button class="btn-mini" onclick="abrirModalDescartarAveria('${id}','${instEsc}')">🚫 Descartar</button>
+          <button class="btn-mini rojo" onclick="eliminarAveria('${id}')">🗑 Eliminar</button>
+        </div>
+      </div>`;
+    } else {
+      const fCierre = a.cierreTimestamp ? new Date(a.cierreTimestamp).toLocaleString('es-ES') : (a.fechaResolucion||'');
+      const esDescartada = a.estado === 'descartada';
+      return `<div class="item-card" style="opacity:.85">
+        <span class="item-tag" style="background:${esDescartada?'var(--gris-medio)':'var(--verde)'};color:#fff">${esDescartada?'🚫 Descartada':'✓ Resuelta'}</span>
+        ${a.numeroAveria?`<span style="font-size:11px;font-weight:800;color:var(--gris-medio);margin-left:4px">${a.numeroAveria}</span>`:''}
+        <div class="item-card-titulo">${a.nombreInstalacion}</div>
+        ${a.descripcion ? `<div class="item-card-desc">→ ${a.descripcion}</div>` : ''}
+        ${a.observacionesCierre ? `<div class="item-card-desc" style="color:${esDescartada?'var(--gris-medio)':'var(--verde)'}">→ ${a.observacionesCierre}</div>` : ''}
+        ${a.cierrePor ? `<div class="item-card-meta">Cerrada por: ${a.cierrePor}</div>` : ''}
+        <div class="item-card-meta">Cierre: ${fCierre}</div>
+        <div class="item-card-btns">
+          <button class="btn-mini rojo" onclick="eliminarAveria('${id}')">🗑 Eliminar</button>
+        </div>
+      </div>`;
+    }
+  }).join('');
+}
+
+// ── Descartar avería ──────────────────────────────────────────────────
+let averiaADescartarId = null;
+function abrirModalDescartarAveria(id, nombre) {
+  averiaADescartarId = id;
+  document.getElementById('modalDescartarNombre').textContent = nombre;
+  document.getElementById('descartarMotivo').value = '';
+  document.getElementById('modalDescartarAveria').classList.remove('hidden');
+}
+function cerrarModalDescartarAveria() {
+  document.getElementById('modalDescartarAveria').classList.add('hidden');
+  averiaADescartarId = null;
+}
+async function confirmarDescartarAveria() {
+  if (!averiaADescartarId) return;
+  toast('Descartando...');
+  const resp = await corelinkPost('/api/incidencias/descartar', {
+    id: averiaADescartarId,
+    motivo: document.getElementById('descartarMotivo').value.trim()
+  });
+  if (resp.ok) { toast('Avería descartada ✓'); cerrarModalDescartarAveria(); cargarAverias(); }
+  else { toast('Sin conexión'); }
+}
+
+// ── Eliminar avería ───────────────────────────────────────────────────
+async function eliminarAveria(id) {
+  if (!confirm('¿Eliminar esta avería por completo? No se puede deshacer.')) return;
+  toast('Eliminando...');
+  const resp = await corelinkPost('/api/incidencias/eliminar', { id });
+  if (resp.ok) { toast('Avería eliminada ✓'); cargarAverias(); }
+  else { toast('Sin conexión'); }
+}
+
+// ── Añadir avería a agenda ────────────────────────────────────────────
+let averiaAgendaData = null;
+function abrirModalAgendaAveria(id, nombre, codigo, descripcion) {
+  averiaAgendaData = { id, nombre, codigo, descripcion };
+  document.getElementById('modalAgendaAveriaNombre').textContent = nombre;
+  document.getElementById('agendaAveriaFecha').value = '';
+  document.getElementById('agendaAveriaComentario').value = '';
+  document.getElementById('modalAgendaAveria').classList.remove('hidden');
+}
+function cerrarModalAgendaAveria() {
+  document.getElementById('modalAgendaAveria').classList.add('hidden');
+  averiaAgendaData = null;
+}
+async function confirmarAgendaAveria() {
+  if (!averiaAgendaData) return;
+  const fecha = document.getElementById('agendaAveriaFecha').value;
+  if (!fecha) { toast('Selecciona una fecha'); return; }
+  const comentario = document.getElementById('agendaAveriaComentario').value.trim();
+  const nota = [averiaAgendaData.descripcion, comentario].filter(Boolean).join(' — ');
+  toast('Añadiendo a agenda...');
+  const resp = await corelinkPost('/api/agenda', {
+    codigoInstalacion: averiaAgendaData.codigo,
+    nombreInstalacion: averiaAgendaData.nombre,
+    fecha,
+    tipo: 'averia',
+    nota
+  });
+  if (resp.ok) { toast('Añadida a la agenda ✓'); cerrarModalAgendaAveria(); }
+  else { toast('Sin conexión'); }
+}
+
+function abrirModalCierreAveria(id, nombre) {
+  averiaACerrarId = id;
+  document.getElementById('modalCierreAveriaNombre').textContent = nombre;
+  document.getElementById('cierreObs').value  = '';
+  document.getElementById('cierrePor').value  = '';
+  document.getElementById('modalCierreAveria').classList.remove('hidden');
+}
+function cerrarModalCierreAveria() {
+  document.getElementById('modalCierreAveria').classList.add('hidden');
+  averiaACerrarId = null;
+}
+async function confirmarCierreAveria() {
+  if (!averiaACerrarId) return;
+  toast('Cerrando avería...');
+  const resp = await corelinkPost('/api/incidencias/cerrar', {
+    id:              averiaACerrarId,
+    observaciones:   document.getElementById('cierreObs').value.trim(),
+    cierrePor:       document.getElementById('cierrePor').value.trim(),
+    fechaResolucion: new Date().toISOString().split('T')[0]
+  });
+  if (resp.ok) {
+    toast('Avería cerrada ✓');
+    cerrarModalCierreAveria();
+    cargarAverias();
+  } else { toast('Sin conexión'); }
+}
+
+function abrirFormNuevaAveria() {
+  document.getElementById('formNuevaAveria').classList.remove('hidden');
+  document.getElementById('averiaInstSearch').value   = '';
+  document.getElementById('averiaDesc').value         = '';
+  document.getElementById('averiaQuienAviso').value   = '';
+  instalacionAveriaSeleccionada = null;
+  document.getElementById('averiaInstSeleccionada').classList.add('hidden');
+  document.getElementById('averiaInstList').innerHTML = '';
+  seleccionarPrioridad('normal', document.querySelector('.prio-btn.prio-normal'));
+}
+function cerrarFormNuevaAveria() { document.getElementById('formNuevaAveria').classList.add('hidden'); }
+function seleccionarPrioridad(p, btn) {
+  prioridadSeleccionada = p;
+  document.querySelectorAll('.prio-btn').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+}
+function filtrarInstalacionesAveria() {
+  const q = document.getElementById('averiaInstSearch').value.toLowerCase();
+  const listEl = document.getElementById('averiaInstList');
+  if (!q) { listEl.innerHTML = ''; return; }
+  const res = INSTALACIONES.filter(i => i.nombre.toLowerCase().includes(q) || i.codigo.toLowerCase().includes(q)).slice(0,8);
+  listEl.innerHTML = res.map(i => `<div class="inst-item-mini" onclick="seleccionarInstalacionAveria('${i.codigo}')"><div>${i.nombre}</div><div class="meta">${i.provincia} · ${i.codigo}</div></div>`).join('');
+}
+function seleccionarInstalacionAveria(codigo) {
+  instalacionAveriaSeleccionada = INSTALACIONES.find(i => i.codigo === codigo);
+  document.getElementById('averiaInstList').innerHTML = '';
+  document.getElementById('averiaInstSearch').value  = '';
+  const chip = document.getElementById('averiaInstSeleccionada');
+  chip.classList.remove('hidden');
+  chip.innerHTML = `<span>${instalacionAveriaSeleccionada.nombre}</span><button onclick="document.getElementById('averiaInstSeleccionada').classList.add('hidden');instalacionAveriaSeleccionada=null">×</button>`;
+}
+async function guardarNuevaAveriaPanel() {
+  if (!instalacionAveriaSeleccionada) { toast('Selecciona una instalación'); return; }
+  const desc = document.getElementById('averiaDesc').value.trim();
+  if (!desc) { toast('Escribe una descripción'); return; }
+  toast('Guardando avería...');
+  const resp = await corelinkPost('/api/incidencias', { incidencias: [{
+    codigoInstalacion: instalacionAveriaSeleccionada.codigo,
+    nombreInstalacion: instalacionAveriaSeleccionada.nombre,
+    codigoPunto: null, nombrePunto: 'Avería de guardia',
+    descripcion: desc,
+    quienAviso:  document.getElementById('averiaQuienAviso').value.trim(),
+    fechaApertura: new Date().toISOString().split('T')[0],
+    prioridad: prioridadSeleccionada
+  }]});
+  if (resp.ok) { toast('Avería registrada ✓'); cerrarFormNuevaAveria(); cargarAverias(); }
+  else { toast('Sin conexión'); }
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// AGENDA (lista + calendario M24)
+// ═══════════════════════════════════════════════════════════════════════
+const LABEL_TIPO_TAREA = { anual:'🔧 Anual', trimestral:'💻 Trimestral', 'pci-trim':'🔥 Trim. PCI', averia:'⚠ Avería', libre:'📌 Tarea' };
+let instalacionTareaSeleccionada = null;
+let cacheAgenda   = null;
+let vistaAgenda   = 'lista';
+let calAnio       = new Date().getFullYear();
+let calMesActual  = new Date().getMonth();
+let calDiaSeleccionado = null;
+
+function setVistaAgenda(v) {
+  vistaAgenda = v;
+  document.getElementById('agendaVistaLista').classList.toggle('hidden', v !== 'lista');
+  document.getElementById('agendaVistaCalendario').classList.toggle('hidden', v !== 'calendario');
+  document.getElementById('agendaVistaAusencias').classList.toggle('hidden', v !== 'ausencias');
+  document.querySelectorAll('#seccionAgenda .pill').forEach(p => p.classList.remove('active'));
+  const activeId = v === 'lista' ? 'vistaAgendaLista' : v === 'calendario' ? 'vistaAgendaCalendario' : 'vistaAgendaAusencias';
+  document.getElementById(activeId).classList.add('active');
+  if (v === 'calendario') renderCalendario();
+  if (v === 'ausencias')  cargarAusencias();
+}
+
+function etiquetaDia(fechaStr) {
+  const hoy   = new Date(); hoy.setHours(0,0,0,0);
+  const manana = new Date(hoy); manana.setDate(manana.getDate()+1);
+  const fecha  = new Date(fechaStr+'T00:00:00');
+  if (fecha.getTime() === hoy.getTime())    return 'Hoy';
+  if (fecha.getTime() === manana.getTime()) return 'Mañana';
+  if (fecha < hoy) return 'Atrasada — '+fecha.toLocaleDateString('es-ES',{day:'numeric',month:'long'});
+  return fecha.toLocaleDateString('es-ES',{weekday:'long',day:'numeric',month:'long'});
+}
+
+async function cargarAgenda() {
+  const cont = document.getElementById('agendaListContainer');
+  if (cont) cont.innerHTML = '<div class="empty-state">Cargando...</div>';
+  const data = await corelinkGet('/api/agenda');
+  if (!data) { if(cont) cont.innerHTML = '<div class="empty-state">⚠ Sin conexión</div>'; return; }
+  cacheAgenda = data.tareas;
+  const hoyStr = new Date().toISOString().split('T')[0];
+  actualizarBadge('agendaBadgeTab', Object.values(cacheAgenda).filter(t => t.fecha === hoyStr && t.estado !== 'completada').length);
+  if (vistaAgenda === 'lista') renderAgendaLista();
+  else renderCalendario();
+}
+
+let filtroAgendaActual = 'pendientes';
+
+function setFiltroAgenda(f) {
+  filtroAgendaActual = f;
+  document.getElementById('filtroAgendaPendientes').classList.toggle('active', f === 'pendientes');
+  document.getElementById('filtroAgendaCompletadas').classList.toggle('active', f === 'completadas');
+  renderAgendaLista();
+}
+
+function renderAgendaLista() {
+  const cont    = document.getElementById('agendaListContainer');
+  const esPendientes = filtroAgendaActual === 'pendientes';
+  const lista = Object.entries(cacheAgenda||{}).filter(([id,t]) =>
+    esPendientes ? t.estado !== 'completada' : t.estado === 'completada'
+  );
+  if (lista.length === 0) {
+    cont.innerHTML = `<div class="empty-state">${esPendientes ? '✓ No hay tareas pendientes' : 'Sin tareas completadas todavía'}</div>`;
+    return;
+  }
+  if (esPendientes) {
+    const porFecha = {};
+    lista.forEach(([id,t]) => { (porFecha[t.fecha] = porFecha[t.fecha]||[]).push([id,t]); });
+    let html = '';
+    Object.keys(porFecha).sort().forEach(fecha => {
+      html += `<div class="agenda-dia-titulo">${etiquetaDia(fecha)}</div>`;
+      porFecha[fecha].forEach(([id,t]) => {
+        html += `<div class="item-card">
+          <span class="item-tag" style="background:var(--gris-fondo);color:var(--gris-medio)">${LABEL_TIPO_TAREA[t.tipo]||t.tipo}</span>
+          <div class="item-card-titulo">${t.nombreInstalacion||t.codigoInstalacion||'Tarea libre'}</div>
+          ${t.nota ? `<div class="item-card-desc">→ ${t.nota}</div>` : ''}
+          <div class="item-card-btns">
+            <button class="btn-mini ${t.estado==='en_curso'?'activo-amarillo':''}" onclick="cambiarEstadoTareaPanel('${id}','en_curso')">▶ En curso</button>
+            <button class="btn-mini verde" onclick="cambiarEstadoTareaPanel('${id}','completada')">✓ Completada</button>
+            <button class="btn-mini rojo" onclick="eliminarTarea('${id}')">🗑 Eliminar</button>
+          </div>
+        </div>`;
+      });
+    });
+    cont.innerHTML = html;
+  } else {
+    const ordenadas = lista.sort((a,b) => b[1].fecha < a[1].fecha ? -1 : 1);
+    cont.innerHTML = ordenadas.map(([id,t]) => `
+      <div class="item-card" style="opacity:.8">
+        <span class="item-tag" style="background:var(--verde);color:#fff">✓ Completada</span>
+        <div class="item-card-titulo">${t.nombreInstalacion||t.codigoInstalacion||'Tarea libre'}</div>
+        ${t.nota ? `<div class="item-card-desc">→ ${t.nota}</div>` : ''}
+        <div class="item-card-meta">${new Date(t.fecha+'T12:00:00').toLocaleDateString('es-ES')}</div>
+        <div class="item-card-btns">
+          <button class="btn-mini" onclick="cambiarEstadoTareaPanel('${id}','pendiente')">↺ Reabrir</button>
+          <button class="btn-mini rojo" onclick="eliminarTarea('${id}')">🗑 Eliminar</button>
+        </div>
+      </div>
+    `).join('');
+  }
+}
+
+async function eliminarTarea(id) {
+  if (!confirm('¿Eliminar esta tarea? No se puede deshacer.')) return;
+  toast('Eliminando...');
+  const resp = await corelinkPost('/api/agenda/borrar', { id });
+  if (resp.ok) { toast('Tarea eliminada ✓'); cacheAgenda && delete cacheAgenda[id]; renderAgendaLista(); }
+  else { toast('Sin conexión'); }
+}
+
+// ── Calendario (M24) ──────────────────────────────────────────────────
+function calMes(delta) {
+  calMesActual += delta;
+  if (calMesActual > 11) { calMesActual = 0; calAnio++; }
+  if (calMesActual < 0)  { calMesActual = 11; calAnio--; }
+  calDiaSeleccionado = null;
+  document.getElementById('calDiaAgenda').classList.add('hidden');
+  renderCalendario();
+}
+
+function renderCalendario() {
+  const hoy     = new Date();
+  const primerDia = new Date(calAnio, calMesActual, 1);
+  const ultimoDia = new Date(calAnio, calMesActual+1, 0);
+  const meses   = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  document.getElementById('calTitulo').textContent = meses[calMesActual] + ' ' + calAnio;
+
+  // Días con tareas este mes
+  const diasConTareas = new Set();
+  Object.values(cacheAgenda||{}).forEach(t => {
+    if (t.estado !== 'completada') {
+      const [y, m, d] = t.fecha.split('-').map(Number);
+      if (y === calAnio && m-1 === calMesActual) diasConTareas.add(d);
+    }
+  });
+
+  const DIAS_CAB = ['L','M','X','J','V','S','D'];
+  let html = DIAS_CAB.map(d => `<div class="cal-dia-cab">${d}</div>`).join('');
+
+  // Offset: lunes=0
+  let offset = primerDia.getDay() - 1;
+  if (offset < 0) offset = 6;
+  for (let i = 0; i < offset; i++) html += `<div class="cal-dia vacio"></div>`;
+
+  for (let d = 1; d <= ultimoDia.getDate(); d++) {
+    const esHoy = d === hoy.getDate() && calMesActual === hoy.getMonth() && calAnio === hoy.getFullYear();
+    const esSel = d === calDiaSeleccionado;
+    const conTareas = diasConTareas.has(d);
+    html += `<div class="cal-dia ${esHoy?'hoy':''} ${esSel?'seleccionado':''} ${conTareas?'con-tareas':''}" onclick="seleccionarDiaCal(${d})">${d}</div>`;
+  }
+
+  document.getElementById('calGrid').innerHTML = html;
+}
+
+function seleccionarDiaCal(dia) {
+  calDiaSeleccionado = dia;
+  renderCalendario();
+
+  const fechaStr = `${calAnio}-${String(calMesActual+1).padStart(2,'0')}-${String(dia).padStart(2,'0')}`;
+  const tareas   = Object.entries(cacheAgenda||{}).filter(([id,t]) => t.fecha === fechaStr && t.estado !== 'completada');
+
+  const diaAgendaEl = document.getElementById('calDiaAgenda');
+  const fecha = new Date(fechaStr+'T00:00:00');
+  document.getElementById('calDiaAgendaTitulo').textContent = fecha.toLocaleDateString('es-ES',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+
+  if (tareas.length === 0) {
+    document.getElementById('calDiaAgendaLista').innerHTML = '<div class="empty-state" style="padding:14px">Sin tareas este día</div>';
+  } else {
+    document.getElementById('calDiaAgendaLista').innerHTML = tareas.map(([id,t]) => `
+      <div class="item-card" style="margin-bottom:8px">
+        <span class="item-tag" style="background:var(--gris-fondo);color:var(--gris-medio)">${LABEL_TIPO_TAREA[t.tipo]||t.tipo}</span>
+        <div class="item-card-titulo">${t.nombreInstalacion||t.codigoInstalacion||'Tarea libre'}</div>
+        ${t.nota ? `<div class="item-card-desc">→ ${t.nota}</div>` : ''}
+        <div class="item-card-btns">
+          <button class="btn-mini verde" onclick="cambiarEstadoTareaPanel('${id}','completada')">✓ Completada</button>
+          <button class="btn-mini rojo" onclick="eliminarTarea('${id}')">🗑 Eliminar</button>
+        </div>
+      </div>
+    `).join('');
+  }
+  diaAgendaEl.classList.remove('hidden');
+}
+
+async function cambiarEstadoTareaPanel(id, estado) {
+  toast('Actualizando...');
+  const resp = await corelinkPost('/api/agenda/estado', { id, estado });
+  if (resp.ok) { toast('Actualizado ✓'); cargarAgenda(); }
+  else { toast('Sin conexión'); }
+}
+
+function abrirFormNuevaTarea() {
+  document.getElementById('formNuevaTarea').classList.remove('hidden');
+  document.getElementById('tareaInstSearch').value = '';
+  document.getElementById('tareaDescripcion').value = '';
+  document.getElementById('tareaNota').value = '';
+  document.getElementById('tareaFecha').value = new Date().toISOString().split('T')[0];
+  document.getElementById('tareaTipo').value = 'anual';
+  instalacionTareaSeleccionada = null;
+  document.getElementById('tareaInstSeleccionada').classList.add('hidden');
+  document.getElementById('tareaInstList').innerHTML = '';
+}
+function cerrarFormNuevaTarea() { document.getElementById('formNuevaTarea').classList.add('hidden'); }
+function filtrarInstalacionesTarea() {
+  const q = document.getElementById('tareaInstSearch').value.toLowerCase();
+  const listEl = document.getElementById('tareaInstList');
+  if (!q) { listEl.innerHTML=''; return; }
+  const res = INSTALACIONES.filter(i=>i.nombre.toLowerCase().includes(q)||i.codigo.toLowerCase().includes(q)).slice(0,8);
+  listEl.innerHTML = res.map(i=>`<div class="inst-item-mini" onclick="seleccionarInstalacionTarea('${i.codigo}')"><div>${i.nombre}</div><div class="meta">${i.provincia} · ${i.codigo}</div></div>`).join('');
+}
+function seleccionarInstalacionTarea(codigo) {
+  instalacionTareaSeleccionada = INSTALACIONES.find(i=>i.codigo===codigo);
+  document.getElementById('tareaInstList').innerHTML=''; document.getElementById('tareaInstSearch').value='';
+  const chip = document.getElementById('tareaInstSeleccionada'); chip.classList.remove('hidden');
+  chip.innerHTML=`<span>${instalacionTareaSeleccionada.nombre}</span><button onclick="document.getElementById('tareaInstSeleccionada').classList.add('hidden');instalacionTareaSeleccionada=null">×</button>`;
+}
+async function guardarNuevaTareaPanel() {
+  const fecha = document.getElementById('tareaFecha').value;
+  if (!fecha) { toast('Selecciona una fecha'); return; }
+  const descripcion = document.getElementById('tareaDescripcion').value.trim();
+  const nota        = document.getElementById('tareaNota').value.trim();
+  const notaFinal   = [descripcion, nota].filter(Boolean).join(' — ');
+  const codigo      = instalacionTareaSeleccionada ? instalacionTareaSeleccionada.codigo : null;
+  const nombre      = instalacionTareaSeleccionada ? instalacionTareaSeleccionada.nombre : (descripcion || 'Tarea libre');
+  const resp = await corelinkPost('/api/agenda', {
+    codigoInstalacion: codigo,
+    nombreInstalacion: nombre,
+    fecha,
+    tipo: document.getElementById('tareaTipo').value,
+    nota: notaFinal
+  });
+  if (resp.ok) { toast('Tarea añadida ✓'); cerrarFormNuevaTarea(); cargarAgenda(); }
+  else { toast('Sin conexión'); }
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// NOTAS
+// ═══════════════════════════════════════════════════════════════════════
+async function cargarNotas() {
+  const cont = document.getElementById('notasListContainer');
+  cont.innerHTML = '<div class="empty-state">Cargando...</div>';
+  const data = await corelinkGet('/api/notas');
+  if (!data) { cont.innerHTML = '<div class="empty-state">⚠ Sin conexión</div>'; return; }
+  const notas = data.notas;
+  actualizarBadge('notasBadgeTab', Object.values(notas).filter(n=>!n.hecha).length);
+  const entradas = Object.entries(notas).sort((a,b) => { if(a[1].hecha!==b[1].hecha)return a[1].hecha?1:-1; return new Date(b[1].creada)-new Date(a[1].creada); });
+  if (entradas.length===0) { cont.innerHTML='<div class="empty-state">Sin notas todavía</div>'; return; }
+  cont.innerHTML = entradas.map(([id,n]) => `
+    <div class="item-card nota-card ${n.hecha?'hecha':''}">
+      <div class="item-card-titulo" style="${n.hecha?'text-decoration:line-through':''}">${n.texto}</div>
+      ${n.fecha?`<div class="item-card-meta">📅 ${new Date(n.fecha+'T12:00:00').toLocaleDateString('es-ES')}</div>`:''}
+      <div class="item-card-btns">
+        <button class="btn-mini ${n.hecha?'activo':''}" onclick="toggleNota('${id}',${!n.hecha})">${n.hecha?'↺ Reabrir':'✓ Hecha'}</button>
+        <button class="btn-mini rojo" onclick="borrarNota('${id}')">🗑 Borrar</button>
+      </div>
+    </div>
+  `).join('');
+}
+async function guardarNuevaNota() {
+  const texto = document.getElementById('notaTexto').value.trim();
+  if (!texto) { toast('Escribe el texto de la nota'); return; }
+  const fecha = document.getElementById('notaFecha').value||null;
+  toast('Guardando nota...');
+  const resp = await corelinkPost('/api/notas',{texto,fecha});
+  if (resp.ok) { toast('Nota añadida ✓'); document.getElementById('notaTexto').value=''; document.getElementById('notaFecha').value=''; cargarNotas(); }
+  else { toast('Sin conexión'); }
+}
+async function toggleNota(id, nuevoHecha) {
+  const resp = await corelinkPost('/api/notas/estado',{id,accion:nuevoHecha?'marcar':'desmarcar'});
+  if (resp.ok) cargarNotas(); else toast('Sin conexión');
+}
+async function borrarNota(id) {
+  if (!confirm('¿Borrar esta nota?')) return;
+  const resp = await corelinkPost('/api/notas/estado',{id,accion:'borrar'});
+  if (resp.ok) { toast('Nota borrada ✓'); cargarNotas(); } else { toast('Sin conexión'); }
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// STOCK V2 — con categorías, historial y consumo medio
+// ═══════════════════════════════════════════════════════════════════════
+let cachePanelStock      = null;
+let materialDetalleActual= null;
+let materialEditandoId   = null;
+let categoriaEditandoId  = null;
+let vistaStock           = 'stock';
+
+function setVistaStock(v) {
+  vistaStock = v;
+  document.getElementById('stockVistaStock').classList.toggle('active', v === 'stock');
+  document.getElementById('stockVistaHistorial').classList.toggle('active', v === 'historial');
+  document.getElementById('stockVistaPedidos').classList.toggle('active', v === 'pedidos');
+  document.getElementById('stockPanelMateriales').classList.toggle('hidden', v !== 'stock');
+  document.getElementById('stockPanelHistorial').classList.toggle('hidden', v !== 'historial');
+  document.getElementById('stockPanelPedidos').classList.toggle('hidden', v !== 'pedidos');
+  if (v === 'historial') renderHistorial();
+  if (v === 'pedidos')   renderPedidoMateriales();
+}
+
+async function cargarStockPanel() {
+  document.getElementById('stockCategoriasContainer').innerHTML = '<div class="empty-state">Cargando...</div>';
+  const data = await corelinkGet('/api/stock');
+  if (!data) { document.getElementById('stockCategoriasContainer').innerHTML = '<div class="empty-state">⚠ Sin conexión</div>'; return; }
+  cachePanelStock = data.stock;
+
+  // Badge alertas
+  const materiales = Object.values(cachePanelStock.materiales);
+  const alertas = materiales.filter(m => m.furgon <= m.minimoFurgon || m.almacen <= m.minimoAlmacen);
+  actualizarBadge('stockBadgeTab', alertas.length);
+
+  renderStockMateriales();
+  poblarFiltroHistorial();
+}
+
+function renderStockMateriales() {
+  const stock = cachePanelStock;
+  if (!stock) return;
+
+  // Alertas
+  const alertasEl = document.getElementById('stockAlertasBox');
+  const alertas = Object.entries(stock.materiales).filter(([id,m]) => m.furgon <= m.minimoFurgon || m.almacen <= m.minimoAlmacen);
+  if (alertas.length > 0) {
+    alertasEl.innerHTML = `<div class="alerta-stock-box">
+      <div class="alerta-stock-titulo">🔴 ${alertas.length} material${alertas.length!==1?'es':''} por debajo del mínimo</div>
+      ${alertas.map(([id,m]) => {
+        const avisos = [];
+        if (m.furgon  <= m.minimoFurgon)  avisos.push(`Furgón: ${m.furgon}/${m.minimoFurgon}`);
+        if (m.almacen <= m.minimoAlmacen) avisos.push(`Almacén: ${m.almacen}/${m.minimoAlmacen}`);
+        return `<div class="alerta-stock-item">⚠ <strong>${m.nombre}</strong> — ${avisos.join(' · ')}</div>`;
+      }).join('')}
+    </div>`;
+  } else {
+    alertasEl.innerHTML = '';
+  }
+
+  // Categorías
+  const cont = document.getElementById('stockCategoriasContainer');
+  const categorias = stock.categorias || {};
+  const materiales = stock.materiales || {};
+
+  let html = '';
+  Object.entries(categorias).sort((a,b) => a[1].nombre.localeCompare(b[1].nombre)).forEach(([catId, cat]) => {
+    const matsCat = Object.entries(materiales).filter(([id,m]) => m.categoriaId === catId);
+    if (matsCat.length === 0) return; // ocultar categorías vacías
+    html += `<div class="stock-categoria card">
+      <div class="stock-cat-titulo">
+        <span>${cat.icono} ${cat.nombre}</span>
+        <div style="display:flex;gap:6px">
+          <button class="btn-mini" onclick="abrirModalMaterial(null,'${catId}')">+ Material</button>
+          <button class="btn-mini" onclick="abrirModalCategoria('${catId}')">✏</button>
+        </div>
+      </div>
+      ${matsCat.map(([id,m]) => {
+        const alertF = m.furgon  <= m.minimoFurgon;
+        const alertA = m.almacen <= m.minimoAlmacen;
+        const claseAlerta = alertF ? 'alerta-furgon' : alertA ? 'alerta-almacen' : '';
+        return `<div class="material-row ${claseAlerta}" onclick="abrirModalDetalleStock('${id}')">
+          <div style="flex:1">
+            <div class="mat-nombre">${m.nombre}</div>
+            ${m.codigoProveedor?`<div class="mat-codigo">Ref: ${m.codigoProveedor}</div>`:''}
+          </div>
+          <div class="mat-cant">
+            <div class="mat-cant-num ${alertA?'bad':m.almacen>m.minimoAlmacen*2?'ok':'warn'}">${m.almacen}</div>
+            <div class="mat-cant-label">Almacén</div>
+          </div>
+          <div class="mat-cant">
+            <div class="mat-cant-num ${alertF?'bad':m.furgon>m.minimoFurgon*2?'ok':'warn'}">${m.furgon}</div>
+            <div class="mat-cant-label">Furgón</div>
+          </div>
+        </div>`;
+      }).join('')}
+    </div>`;
+  });
+
+  // Categorías vacías al final como desplegables
+  const catsVacias = Object.entries(categorias).filter(([catId]) =>
+    !Object.values(materiales).some(m => m.categoriaId === catId)
+  );
+  if (catsVacias.length > 0) {
+    html += `<div class="card" style="opacity:.7">
+      <div class="card-title" style="margin-bottom:10px">Categorías vacías</div>
+      ${catsVacias.map(([catId,cat]) => `
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid var(--gris-borde)">
+          <span style="font-size:13px">${cat.icono} ${cat.nombre}</span>
+          <div style="display:flex;gap:6px">
+            <button class="btn-mini" onclick="abrirModalMaterial(null,'${catId}')">+ Material</button>
+            <button class="btn-mini" onclick="abrirModalCategoria('${catId}')">✏</button>
+            <button class="btn-mini rojo" onclick="borrarCategoria('${catId}')">🗑</button>
+          </div>
+        </div>
+      `).join('')}
+    </div>`;
+  }
+
+  cont.innerHTML = html || '<div class="empty-state">Sin materiales todavía. Añade el primero.</div>';
+}
+
+// ── Modales material ──────────────────────────────────────────────────
+function abrirModalMaterial(id, catIdDefault) {
+  materialEditandoId = id;
+  document.getElementById('modalMaterialTitulo').textContent = id ? 'Editar material' : 'Nuevo material';
+  const sel = document.getElementById('matCategoria');
+  sel.innerHTML = Object.entries(cachePanelStock.categorias||{})
+    .sort((a,b) => a[1].nombre.localeCompare(b[1].nombre))
+    .map(([catId,cat]) => `<option value="${catId}">${cat.icono} ${cat.nombre}</option>`).join('');
+  if (id) {
+    const m = cachePanelStock.materiales[id];
+    document.getElementById('matNombre').value      = m.nombre||'';
+    document.getElementById('matCodigo').value      = m.codigoProveedor||'';
+    document.getElementById('matCategoria').value   = m.categoriaId||'';
+    document.getElementById('matAlmacen').value     = m.almacen||0;
+    document.getElementById('matFurgon').value      = m.furgon||0;
+    document.getElementById('matMinAlmacen').value  = m.minimoAlmacen||0;
+    document.getElementById('matMinFurgon').value   = m.minimoFurgon||0;
+  } else {
+    ['matNombre','matCodigo'].forEach(f => document.getElementById(f).value='');
+    ['matAlmacen','matFurgon','matMinAlmacen','matMinFurgon'].forEach(f => document.getElementById(f).value=0);
+    if (catIdDefault) document.getElementById('matCategoria').value = catIdDefault;
+  }
+  document.getElementById('modalMaterial').classList.remove('hidden');
+}
+function cerrarModalMaterial() { document.getElementById('modalMaterial').classList.add('hidden'); }
+async function guardarMaterial() {
+  const nombre = document.getElementById('matNombre').value.trim();
+  const categoriaId = document.getElementById('matCategoria').value;
+  if (!nombre) { toast('El nombre es obligatorio'); return; }
+  toast('Guardando...');
+  const body = {
+    id: materialEditandoId||null, nombre,
+    codigoProveedor: document.getElementById('matCodigo').value.trim(),
+    categoriaId,
+    almacen:      parseInt(document.getElementById('matAlmacen').value)||0,
+    furgon:       parseInt(document.getElementById('matFurgon').value)||0,
+    minimoAlmacen:parseInt(document.getElementById('matMinAlmacen').value)||0,
+    minimoFurgon: parseInt(document.getElementById('matMinFurgon').value)||0,
+  };
+  const resp = await corelinkPost('/api/stock/material', body);
+  if (resp.ok) { toast('Material guardado ✓'); cerrarModalMaterial(); cachePanelStock=null; cargarStockPanel(); }
+  else { toast('Sin conexión'); }
+}
+
+// ── Modales categoría ─────────────────────────────────────────────────
+function abrirModalCategoria(id) {
+  categoriaEditandoId = id;
+  document.getElementById('modalCategoriaTitulo').textContent = id ? 'Editar categoría' : 'Nueva categoría';
+  if (id) {
+    const cat = cachePanelStock.categorias[id];
+    document.getElementById('catIcono').value  = cat.icono||'📦';
+    document.getElementById('catNombre').value = cat.nombre||'';
+  } else {
+    document.getElementById('catIcono').value  = '📦';
+    document.getElementById('catNombre').value = '';
+  }
+  document.getElementById('modalCategoria').classList.remove('hidden');
+}
+function cerrarModalCategoria() { document.getElementById('modalCategoria').classList.add('hidden'); }
+async function guardarCategoria() {
+  const nombre = document.getElementById('catNombre').value.trim();
+  if (!nombre) { toast('El nombre es obligatorio'); return; }
+  toast('Guardando...');
+  const resp = await corelinkPost('/api/stock/categoria', {
+    id: categoriaEditandoId||null,
+    nombre,
+    icono: document.getElementById('catIcono').value.trim()||'📦'
+  });
+  if (resp.ok) { toast('Categoría guardada ✓'); cerrarModalCategoria(); cachePanelStock=null; cargarStockPanel(); }
+  else { toast('Sin conexión'); }
+}
+async function borrarCategoria(id) {
+  if (!confirm('¿Borrar esta categoría? Los materiales que tenga se moverán a "Otros".')) return;
+  const resp = await corelinkPost('/api/stock/categoria/borrar', { id });
+  if (resp.ok) { toast('Categoría borrada ✓'); cachePanelStock=null; cargarStockPanel(); }
+  else { toast('Sin conexión'); }
+}
+
+// ── Modal detalle (ajuste + reposición + eliminar) ────────────────────
+function abrirModalDetalleStock(id) {
+  materialDetalleActual = id;
+  const m = cachePanelStock.materiales[id];
+  document.getElementById('modalDetalleNombre').textContent = m.nombre;
+  document.getElementById('modalDetalleCodigo').textContent = m.codigoProveedor ? 'Ref: '+m.codigoProveedor : '';
+  document.getElementById('detalleAlmacen').value = m.almacen;
+  document.getElementById('detalleFurgon').value  = m.furgon;
+  document.getElementById('detalleReponer').value = '';
+  document.getElementById('modalDetalleStock').classList.remove('hidden');
+}
+function cerrarModalDetalleStock() {
+  document.getElementById('modalDetalleStock').classList.add('hidden');
+  materialDetalleActual = null;
+}
+
+function editarMaterialDesdeDetalle() {
+  if (!materialDetalleActual) return;
+  const id = materialDetalleActual;
+  cerrarModalDetalleStock();
+  abrirModalMaterial(id);
+}
+async function guardarAjusteStockV2() {
+  if (!materialDetalleActual) return;
+  toast('Guardando...');
+  const resp = await corelinkPost('/api/stock/ajustar', {
+    materialId: materialDetalleActual,
+    almacen: parseInt(document.getElementById('detalleAlmacen').value)||0,
+    furgon:  parseInt(document.getElementById('detalleFurgon').value)||0,
+  });
+  if (resp.ok) { toast('Cantidades actualizadas ✓'); cerrarModalDetalleStock(); cachePanelStock=null; cargarStockPanel(); }
+  else { toast('Sin conexión'); }
+}
+async function reponerStockV2() {
+  if (!materialDetalleActual) return;
+  const cantidad = parseInt(document.getElementById('detalleReponer').value)||0;
+  if (cantidad<1) { toast('Indica una cantidad válida'); return; }
+  toast('Reponiendo...');
+  const resp = await corelinkPost('/api/stock/reponer', { materialId: materialDetalleActual, cantidad });
+  if (resp.ok) { toast('Repuesto al furgón ✓'); cerrarModalDetalleStock(); cachePanelStock=null; cargarStockPanel(); }
+  else { toast('Sin conexión'); }
+}
+async function eliminarMaterialConfirm() {
+  if (!materialDetalleActual) return;
+  const m = cachePanelStock.materiales[materialDetalleActual];
+  if (!confirm(`¿Eliminar "${m.nombre}"? No se puede deshacer.`)) return;
+  toast('Eliminando...');
+  const resp = await corelinkPost('/api/stock/material/borrar', { id: materialDetalleActual });
+  if (resp.ok) { toast('Material eliminado ✓'); cerrarModalDetalleStock(); cachePanelStock=null; cargarStockPanel(); }
+  else { toast('Sin conexión'); }
+}
+
+// ── Pedido de material ────────────────────────────────────────────────
+function renderPedidoMateriales() {
+  if (!cachePanelStock) return;
+  const stock      = cachePanelStock;
+  const categorias = stock.categorias || {};
+  const materiales = stock.materiales || {};
+  let html = '';
+
+  Object.entries(categorias).sort((a,b) => a[1].nombre.localeCompare(b[1].nombre)).forEach(([catId,cat]) => {
+    const matsCat = Object.entries(materiales).filter(([id,m]) => m.categoriaId === catId);
+    if (matsCat.length === 0) return;
+    html += `<div style="margin-bottom:18px">
+      <div style="font-size:12px;font-weight:800;color:var(--azul);text-transform:uppercase;border-bottom:2px solid var(--azul-claro);padding-bottom:5px;margin-bottom:10px">${cat.icono} ${cat.nombre}</div>
+      ${matsCat.map(([id,m]) => {
+        const alertF = m.furgon  <= m.minimoFurgon;
+        const alertA = m.almacen <= m.minimoAlmacen;
+        const alerta = alertF || alertA;
+        return `<div style="background:${alerta?'#fef2f2':'var(--gris-fondo)'};border:1.5px solid ${alerta?'var(--rojo)':'var(--gris-borde)'};border-radius:9px;padding:12px 14px;margin-bottom:10px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+            <div style="font-size:12px;color:var(--gris-medio)">Stock: Almacén <strong>${m.almacen}</strong> · Furgón <strong>${m.furgon}</strong>${alerta?' <span style="color:var(--rojo);font-weight:700">⚠ Bajo mínimo</span>':''}</div>
+            <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
+              <label style="font-size:11px;font-weight:700;color:var(--gris-medio)">PEDIR:</label>
+              <input type="number" id="ped_qty_${id}" min="0" value="${alerta?Math.max(m.minimoFurgon-m.furgon,m.minimoAlmacen-m.almacen,1):0}"
+                style="width:65px;border:1.5px solid ${alerta?'var(--rojo)':'var(--gris-borde)'};border-radius:6px;padding:6px 8px;font-size:15px;font-weight:800;text-align:center;color:var(--azul)">
+            </div>
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
+            <div>
+              <label style="font-size:10px;font-weight:700;color:var(--gris-medio);text-transform:uppercase;display:block;margin-bottom:3px">Descripción</label>
+              <input type="text" id="ped_nom_${id}" value="${m.nombre}"
+                style="width:100%;border:1.5px solid var(--gris-borde);border-radius:6px;padding:6px 8px;font-size:13px;font-family:inherit">
+            </div>
+            <div>
+              <label style="font-size:10px;font-weight:700;color:var(--gris-medio);text-transform:uppercase;display:block;margin-bottom:3px">Ref. proveedor</label>
+              <input type="text" id="ped_ref_${id}" value="${m.codigoProveedor||''}" placeholder="Referencia..."
+                style="width:100%;border:1.5px solid var(--gris-borde);border-radius:6px;padding:6px 8px;font-size:13px;font-family:inherit">
+            </div>
+            <div>
+              <label style="font-size:10px;font-weight:700;color:var(--gris-medio);text-transform:uppercase;display:block;margin-bottom:3px">Proveedor</label>
+              <input type="text" id="ped_prov_${id}" placeholder="Proveedor..."
+                style="width:100%;border:1.5px solid var(--gris-borde);border-radius:6px;padding:6px 8px;font-size:13px;font-family:inherit">
+            </div>
+          </div>
+        </div>`;
+      }).join('')}
+    </div>`;
+  });
+
+  document.getElementById('pedidoListaMateriales').innerHTML = html;
+}
+
+let pedidoManualItems = [];
+
+function añadirProductoManual() {
+  const idx = pedidoManualItems.length;
+  pedidoManualItems.push({ nombre:'', ref:'', proveedor:'', cantidad:1 });
+  const cont = document.getElementById('pedidoManualContainer');
+  const div  = document.createElement('div');
+  div.id     = `pedman_${idx}`;
+  div.style.cssText = 'background:var(--azul-claro);border:1.5px solid var(--azul);border-radius:9px;padding:12px 14px;margin-bottom:10px';
+  div.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+      <span style="font-size:11px;font-weight:800;color:var(--azul);text-transform:uppercase">Producto manual #${idx+1}</span>
+      <button onclick="borrarProductoManual(${idx})" style="background:none;border:none;color:var(--rojo);font-size:18px;cursor:pointer">×</button>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:8px;align-items:end">
+      <div>
+        <label style="font-size:10px;font-weight:700;color:var(--gris-medio);text-transform:uppercase;display:block;margin-bottom:3px">Descripción *</label>
+        <input type="text" id="pedman_nom_${idx}" placeholder="Nombre del producto"
+          style="width:100%;border:1.5px solid var(--gris-borde);border-radius:6px;padding:6px 8px;font-size:13px;font-family:inherit">
+      </div>
+      <div>
+        <label style="font-size:10px;font-weight:700;color:var(--gris-medio);text-transform:uppercase;display:block;margin-bottom:3px">Ref. proveedor</label>
+        <input type="text" id="pedman_ref_${idx}" placeholder="Referencia..."
+          style="width:100%;border:1.5px solid var(--gris-borde);border-radius:6px;padding:6px 8px;font-size:13px;font-family:inherit">
+      </div>
+      <div>
+        <label style="font-size:10px;font-weight:700;color:var(--gris-medio);text-transform:uppercase;display:block;margin-bottom:3px">Proveedor</label>
+        <input type="text" id="pedman_prov_${idx}" placeholder="Proveedor..."
+          style="width:100%;border:1.5px solid var(--gris-borde);border-radius:6px;padding:6px 8px;font-size:13px;font-family:inherit">
+      </div>
+      <div>
+        <label style="font-size:10px;font-weight:700;color:var(--gris-medio);text-transform:uppercase;display:block;margin-bottom:3px">Cantidad</label>
+        <input type="number" id="pedman_qty_${idx}" value="1" min="1"
+          style="width:65px;border:1.5px solid var(--azul);border-radius:6px;padding:6px 8px;font-size:15px;font-weight:800;text-align:center;color:var(--azul)">
+      </div>
+    </div>`;
+  cont.appendChild(div);
+}
+
+function borrarProductoManual(idx) {
+  const div = document.getElementById(`pedman_${idx}`);
+  if (div) div.remove();
+  pedidoManualItems[idx] = null;
+}
+function limpiarPedido() {
+  document.querySelectorAll('[id^="ped_qty_"]').forEach(el => el.value = 0);
+  document.querySelectorAll('[id^="ped_prov_"]').forEach(el => el.value = '');
+  document.getElementById('pedidoNotas').value = '';
+  document.getElementById('pedidoManualContainer').innerHTML = '';
+  pedidoManualItems = [];
+}
+
+function generarPDFPedido() {
+  if (!cachePanelStock) return;
+  const stock      = cachePanelStock;
+  const categorias = stock.categorias || {};
+  const materiales = stock.materiales || {};
+  const notas      = document.getElementById('pedidoNotas').value.trim();
+  const fecha      = new Date().toLocaleDateString('es-ES', { day:'2-digit', month:'2-digit', year:'numeric' });
+
+  const lineas = [];
+  Object.entries(materiales).forEach(([id,m]) => {
+    const qty  = parseInt(document.getElementById('ped_qty_'+id)?.value)||0;
+    if (qty <= 0) return;
+    const nom  = document.getElementById('ped_nom_'+id)?.value.trim()  || m.nombre;
+    const ref  = document.getElementById('ped_ref_'+id)?.value.trim()  || m.codigoProveedor || '—';
+    const prov = document.getElementById('ped_prov_'+id)?.value.trim() || '—';
+    const cat  = categorias[m.categoriaId];
+    lineas.push({ categoria: cat ? cat.icono+' '+cat.nombre : 'Otros', nombre: nom, ref, proveedor: prov, cantidad: qty, almacen: m.almacen, furgon: m.furgon });
+  });
+
+  // Añadir productos manuales
+  pedidoManualItems.forEach((item, idx) => {
+    if (item === null) return;
+    const qty  = parseInt(document.getElementById('pedman_qty_'+idx)?.value)||0;
+    const nom  = document.getElementById('pedman_nom_'+idx)?.value.trim();
+    if (!nom || qty <= 0) return;
+    const ref  = document.getElementById('pedman_ref_'+idx)?.value.trim()  || '—';
+    const prov = document.getElementById('pedman_prov_'+idx)?.value.trim() || '—';
+    lineas.push({ categoria: '➕ Productos adicionales', nombre: nom, ref, proveedor: prov, cantidad: qty, almacen: '—', furgon: '—' });
+  });
+
+  if (lineas.length === 0) { toast('Añade cantidades a pedir antes de generar el PDF'); return; }
+
+  const porCategoria = {};
+  lineas.forEach(l => {
+    if (!porCategoria[l.categoria]) porCategoria[l.categoria] = [];
+    porCategoria[l.categoria].push(l);
+  });
+
+  const htmlPDF = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">
+  <title>Solicitud de pedido — ${fecha}</title>
+  <style>
+    body { font-family: Arial, sans-serif; font-size: 13px; color: #1a1a1a; max-width: 820px; margin: 0 auto; padding: 20px; }
+    .header { background: #003087; color: #fff; padding: 18px 22px; border-radius: 8px 8px 0 0; }
+    .header h1 { margin:0; font-size:18px; }
+    .header p  { margin:4px 0 0; font-size:12px; opacity:.8; }
+    .banda { background:#FFD100; height:4px; margin-bottom:20px; }
+    .meta { display:flex; gap:24px; margin-bottom:16px; font-size:13px; flex-wrap:wrap; }
+    .meta-item strong { display:block; font-size:10px; text-transform:uppercase; color:#6b6b6b; margin-bottom:2px; }
+    .notas { background:#f0f4fb; border-left:3px solid #003087; padding:10px 14px; border-radius:0 6px 6px 0; margin-bottom:18px; font-size:13px; }
+    .cat-titulo { font-size:12px; font-weight:800; color:#003087; text-transform:uppercase; letter-spacing:0.5px; border-bottom:2px solid #e8eef8; padding-bottom:5px; margin:18px 0 8px; }
+    table { width:100%; border-collapse:collapse; font-size:12px; margin-bottom:8px; }
+    thead th { background:#f0f4fb; padding:7px 10px; font-size:10px; font-weight:700; color:#003087; text-transform:uppercase; border-bottom:1.5px solid #003087; text-align:left; }
+    tbody td { padding:8px 10px; border-bottom:0.5px solid #e5e7eb; vertical-align:middle; }
+    tbody tr:nth-child(even) { background:#f8f9fc; }
+    .qty-cell { font-weight:800; color:#003087; font-size:16px; text-align:center; }
+    .footer { margin-top:30px; padding-top:10px; border-top:1px solid #e5e7eb; font-size:10px; color:#6b6b6b; display:flex; justify-content:space-between; }
+    @media print { body { padding:0; } }
+  </style></head><body>
+  <div class="header">
+    <h1>Solicitud de Pedido de Material</h1>
+    <p>Ilunion Seguridad · Contrato ADIF 4.26/28510.0005 · RC Sur</p>
+  </div>
+  <div class="banda"></div>
+  <div class="meta">
+    <div class="meta-item"><strong>Fecha solicitud</strong>${fecha}</div>
+    <div class="meta-item"><strong>Nº líneas</strong>${lineas.length}</div>
+    <div class="meta-item"><strong>Solicitado por</strong>Fran (Coordinador)</div>
+  </div>
+  ${notas?`<div class="notas"><strong>Notas:</strong> ${notas}</div>`:''}
+  ${Object.entries(porCategoria).map(([cat, items]) => `
+    <div class="cat-titulo">${cat}</div>
+    <table>
+      <thead><tr>
+        <th style="width:28%">Descripción</th>
+        <th style="width:18%">Ref. proveedor</th>
+        <th style="width:20%">Proveedor</th>
+        <th style="width:10%;text-align:center">Alm.</th>
+        <th style="width:10%;text-align:center">Furg.</th>
+        <th style="width:14%;text-align:center">Cantidad</th>
+      </tr></thead>
+      <tbody>${items.map(l => `
+        <tr>
+          <td>${l.nombre}</td>
+          <td>${l.ref}</td>
+          <td>${l.proveedor}</td>
+          <td style="text-align:center">${l.almacen}</td>
+          <td style="text-align:center">${l.furgon}</td>
+          <td class="qty-cell">${l.cantidad}</td>
+        </tr>`).join('')}
+      </tbody>
+    </table>
+  `).join('')}
+  <div class="footer">
+    <span>Solicitud generada el ${fecha} · Ilunion Seguridad</span>
+    <span>Total líneas: ${lineas.length}</span>
+  </div>
+  </body></html>`;
+
+  const ventana = window.open('', '_blank');
+  ventana.document.write(htmlPDF);
+  ventana.document.close();
+  ventana.focus();
+  setTimeout(() => ventana.print(), 500);
+}
+
+// ── Historial ─────────────────────────────────────────────────────────
+function poblarFiltroHistorial() {
+  const sel = document.getElementById('historialFiltroMaterial');
+  sel.innerHTML = '<option value="">Todos los materiales</option>' +
+    Object.entries(cachePanelStock.materiales||{})
+      .sort((a,b)=>a[1].nombre.localeCompare(b[1].nombre))
+      .map(([id,m]) => `<option value="${id}">${m.nombre}</option>`).join('');
+}
+
+function renderHistorial() {
+  if (!cachePanelStock) return;
+  const filtMat  = document.getElementById('historialFiltroMaterial').value;
+  const filtTipo = document.getElementById('historialFiltroTipo').value;
+  const movs = Object.values(cachePanelStock.movimientos||{})
+    .filter(m => (!filtMat||m.materialId===filtMat) && (!filtTipo||m.tipo===filtTipo))
+    .sort((a,b) => b.fecha < a.fecha ? -1 : 1)
+    .slice(0, 100);
+
+  const cont = document.getElementById('historialContainer');
+  if (movs.length === 0) { cont.innerHTML = '<div class="empty-state">Sin movimientos</div>'; return; }
+
+  // Consumo medio si hay filtro de material
+  let consumoMedioHtml = '';
+  if (filtMat) {
+    const usos = movs.filter(m => m.tipo === 'uso');
+    if (usos.length >= 2) {
+      const fechaMin = new Date(usos[usos.length-1].fecha);
+      const fechaMax = new Date(usos[0].fecha);
+      const meses    = Math.max(1, (fechaMax - fechaMin) / (1000*60*60*24*30));
+      const totalUso = usos.reduce((acc,m) => acc+m.cantidad, 0);
+      const medio    = (totalUso / meses).toFixed(1);
+      consumoMedioHtml = `<div style="background:#f0fdf4;border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:13px;color:var(--verde);font-weight:600">
+        📊 Consumo medio: <strong>${medio} uds/mes</strong> (${totalUso} uds en ${meses.toFixed(1)} meses)
+      </div>`;
+    }
+  }
+
+  cont.innerHTML = consumoMedioHtml + movs.map(m => {
+    const mat    = cachePanelStock.materiales[m.materialId];
+    const nombre = mat ? mat.nombre : m.materialId;
+    const esUso  = m.tipo === 'uso';
+    return `<div class="historial-row ${m.tipo}">
+      <div style="flex:1">
+        <div style="font-size:13px;font-weight:700">${nombre}</div>
+        ${m.nombreInstalacion?`<div style="font-size:11px;color:var(--gris-medio)">${m.nombreInstalacion}</div>`:''}
+        <div style="font-size:11px;color:var(--gris-medio)">${new Date(m.fecha+'T12:00:00').toLocaleDateString('es-ES')}</div>
+      </div>
+      <div style="text-align:right">
+        <div style="font-size:16px;font-weight:800;color:${esUso?'var(--rojo)':'var(--verde)'}">
+          ${esUso?'-':'+'}${m.cantidad}
+        </div>
+        <div style="font-size:10px;color:var(--gris-medio);text-transform:uppercase">${esUso?'Uso':'Reposición'}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// CONTACTOS (M33)
+// ═══════════════════════════════════════════════════════════════════════
+let cacheContactos      = null;
+let contactoEditandoId  = null;
+let contactoEditandoProv= null;
+
+async function cargarContactos() {
+  const cont = document.getElementById('contactosListContainer');
+  cont.innerHTML = '<div class="empty-state">Cargando...</div>';
+  const data = await corelinkGet('/api/contactos');
+  if (!data) { cont.innerHTML='<div class="empty-state">⚠ Sin conexión</div>'; return; }
+  cacheContactos = data.contactos || {};
+
+  if (Object.keys(cacheContactos).length === 0) {
+    cont.innerHTML = '<div class="empty-state">Sin contactos todavía. Pulsa "Añadir contacto" para empezar.</div>';
+    return;
+  }
+
+  const provinciasOrdenadas = Object.keys(cacheContactos).sort();
+  cont.innerHTML = provinciasOrdenadas.map(prov => {
+    const contactos = cacheContactos[prov];
+    return `<div class="provincia-grupo">
+      <div class="provincia-grupo-titulo">📍 ${prov}</div>
+      ${contactos.map(c => `
+        <div class="contacto-card">
+          <div class="ctc-nombre">${c.nombre || '<em style="color:var(--gris-medio)">Sin nombre</em>'}</div>
+          ${c.telefono ? `<div class="ctc-meta">📞 <a href="tel:${c.telefono}" style="color:var(--azul);text-decoration:none;font-weight:600">${c.telefono}</a></div>` : ''}
+          ${c.email    ? `<div class="ctc-meta">✉ <a href="mailto:${c.email}" style="color:var(--azul);text-decoration:none">${c.email}</a></div>` : ''}
+          ${c.horarios ? `<div class="ctc-meta">🕐 ${c.horarios}</div>` : ''}
+          ${c.notas    ? `<div class="ctc-meta" style="margin-top:4px;color:var(--gris-oscuro)">${c.notas}</div>` : ''}
+          <div class="ctc-btns">
+            <button class="btn-mini" onclick="editarContacto('${prov}','${c.id}')">✏ Editar</button>
+            <button class="btn-mini rojo" onclick="borrarContactoConfirm('${prov}','${c.id}')">🗑 Borrar</button>
+          </div>
+        </div>
+      `).join('')}
+    </div>`;
+  }).join('');
+}
+
+function abrirModalNuevoContacto() {
+  contactoEditandoId   = null;
+  contactoEditandoProv = null;
+  document.getElementById('modalContactoTitulo').textContent = 'Nuevo contacto';
+  document.getElementById('contactoProvincia').value = '';
+  document.getElementById('contactoProvincia').disabled = false;
+  ['contactoNombre','contactoTelefono','contactoEmail','contactoHorarios','contactoNotas'].forEach(id => document.getElementById(id).value='');
+  // Poblar select de provincias
+  const sel = document.getElementById('contactoProvincia');
+  sel.innerHTML = '<option value="">— Selecciona provincia —</option>' + PROVINCIAS.map(p=>`<option value="${p}">${p}</option>`).join('');
+  document.getElementById('modalContacto').classList.remove('hidden');
+}
+
+function editarContacto(prov, id) {
+  const c = (cacheContactos[prov]||[]).find(c=>c.id===id);
+  if (!c) return;
+  contactoEditandoId   = id;
+  contactoEditandoProv = prov;
+  document.getElementById('modalContactoTitulo').textContent = 'Editar contacto';
+  const sel = document.getElementById('contactoProvincia');
+  sel.innerHTML = `<option value="${prov}">${prov}</option>`;
+  sel.disabled  = true; // no se puede cambiar de provincia al editar
+  document.getElementById('contactoNombre').value    = c.nombre   || '';
+  document.getElementById('contactoTelefono').value  = c.telefono || '';
+  document.getElementById('contactoEmail').value     = c.email    || '';
+  document.getElementById('contactoHorarios').value  = c.horarios || '';
+  document.getElementById('contactoNotas').value     = c.notas    || '';
+  document.getElementById('modalContacto').classList.remove('hidden');
+}
+
+function cerrarModalContacto() { document.getElementById('modalContacto').classList.add('hidden'); }
+
+async function guardarContacto() {
+  const prov = document.getElementById('contactoProvincia').value;
+  if (!prov) { toast('Selecciona una provincia'); return; }
+  const contacto = {
+    nombre:   document.getElementById('contactoNombre').value.trim(),
+    telefono: document.getElementById('contactoTelefono').value.trim(),
+    email:    document.getElementById('contactoEmail').value.trim(),
+    horarios: document.getElementById('contactoHorarios').value.trim(),
+    notas:    document.getElementById('contactoNotas').value.trim(),
+  };
+  toast('Guardando...');
+  let resp;
+  if (contactoEditandoId) {
+    resp = await corelinkPost('/api/contactos/editar', { provincia: prov, id: contactoEditandoId, contacto });
+  } else {
+    resp = await corelinkPost('/api/contactos', { provincia: prov, contacto });
+  }
+  if (resp.ok) { toast('Contacto guardado ✓'); cerrarModalContacto(); cargarContactos(); }
+  else { toast('Sin conexión'); }
+}
+
+async function borrarContactoConfirm(prov, id) {
+  if (!confirm('¿Borrar este contacto?')) return;
+  toast('Borrando...');
+  const resp = await corelinkPost('/api/contactos/borrar',{provincia:prov,id});
+  if (resp.ok) { toast('Contacto borrado ✓'); cargarContactos(); } else { toast('Sin conexión'); }
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// AJUSTES (M25) — tiempos estimados
+// ═══════════════════════════════════════════════════════════════════════
+let cacheAjustes = null;
+
+// ── Submenú Ajustes ──────────────────────────────────────────────────
+let ajusteTabActual = 'accesos';
+function setAjusteTab(tab) {
+  ajusteTabActual = tab;
+  ['accesos','general','informes','contrato','tiempos'].forEach(t => {
+    document.getElementById('ajusteTab_'+t).classList.toggle('active', t === tab);
+    document.getElementById('ajustePanel_'+t).classList.toggle('hidden', t !== tab);
+  });
+  if (tab === 'accesos') cargarLogAccesos();
+}
+
+async function cargarAjustes() {
+  const data = await corelinkGet('/api/ajustes');
+  cacheAjustes = data ? data.ajustes : { tiemposPorTamano:{ pequena:120,mediana:180,grande:240 }, tiemposPorInstalacion:{} };
+  document.getElementById('ajusteTiempoPequena').value = cacheAjustes.tiemposPorTamano.pequena;
+  document.getElementById('ajusteTiempoMediana').value = cacheAjustes.tiemposPorTamano.mediana;
+  document.getElementById('ajusteTiempoGrande').value  = cacheAjustes.tiemposPorTamano.grande;
+  // M38
+  if (cacheAjustes.tecnico) {
+    document.getElementById('ajusteTecnicoNombre').value    = cacheAjustes.tecnico.nombre    || '';
+    document.getElementById('ajusteTecnicoMatricula').value = cacheAjustes.tecnico.matricula || '';
+  }
+  if (cacheAjustes.informe) {
+    document.getElementById('ajusteEmpresa').value   = cacheAjustes.informe.nombreEmpresa || '';
+    document.getElementById('ajustePiePagina').value = cacheAjustes.informe.piePagina     || '';
+  }
+  if (cacheAjustes.contrato) {
+    document.getElementById('ajusteVisitasTrim').value  = cacheAjustes.contrato.visitasTrimestrales || 4;
+    document.getElementById('ajusteVisitasAnual').value = cacheAjustes.contrato.visitasAnuales      || 1;
+  }
+  document.getElementById('ajusteMensajeDia').value = cacheAjustes.mensajeDelDia || '';
+  renderAjusteInstalaciones();
+  renderUsuariosPNC(cacheAjustes);
+  renderTecnicosPNT(cacheAjustes);
+  cargarLogAccesos();
+}
+
+async function guardarTiemposPorTamano() {
+  const body = { tiemposPorTamano: {
+    pequena: parseInt(document.getElementById('ajusteTiempoPequena').value,10)||120,
+    mediana: parseInt(document.getElementById('ajusteTiempoMediana').value,10)||180,
+    grande:  parseInt(document.getElementById('ajusteTiempoGrande').value,10)||240,
+  }};
+  toast('Guardando...');
+  const resp = await corelinkPost('/api/ajustes', body);
+  if (resp.ok) { toast('Tiempos guardados ✓'); cacheAjustes = resp.ajustes||cacheAjustes; }
+  else { toast('Sin conexión'); }
+}
+
+function renderAjusteInstalaciones() {
+  const q    = (document.getElementById('ajusteInstSearch').value||'').toLowerCase();
+  const cont = document.getElementById('ajusteInstListContainer');
+  const lista = INSTALACIONES.filter(i => !q || i.nombre.toLowerCase().includes(q) || i.codigo.toLowerCase().includes(q));
+  const tpi   = (cacheAjustes && cacheAjustes.tiemposPorInstalacion) || {};
+  const tpt   = (cacheAjustes && cacheAjustes.tiemposPorTamano)      || {pequena:120,mediana:180,grande:240};
+  const mapTam= { 'Pequeña':'pequena','Mediana':'mediana','Grande':'grande' };
+
+  cont.innerHTML = lista.map(i => {
+    const tiempoDefault = tpt[mapTam[i.tamaño]||'mediana'];
+    const tiempoIndiv   = tpi[i.codigo];
+    return `<div class="ajuste-row">
+      <div>
+        <div class="ajuste-label">${i.nombre}</div>
+        <div class="ajuste-sub">${i.codigo} · ${i.provincia} · ${i.tamaño} (por defecto: ${tiempoDefault} min)</div>
+      </div>
+      <div class="ajuste-input-wrap">
+        <input type="number" id="tpi_${i.codigo}" value="${tiempoIndiv||''}" placeholder="${tiempoDefault}" min="0" step="5" style="width:80px">
+        <span style="font-size:12px;color:var(--gris-medio)">min</span>
+        <button class="btn-mini verde" onclick="guardarTiempoInstalacion('${i.codigo}')">✓</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function guardarTiempoInstalacion(codigo) {
+  const val = document.getElementById('tpi_'+codigo).value;
+  const minutos = val === '' ? null : parseInt(val,10);
+  toast('Guardando...');
+  const resp = await corelinkPost('/api/ajustes', { tiemposPorInstalacion: { [codigo]: minutos } });
+  if (resp.ok) {
+    toast('Tiempo guardado ✓');
+    if (cacheAjustes) {
+      if (minutos===null) delete cacheAjustes.tiemposPorInstalacion[codigo];
+      else cacheAjustes.tiemposPorInstalacion[codigo] = minutos;
+    }
+  } else { toast('Sin conexión'); }
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// FOTO MODAL (M17) — ampliar fotos de incidencias
+// ═══════════════════════════════════════════════════════════════════════
+function abrirFotoModal(src) {
+  document.getElementById('fotoModalImg').src = src;
+  document.getElementById('fotoModal').classList.remove('hidden');
+}
+function cerrarFotoModal() {
+  document.getElementById('fotoModal').classList.add('hidden');
+  document.getElementById('fotoModalImg').src = '';
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// AUSENCIAS (M35)
+// ═══════════════════════════════════════════════════════════════════════
+const LABEL_AUSENCIA = { vacaciones:'🏖 Vacaciones', libre:'📅 Día libre', baja:'🏥 Baja', festivo:'🎉 Festivo' };
+let cacheAusencias = null;
+
+async function cargarAusencias() {
+  const cont = document.getElementById('ausenciasListContainer');
+  if (!cont) return;
+  cont.innerHTML = '<div class="empty-state">Cargando...</div>';
+  const data = await corelinkGet('/api/ausencias');
+  cacheAusencias = data ? data.ausencias : [];
+  renderAusencias();
+}
+
+function renderAusencias() {
+  const cont = document.getElementById('ausenciasListContainer');
+  if (!cont) return;
+  const lista = (cacheAusencias || []).sort((a,b) => a.fechaInicio < b.fechaInicio ? 1 : -1);
+  if (lista.length === 0) { cont.innerHTML = '<div class="empty-state">Sin ausencias registradas</div>'; return; }
+  cont.innerHTML = lista.map(a => {
+    const mismaFecha = a.fechaInicio === a.fechaFin;
+    const fechaTxt = mismaFecha
+      ? new Date(a.fechaInicio+'T12:00:00').toLocaleDateString('es-ES')
+      : new Date(a.fechaInicio+'T12:00:00').toLocaleDateString('es-ES') + ' — ' + new Date(a.fechaFin+'T12:00:00').toLocaleDateString('es-ES');
+    return `<div class="ausencia-card ${a.tipo}">
+      <div>
+        <div class="ausencia-tipo" style="color:${a.tipo==='vacaciones'?'#2563eb':a.tipo==='libre'?'var(--verde)':a.tipo==='baja'?'var(--rojo)':'#92400e'}">${LABEL_AUSENCIA[a.tipo]||a.tipo}</div>
+        <div class="ausencia-fechas">${fechaTxt}</div>
+        ${a.nota?`<div class="ausencia-nota">${a.nota}</div>`:''}
+      </div>
+      <button class="btn-mini rojo" onclick="borrarAusencia('${a.id}')">🗑</button>
+    </div>`;
+  }).join('');
+}
+
+function abrirModalNuevaAusencia() {
+  document.getElementById('ausenciaInicio').value = new Date().toISOString().split('T')[0];
+  document.getElementById('ausenciaFin').value    = new Date().toISOString().split('T')[0];
+  document.getElementById('ausenciaNota').value   = '';
+  document.getElementById('modalAusencia').classList.remove('hidden');
+}
+function cerrarModalAusencia() { document.getElementById('modalAusencia').classList.add('hidden'); }
+
+async function guardarAusencia() {
+  const tipo       = document.getElementById('ausenciaTipo').value;
+  const fechaInicio= document.getElementById('ausenciaInicio').value;
+  const fechaFin   = document.getElementById('ausenciaFin').value;
+  const nota       = document.getElementById('ausenciaNota').value.trim();
+  if (!fechaInicio) { toast('Indica una fecha de inicio'); return; }
+  toast('Guardando...');
+  const resp = await corelinkPost('/api/ausencias', { tipo, fechaInicio, fechaFin, nota });
+  if (resp.ok) { toast('Ausencia guardada ✓'); cerrarModalAusencia(); cacheAusencias = null; cargarAusencias(); }
+  else { toast('Sin conexión'); }
+}
+
+async function borrarAusencia(id) {
+  if (!confirm('¿Borrar esta ausencia?')) return;
+  const resp = await corelinkPost('/api/ausencias/borrar', { id });
+  if (resp.ok) { toast('Borrada ✓'); cacheAusencias = null; cargarAusencias(); }
+  else { toast('Sin conexión'); }
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// BOLSA DE HORAS (M36)
+// ═══════════════════════════════════════════════════════════════════════
+let cacheHoras = null;
+let instHorasSeleccionada = null;
+
+async function cargarHoras() {
+  document.getElementById('horasSaldoBox').innerHTML = '<div class="empty-state">Cargando...</div>';
+  document.getElementById('horasHistorialContainer').innerHTML = '';
+  document.getElementById('horasFecha').value = new Date().toISOString().split('T')[0];
+  const data = await corelinkGet('/api/horas');
+  cacheHoras = data ? data.horas : { saldo: 0, movimientos: [] };
+  renderHoras();
+}
+
+function renderHoras() {
+  const saldo = cacheHoras.saldo || 0;
+  const clase = saldo > 0 ? 'positivo' : saldo < 0 ? 'negativo' : 'neutro';
+  document.getElementById('horasSaldoBox').innerHTML = `
+    <div class="saldo-box">
+      <div class="saldo-num ${clase}">${saldo > 0 ? '+' : ''}${saldo}h</div>
+      <div style="font-size:12px;color:var(--gris-medio);margin-top:4px;font-weight:700;text-transform:uppercase">Saldo actual</div>
+    </div>`;
+  const movs = [...(cacheHoras.movimientos || [])].sort((a,b) => b.fecha < a.fecha ? -1 : 1);
+  const cont = document.getElementById('horasHistorialContainer');
+  if (movs.length === 0) { cont.innerHTML = '<div class="empty-state">Sin movimientos todavía</div>'; return; }
+  cont.innerHTML = movs.map(m => {
+    const pos = m.horas >= 0;
+    return `<div class="hora-mov ${pos?'positivo':'negativo'}">
+      <div>
+        <div style="font-size:13px;font-weight:700">${m.motivo||'Sin descripción'}</div>
+        ${m.nombreInstalacion?`<div style="font-size:11px;color:var(--gris-medio)">${m.nombreInstalacion}</div>`:''}
+        <div style="font-size:11px;color:var(--gris-medio)">${new Date(m.fecha+'T12:00:00').toLocaleDateString('es-ES')}</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <span class="hora-num ${pos?'pos':'neg'}">${pos?'+':''}${m.horas}h</span>
+        <button class="btn-mini rojo" onclick="borrarMovimientoHoras('${m.id}')">🗑</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function filtrarInstalacionesHoras() {
+  const q = document.getElementById('horasInstSearch').value.toLowerCase();
+  const listEl = document.getElementById('horasInstList');
+  if (!q) { listEl.innerHTML = ''; return; }
+  const res = INSTALACIONES.filter(i => i.nombre.toLowerCase().includes(q) || i.codigo.toLowerCase().includes(q)).slice(0,6);
+  listEl.innerHTML = res.map(i => `<div class="inst-item-mini" onclick="seleccionarInstHoras('${i.codigo}')"><div>${i.nombre}</div><div class="meta">${i.provincia}</div></div>`).join('');
+}
+function seleccionarInstHoras(codigo) {
+  instHorasSeleccionada = INSTALACIONES.find(i => i.codigo === codigo);
+  document.getElementById('horasInstList').innerHTML = '';
+  document.getElementById('horasInstSearch').value  = '';
+  const chip = document.getElementById('horasInstSeleccionada');
+  chip.classList.remove('hidden');
+  chip.innerHTML = `<span>${instHorasSeleccionada.nombre}</span><button onclick="document.getElementById('horasInstSeleccionada').classList.add('hidden');instHorasSeleccionada=null">×</button>`;
+}
+
+async function guardarMovimientoHoras() {
+  const horas  = parseFloat(document.getElementById('horasValor').value);
+  const motivo = document.getElementById('horasMotivo').value.trim();
+  const fecha  = document.getElementById('horasFecha').value;
+  if (isNaN(horas) || horas === 0) { toast('Indica las horas (positivo suma, negativo descuenta)'); return; }
+  toast('Guardando...');
+  const resp = await corelinkPost('/api/horas', {
+    horas, motivo, fecha,
+    codigoInstalacion: instHorasSeleccionada ? instHorasSeleccionada.codigo : null,
+    nombreInstalacion: instHorasSeleccionada ? instHorasSeleccionada.nombre : null
+  });
+  if (resp.ok) {
+    toast('Movimiento añadido ✓');
+    document.getElementById('horasValor').value = '';
+    document.getElementById('horasMotivo').value = '';
+    instHorasSeleccionada = null;
+    document.getElementById('horasInstSeleccionada').classList.add('hidden');
+    cacheHoras = null; cargarHoras();
+  } else { toast('Sin conexión'); }
+}
+
+async function borrarMovimientoHoras(id) {
+  if (!confirm('¿Borrar este movimiento?')) return;
+  const resp = await corelinkPost('/api/horas/borrar', { id });
+  if (resp.ok) { toast('Borrado ✓'); cacheHoras = null; cargarHoras(); }
+  else { toast('Sin conexión'); }
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// MENSAJES LIVE (M43)
+// ═══════════════════════════════════════════════════════════════════════
+let cacheMensajes = [];
+let mensajesPollingTimer = null;
+
+async function cargarMensajes() {
+  const cont = document.getElementById('mensajesListContainer');
+  if (!cont) return;
+  cont.innerHTML = '<div class="empty-state">Cargando...</div>';
+  const data = await corelinkGet('/api/mensajes');
+  cacheMensajes = data ? data.mensajes : [];
+  renderMensajes();
+  // Marcar mensajes de Jesús como leídos
+  await corelinkPost('/api/mensajes/leer', { de: 'jesus' });
+  actualizarBadge('mensajesBadgeTab', 0);
+  // Polling cada 15 segundos mientras la sección está activa
+  clearInterval(mensajesPollingTimer);
+  mensajesPollingTimer = setInterval(async () => {
+    if (seccionActual !== 'mensajes') { clearInterval(mensajesPollingTimer); return; }
+    const ultimo = cacheMensajes.length > 0 ? cacheMensajes[cacheMensajes.length-1].timestamp : '';
+    const nuevos = await corelinkGet('/api/mensajes' + (ultimo ? '?desde='+encodeURIComponent(ultimo) : ''));
+    if (nuevos && nuevos.mensajes && nuevos.mensajes.length > 0) {
+      cacheMensajes = [...cacheMensajes, ...nuevos.mensajes];
+      renderMensajes();
+      await corelinkPost('/api/mensajes/leer', { de: 'jesus' });
+    }
+  }, 15000);
+}
+
+function renderMensajes() {
+  const cont = document.getElementById('mensajesListContainer');
+  if (!cont) return;
+  if (cacheMensajes.length === 0) { cont.innerHTML = '<div class="empty-state">Sin mensajes todavía. Empieza la conversación.</div>'; return; }
+  cont.innerHTML = cacheMensajes.map(m => {
+    const hora = new Date(m.timestamp).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+    const fecha = new Date(m.timestamp).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
+    return `<div class="msg-wrap ${m.de}">
+      <div style="display:flex;align-items:flex-end;gap:6px;${m.de==='fran'?'flex-direction:row-reverse':''}">
+        <div class="msg-burbuja msg-${m.de}">${m.texto}</div>
+        <button onclick="borrarMensaje('${m.id}')" style="background:none;border:none;cursor:pointer;color:var(--gris-borde);font-size:14px;padding:2px;flex-shrink:0" title="Borrar mensaje">🗑</button>
+      </div>
+      <div class="msg-meta">${m.de === 'fran' ? 'Tú' : 'Jesús'} · ${fecha} ${hora}</div>
+    </div>`;
+  }).join('');
+  cont.scrollTop = cont.scrollHeight;
+}
+
+async function borrarMensaje(id) {
+  if (!confirm('¿Borrar este mensaje? Desaparecerá de las dos apps.')) return;
+  const resp = await corelinkPost('/api/mensajes/borrar', { id });
+  if (resp.ok) {
+    cacheMensajes = cacheMensajes.filter(m => m.id !== id);
+    renderMensajes();
+  } else { toast('Sin conexión'); }
+}
+
+async function borrarTodoChat() {
+  if (!confirm('¿Borrar todo el historial de mensajes? No se puede deshacer y desaparecerá de las dos apps.')) return;
+  const resp = await corelinkPost('/api/mensajes/borrar-todo', {});
+  if (resp.ok) { cacheMensajes = []; renderMensajes(); toast('Historial borrado ✓'); }
+  else { toast('Sin conexión'); }
+}
+
+async function enviarMensaje() {
+  const texto = document.getElementById('mensajeTexto').value.trim();
+  if (!texto) return;
+  document.getElementById('mensajeTexto').value = '';
+  const resp = await corelinkPost('/api/mensajes', { de: 'fran', texto });
+  if (resp.ok) {
+    cacheMensajes.push({ id: resp.id, de: 'fran', texto, timestamp: new Date().toISOString(), leido: true });
+    renderMensajes();
+  } else { toast('Sin conexión'); }
+}
+
+// Badge mensajes nuevos de Jesús (polling ligero global)
+async function checkMensajesNuevos() {
+  if (seccionActual === 'mensajes') return;
+  const data = await corelinkGet('/api/mensajes');
+  if (!data) return;
+  const noLeidos = data.mensajes.filter(m => m.de === 'jesus' && !m.leido).length;
+  actualizarBadge('mensajesBadgeTab', noLeidos);
+}
+setInterval(checkMensajesNuevos, 60000);
+
+// ═══════════════════════════════════════════════════════════════════════
+// RESUMEN TRIMESTRAL (M42)
+// ═══════════════════════════════════════════════════════════════════════
+const FECHA_INICIO_CONTRATO = new Date('2026-07-01');
+
+function calcularTrimestres() {
+  const hoy = new Date();
+  const trimestres = [];
+  let fecha = new Date(FECHA_INICIO_CONTRATO);
+  while (fecha <= hoy) {
+    const inicio = new Date(fecha);
+    const fin    = new Date(fecha); fin.setMonth(fin.getMonth() + 3); fin.setDate(fin.getDate() - 1);
+    const num    = trimestres.length + 1;
+    const anio   = Math.floor(trimestres.length / 4) + 1;
+    const trimNum= (trimestres.length % 4) + 1;
+    trimestres.push({
+      label: `T${trimNum} Año ${anio} (${inicio.toLocaleDateString('es-ES',{day:'numeric',month:'short',year:'numeric'})} — ${fin.toLocaleDateString('es-ES',{day:'numeric',month:'short',year:'numeric'})})`,
+      inicio: inicio.toISOString().split('T')[0],
+      fin:    fin.toISOString().split('T')[0],
+      num
+    });
+    fecha.setMonth(fecha.getMonth() + 3);
+  }
+  return trimestres;
+}
+
+function iniciarTrimestral() {
+  const sel = document.getElementById('trimestralSelector');
+  const trimestres = calcularTrimestres();
+  sel.innerHTML = trimestres.reverse().map((t, i) =>
+    `<option value="${t.inicio}|${t.fin}"${i===0?' selected':''}>${t.label}</option>`
+  ).join('');
+  cargarResumenTrimestral();
+}
+
+async function cargarResumenTrimestral() {
+  const cont = document.getElementById('trimestralContenido');
+  cont.innerHTML = '<div class="empty-state">Cargando...</div>';
+  const val = document.getElementById('trimestralSelector').value;
+  if (!val) return;
+  const [inicio, fin] = val.split('|');
+
+  const [checkData, incData, agendaData, horasData] = await Promise.all([
+    corelinkGet('/api/checklists'),
+    corelinkGet('/api/incidencias'),
+    corelinkGet('/api/agenda'),
+    corelinkGet('/api/horas')
+  ]);
+
+  const checklists  = checkData  ? Object.values(checkData.checklists)   : [];
+  const incidencias = incData    ? Object.values(incData.incidencias)     : [];
+  const tareas      = agendaData ? Object.values(agendaData.tareas)       : [];
+  const horas       = horasData  ? horasData.horas                        : { saldo: 0, movimientos: [] };
+
+  const enRango = f => f >= inicio && f <= fin;
+
+  const visitas   = checklists.filter(c => enRango(c.fecha));
+  const visitasTrim = visitas.filter(c => c.tipo === 'trimestral' || c.tipo === 'pci-trim');
+  const visitasAnual= visitas.filter(c => c.tipo === 'anual');
+  const incAbiertas = incidencias.filter(i => enRango(i.fechaApertura) && i.estado === 'abierta');
+  const incCerradas = incidencias.filter(i => enRango(i.fechaApertura) && i.estado === 'resuelta');
+  const tareasComp  = tareas.filter(t => enRango(t.fecha) && t.estado === 'completada');
+  const horasMov    = (horas.movimientos||[]).filter(m => enRango(m.fecha));
+  const horasTotales= Math.round(horasMov.reduce((a,m) => a+m.horas, 0) * 100) / 100;
+
+  // Instalaciones visitadas únicas
+  const instVisitadas = new Set(visitas.map(c => c.codigoInstalacion));
+
+  // Incidencias urgentes
+  const urgentes = incidencias.filter(i => enRango(i.fechaApertura) && i.urgente);
+
+  cont.innerHTML = `
+    <div class="stat-grid" style="margin-bottom:16px">
+      <div class="stat-box info"><div class="stat-num">${visitas.length}</div><div class="stat-label">Visitas totales</div></div>
+      <div class="stat-box info"><div class="stat-num">${instVisitadas.size}</div><div class="stat-label">Instalaciones visitadas</div></div>
+      <div class="stat-box ${incAbiertas.length>0?'warn':'ok'}"><div class="stat-num">${incAbiertas.length}</div><div class="stat-label">Incidencias abiertas</div></div>
+      <div class="stat-box ok"><div class="stat-num">${incCerradas.length}</div><div class="stat-label">Incidencias cerradas</div></div>
+    </div>
+    <div class="stat-grid" style="margin-bottom:16px">
+      <div class="stat-box info"><div class="stat-num">${visitasTrim.length}</div><div class="stat-label">Visitas trimestrales</div></div>
+      <div class="stat-box info"><div class="stat-num">${visitasAnual.length}</div><div class="stat-label">Visitas anuales</div></div>
+      <div class="stat-box ${urgentes.length>0?'critical':'ok'}"><div class="stat-num">${urgentes.length}</div><div class="stat-label">Urgentes</div></div>
+      <div class="stat-box ${horasTotales>0?'warn':horasTotales<0?'critical':'ok'}"><div class="stat-num">${horasTotales>0?'+':''}${horasTotales}h</div><div class="stat-label">Horas extra</div></div>
+    </div>
+    ${visitas.length > 0 ? `
+    <div style="margin-top:14px">
+      <div class="card-title" style="margin-bottom:10px">Instalaciones visitadas</div>
+      ${[...instVisitadas].map(cod => {
+        const v = visitas.filter(c => c.codigoInstalacion === cod);
+        const nombre = v[0].nombreInstalacion || cod;
+        const incs   = incidencias.filter(i => i.codigoInstalacion === cod && enRango(i.fechaApertura));
+        return `<div class="simple-list-item">
+          <div class="left">${nombre}</div>
+          <div class="right">${v.length} visita${v.length!==1?'s':''} · ${incs.length} incidencia${incs.length!==1?'s':''}</div>
+        </div>`;
+      }).join('')}
+    </div>` : ''}
+  `;
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// AJUSTES M38 — funciones adicionales
+// ═══════════════════════════════════════════════════════════════════════
+async function guardarAjustesTecnico() {
+  const resp = await corelinkPost('/api/ajustes', { tecnico: {
+    nombre:   document.getElementById('ajusteTecnicoNombre').value.trim(),
+    matricula:document.getElementById('ajusteTecnicoMatricula').value.trim()
+  }});
+  if (resp.ok) toast('Datos del técnico guardados ✓'); else toast('Sin conexión');
+}
+
+async function guardarAjustesInforme() {
+  const resp = await corelinkPost('/api/ajustes', { informe: {
+    nombreEmpresa: document.getElementById('ajusteEmpresa').value.trim(),
+    piePagina:     document.getElementById('ajustePiePagina').value.trim()
+  }});
+  if (resp.ok) toast('Ajustes de informe guardados ✓'); else toast('Sin conexión');
+}
+
+async function guardarAjustesContrato() {
+  const resp = await corelinkPost('/api/ajustes', { contrato: {
+    visitasTrimestrales: parseInt(document.getElementById('ajusteVisitasTrim').value,10)||4,
+    visitasAnuales:      parseInt(document.getElementById('ajusteVisitasAnual').value,10)||1
+  }});
+  if (resp.ok) toast('Ajustes de contrato guardados ✓'); else toast('Sin conexión');
+}
+
+async function guardarMensajeDelDia() {
+  const resp = await corelinkPost('/api/ajustes', { mensajeDelDia: document.getElementById('ajusteMensajeDia').value.trim() });
+  if (resp.ok) toast('Mensaje del día guardado ✓'); else toast('Sin conexión');
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// GESTIÓN USUARIOS PNC Y TÉCNICOS PNT
+// ═══════════════════════════════════════════════════════════════════════
+let usuarioEditandoId = null;
+let tecnicoEditandoId = null;
+const LABEL_ROL = { admin:'👑 Administrador', editor:'✏ Editor', readonly:'👁 Solo lectura' };
+
+async function cargarLogAccesos() {
+  const cont = document.getElementById('logAccesosContainer');
+  if (!cont) return;
+  const data = await corelinkGet('/api/accesos');
+  const accesos = data ? data.accesos : [];
+  if (accesos.length === 0) {
+    cont.innerHTML = '<div class="empty-state">Sin accesos registrados todavía</div>';
+    return;
+  }
+  cont.innerHTML = accesos.map(a => {
+    const fecha = new Date(a.timestamp).toLocaleDateString('es-ES', { day:'2-digit', month:'2-digit', year:'numeric' });
+    const hora  = new Date(a.timestamp).toLocaleTimeString('es-ES', { hour:'2-digit', minute:'2-digit' });
+    const esPNC = a.app === 'PNC';
+    return `<div style="display:flex;align-items:center;gap:10px;padding:9px 12px;background:var(--blanco);border-radius:8px;margin-bottom:6px;box-shadow:var(--sombra);border-left:3px solid ${esPNC?'var(--azul)':'var(--verde)'}">
+      <span style="font-size:10px;font-weight:800;padding:2px 7px;border-radius:99px;background:${esPNC?'var(--azul-claro)':'#dcfce7'};color:${esPNC?'var(--azul)':'#166534'}">${a.app}</span>
+      <div style="flex:1">
+        <div style="font-size:13px;font-weight:700">${a.nombre}</div>
+        ${a.usuario?`<div style="font-size:11px;color:var(--gris-medio)">@${a.usuario} · ${a.rol||''}</div>`:''}
+        ${a.matricula?`<div style="font-size:11px;color:var(--gris-medio)">${a.matricula}</div>`:''}
+      </div>
+      <div style="text-align:right;font-size:12px;color:var(--gris-medio);white-space:nowrap">
+        <div style="font-weight:600">${hora}</div>
+        <div>${fecha}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderUsuariosPNC(ajustes) {
+  const cont = document.getElementById('usuariosPNCContainer');
+  if (!cont) return;
+  const usuarios = ajustes.usuariosPNC || [];
+  cont.innerHTML = usuarios.map(u => `
+    <div class="simple-list-item" style="flex-direction:column;align-items:flex-start;gap:4px;margin-bottom:8px">
+      <div style="display:flex;justify-content:space-between;width:100%;align-items:center">
+        <div>
+          <div style="font-size:14px;font-weight:700">${u.nombre} <span style="font-size:11px;color:var(--gris-medio)">(@${u.usuario})</span></div>
+          <div style="font-size:12px;color:var(--gris-medio)">${LABEL_ROL[u.rol]||u.rol}</div>
+        </div>
+        <div style="display:flex;gap:6px">
+          <button class="btn-mini" onclick="abrirModalUsuarioPNC('${u.id}')">✏ Editar</button>
+          ${u.rol!=='admin'?`<button class="btn-mini rojo" onclick="borrarUsuarioPNC('${u.id}')">🗑</button>`:''}
+        </div>
+      </div>
+    </div>
+  `).join('') || '<div class="empty-state">Sin usuarios</div>';
+}
+
+function renderTecnicosPNT(ajustes) {
+  const cont = document.getElementById('tecnicosPNTContainer');
+  if (!cont) return;
+  const tecnicos = ajustes.tecnicosPNT || [];
+  cont.innerHTML = tecnicos.map(t => `
+    <div class="simple-list-item" style="flex-direction:column;align-items:flex-start;gap:4px;margin-bottom:8px">
+      <div style="display:flex;justify-content:space-between;width:100%;align-items:center">
+        <div>
+          <div style="font-size:14px;font-weight:700">${t.nombre}</div>
+          <div style="font-size:12px;color:var(--gris-medio)">${t.matricula||'Sin matrícula'} · PIN: ${'•'.repeat(t.pin?.length||4)}</div>
+        </div>
+        <div style="display:flex;gap:6px">
+          <button class="btn-mini" onclick="abrirModalTecnicoPNT('${t.id}')">✏ Editar</button>
+          <button class="btn-mini rojo" onclick="borrarTecnicoPNT('${t.id}')">🗑</button>
+        </div>
+      </div>
+    </div>
+  `).join('') || '<div class="empty-state">Sin técnicos</div>';
+}
+
+// ── Modales usuario PNC ───────────────────────────────────────────────
+function abrirModalUsuarioPNC(id) {
+  usuarioEditandoId = id;
+  document.getElementById('modalUsuarioPNCTitulo').textContent = id ? 'Editar usuario' : 'Nuevo usuario';
+  if (id && cacheAjustes) {
+    const u = (cacheAjustes.usuariosPNC||[]).find(u => u.id === id);
+    if (u) {
+      document.getElementById('uNombre').value   = u.nombre||'';
+      document.getElementById('uUsuario').value  = u.usuario||'';
+      document.getElementById('uPassword').value = '';
+      document.getElementById('uRol').value      = u.rol === 'admin' ? 'editor' : u.rol;
+      // Si es admin, deshabilitar el rol
+      document.getElementById('uRol').disabled   = u.rol === 'admin';
+    }
+  } else {
+    ['uNombre','uUsuario','uPassword'].forEach(f => document.getElementById(f).value='');
+    document.getElementById('uRol').value    = 'editor';
+    document.getElementById('uRol').disabled = false;
+  }
+  document.getElementById('modalUsuarioPNC').classList.remove('hidden');
+}
+function cerrarModalUsuarioPNC() { document.getElementById('modalUsuarioPNC').classList.add('hidden'); }
+async function guardarUsuarioPNC() {
+  const nombre   = document.getElementById('uNombre').value.trim();
+  const usuario  = document.getElementById('uUsuario').value.trim();
+  const password = document.getElementById('uPassword').value;
+  const rol      = document.getElementById('uRol').value;
+  if (!nombre || !usuario) { toast('Nombre y usuario son obligatorios'); return; }
+  const body = { id: usuarioEditandoId||null, nombre, usuario, rol };
+  if (password) body.password = password;
+  toast('Guardando...');
+  const resp = await corelinkPost('/api/usuarios/pnc', body);
+  if (resp.ok) { toast('Usuario guardado ✓'); cerrarModalUsuarioPNC(); cargarAjustes(); }
+  else { toast('Sin conexión'); }
+}
+async function borrarUsuarioPNC(id) {
+  if (!confirm('¿Eliminar este usuario?')) return;
+  const resp = await corelinkPost('/api/usuarios/pnc/borrar', { id });
+  if (resp.ok) { toast('Usuario eliminado ✓'); cargarAjustes(); }
+  else { toast(resp.error || 'Sin conexión'); }
+}
+
+// ── Modales técnico PNT ───────────────────────────────────────────────
+function abrirModalTecnicoPNT(id) {
+  tecnicoEditandoId = id;
+  document.getElementById('modalTecnicoPNTTitulo').textContent = id ? 'Editar técnico' : 'Nuevo técnico';
+  if (id && cacheAjustes) {
+    const t = (cacheAjustes.tecnicosPNT||[]).find(t => t.id === id);
+    if (t) {
+      document.getElementById('tNombre').value    = t.nombre||'';
+      document.getElementById('tMatricula').value = t.matricula||'';
+      document.getElementById('tPin').value       = '';
+    }
+  } else {
+    ['tNombre','tMatricula','tPin'].forEach(f => document.getElementById(f).value='');
+  }
+  document.getElementById('modalTecnicoPNT').classList.remove('hidden');
+}
+function cerrarModalTecnicoPNT() { document.getElementById('modalTecnicoPNT').classList.add('hidden'); }
+async function guardarTecnicoPNT() {
+  const nombre    = document.getElementById('tNombre').value.trim();
+  const matricula = document.getElementById('tMatricula').value.trim();
+  const pin       = document.getElementById('tPin').value.trim();
+  if (!nombre) { toast('El nombre es obligatorio'); return; }
+  if (!tecnicoEditandoId && (!pin || pin.length < 4)) { toast('El PIN debe tener 4 dígitos'); return; }
+  const body = { id: tecnicoEditandoId||null, nombre, matricula };
+  if (pin) body.pin = pin;
+  toast('Guardando...');
+  const resp = await corelinkPost('/api/tecnicos/pnt', body);
+  if (resp.ok) { toast('Técnico guardado ✓'); cerrarModalTecnicoPNT(); cargarAjustes(); }
+  else { toast('Sin conexión'); }
+}
+async function borrarTecnicoPNT(id) {
+  if (!confirm('¿Eliminar este técnico?')) return;
+  const resp = await corelinkPost('/api/tecnicos/pnt/borrar', { id });
+  if (resp.ok) { toast('Técnico eliminado ✓'); cargarAjustes(); }
+  else { toast('Sin conexión'); }
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// AUTENTICACIÓN PNC
+// ═══════════════════════════════════════════════════════════════════════
+let sesionPNC = null; // { nombre, rol, id }
+
+async function iniciarSesionPNC() {
+  const usuario  = document.getElementById('loginUsuario').value.trim();
+  const password = document.getElementById('loginPassword').value;
+  const errEl    = document.getElementById('loginError');
+  errEl.textContent = '';
+  if (!usuario || !password) { errEl.textContent = 'Introduce usuario y contraseña'; return; }
+
+  const btn = document.querySelector('.login-btn');
+  btn.textContent = 'Verificando...'; btn.disabled = true;
+
+  try {
+    const resp = await fetch(CORELINK_URL + '/api/auth/pnc', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CoreLink-Key': CORELINK_API_KEY },
+      body: JSON.stringify({ usuario, password })
+    });
+    const data = await resp.json();
+    if (data.ok) {
+      sesionPNC = { nombre: data.nombre, rol: data.rol, id: data.id };
+      localStorage.setItem('corelink_pnc_session', JSON.stringify(sesionPNC));
+      document.getElementById('loginScreen').style.display = 'none';
+      document.getElementById('appContent').classList.remove('hidden');
+      // Mostrar nombre en header
+      document.getElementById('corelinkBadge').insertAdjacentHTML('beforebegin',
+        `<span style="font-size:11px;color:rgba(255,255,255,0.7);margin-right:8px">👤 ${sesionPNC.nombre}</span>
+         <button onclick="cerrarSesionPNC()" style="font-size:10px;background:rgba(255,255,255,0.15);color:#fff;border:none;border-radius:4px;padding:3px 8px;cursor:pointer;margin-right:8px">Salir</button>`
+      );
+      cargarResumen();
+    } else {
+      errEl.textContent = 'Usuario o contraseña incorrectos';
+    }
+  } catch(e) {
+    errEl.textContent = 'Sin conexión. Inténtalo de nuevo.';
+  }
+  btn.textContent = 'Entrar'; btn.disabled = false;
+}
+
+function cerrarSesionPNC() {
+  localStorage.removeItem('corelink_pnc_session');
+  sesionPNC = null;
+  location.reload();
+}
+
+// Comprobar sesión guardada al cargar
+(function() {
+  const saved = localStorage.getItem('corelink_pnc_session');
+  if (saved) {
+    try {
+      sesionPNC = JSON.parse(saved);
+      document.getElementById('loginScreen').style.display = 'none';
+      document.getElementById('appContent').classList.remove('hidden');
+      document.getElementById('corelinkBadge').insertAdjacentHTML('beforebegin',
+        `<span style="font-size:11px;color:rgba(255,255,255,0.7);margin-right:8px">👤 ${sesionPNC.nombre}</span>
+         <button onclick="cerrarSesionPNC()" style="font-size:10px;background:rgba(255,255,255,0.15);color:#fff;border:none;border-radius:4px;padding:3px 8px;cursor:pointer;margin-right:8px">Salir</button>`
+      );
+      cargarResumen();
+    } catch(e) { localStorage.removeItem('corelink_pnc_session'); }
+  }
+})();
+</script>
+</body>
+</html>
