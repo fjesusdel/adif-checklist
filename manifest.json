@@ -1,7 +1,7 @@
 {
   "name": "Checklist Mantenimiento ADIF",
   "short_name": "ADIF Check",
-  "description": "App mantenimiento ADIF - Ilunion Seguridad RC Sur",
+  "description": "App mantenimiento ADIF - Ingloba Seguridad RC Sur",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
