@@ -1319,7 +1319,7 @@ header {
     <button class="pill"        id="p2tab_docs"     onclick="setP2Tab('docs')">📎 Docs</button>
     <button class="pill"        id="p2tab_fotos"    onclick="setP2Tab('fotos')">📷 Fotos</button>
     <button class="pill"        id="p2tab_averias"  onclick="setP2Tab('averias')">⚠ Averías</button>
-    <button class="pill"        id="p2tab_anterior" onclick="setP2Tab('anterior')">📋 Última visita</button>
+    <button class="pill"        id="p2tab_anterior" onclick="setP2Tab('anterior')">📄 Informes</button>
   </div>
 
   <!-- Panel visita (por defecto) -->
@@ -1380,10 +1380,10 @@ header {
     </div>
   </div>
 
-  <!-- Panel última visita -->
+  <!-- Panel informes -->
   <div id="p2panel_anterior" class="hidden">
     <div class="card">
-      <div class="card-title">📋 Última visita</div>
+      <div class="card-title">📄 Informes de mantenimiento</div>
       <div id="p2AnteriorContenido"><div class="empty-state">Cargando...</div></div>
     </div>
   </div>
@@ -1881,6 +1881,105 @@ async function corelinkSubirArchivo(blob, nombreArchivo, mimeType) {
     setEstadoCorelink('sin-conexion');
     return false;
   }
+}
+
+// Genera y sube el informe HTML sin fotos al historial en Drive
+async function corelinkSubirInformeHTML() {
+  try {
+    const inst = state.instalacion;
+    if (!inst) return false;
+    const htmlContent = _generarHTMLSinFotos();
+    const fname = nombreInformeBase('html');
+    const resp = await fetch(CORELINK_URL + '/api/informes-html', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CoreLink-Key': CORELINK_API_KEY },
+      body: JSON.stringify({
+        codigo: inst.codigo,
+        provincia: inst.provincia,
+        instalacion: inst.nombre,
+        nombreArchivo: fname,
+        htmlContent: htmlContent
+      })
+    });
+    const data = await resp.json();
+    return data.ok === true;
+  } catch(e) { return false; }
+}
+
+// Genera el HTML del informe SIN fotos incrustadas (para el historial)
+function _generarHTMLSinFotos() {
+  var d = _recogerDatos();
+  var fecha = d.fv.fecha ? new Date(d.fv.fecha+'T12:00:00').toLocaleDateString('es-ES',{day:'2-digit',month:'2-digit',year:'numeric'}) : '-';
+  var tecnico = (sesionPNT && sesionPNT.nombre) || d.fv.tecnico || 'Técnico';
+
+  var secciones = [];
+  var secActual = null;
+  d.filasPDF.forEach(function(f) {
+    if (f.tipo === 'header') { secActual = { titulo: f.texto, items: [] }; secciones.push(secActual); }
+    else if (secActual) { secActual.items.push(f); }
+  });
+
+  var seccionesHTML = secciones.map(function(sec) {
+    var itemsHTML = sec.items.map(function(f) {
+      var estadoHtml = f.estado==='ok'
+        ? '<span style="background:#dcfce7;color:#166534;font-size:10px;font-weight:700;padding:2px 7px;border-radius:99px">Correcto</span>'
+        : f.estado==='inc'
+        ? '<span style="background:#fee2e2;color:#991b1b;font-size:10px;font-weight:700;padding:2px 7px;border-radius:99px">Incidencia</span>'
+        : f.estado==='na'
+        ? '<span style="background:#f3f4f6;color:#6b7280;font-size:10px;font-weight:700;padding:2px 7px;border-radius:99px">N/A</span>'
+        : '<span style="background:#fff7ed;color:#92400e;font-size:10px;font-weight:700;padding:2px 7px;border-radius:99px">Pendiente</span>';
+      var rowBg = f.estado==='inc' ? 'background:#fffbfb' : '';
+      return '<tr style="'+rowBg+'">'
+        + '<td style="padding:6px 8px;border-bottom:0.5px solid #e5e7eb;font-size:11px;font-weight:700;color:#6b7280;white-space:nowrap">'+f.codigo+'</td>'
+        + '<td style="padding:6px 8px;border-bottom:0.5px solid #e5e7eb;font-size:12px">'+f.nombre+'</td>'
+        + '<td style="padding:6px 8px;border-bottom:0.5px solid #e5e7eb;text-align:center">'+estadoHtml+'</td>'
+        + '<td style="padding:6px 8px;border-bottom:0.5px solid #e5e7eb;font-size:11px;color:#6b7280;font-style:italic">'+(f.desc||'')+'</td>'
+        + '</tr>';
+    }).join('');
+    return '<div style="margin-bottom:20px">'
+      + '<div style="font-size:12px;font-weight:800;color:#fff;background:#003087;padding:6px 12px;border-radius:4px;margin-bottom:8px">'+sec.titulo+'</div>'
+      + '<table style="width:100%;border-collapse:collapse">'
+      + '<thead><tr style="background:#e8eef8">'
+      + '<th style="padding:6px 8px;font-size:10px;font-weight:700;color:#003087;border-bottom:1.5px solid #003087;text-align:left;width:70px">Código</th>'
+      + '<th style="padding:6px 8px;font-size:10px;font-weight:700;color:#003087;border-bottom:1.5px solid #003087;text-align:left">Punto de revisión</th>'
+      + '<th style="padding:6px 8px;font-size:10px;font-weight:700;color:#003087;border-bottom:1.5px solid #003087;text-align:center;width:90px">Estado</th>'
+      + '<th style="padding:6px 8px;font-size:10px;font-weight:700;color:#003087;border-bottom:1.5px solid #003087;text-align:left">Observaciones</th>'
+      + '</tr></thead><tbody>'+itemsHTML+'</tbody></table></div>';
+  }).join('');
+
+  var notaGeneral = state.notaGeneral && state.notaGeneral.trim()
+    ? '<div style="margin:16px 0;padding:10px 14px;background:#f0fdf4;border-left:3px solid #16a34a;border-radius:0 6px 6px 0;font-size:13px"><strong>Observación general:</strong> '+state.notaGeneral+'</div>'
+    : '';
+
+  return '<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">'
+    + '<title>'+d.tipoLabel+' — '+d.inst.nombre+' — '+fecha+'</title>'
+    + '<style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:Arial,sans-serif;font-size:13px;color:#1a1a1a;padding:28px;max-width:800px;margin:0 auto}</style>'
+    + '</head><body>'
+    + '<div style="display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid #003087;padding-bottom:16px;margin-bottom:4px">'
+    + '<div><div style="font-size:20px;font-weight:900;color:#003087">INGLOBA Seguridad</div>'
+    + '<div style="font-size:11px;color:#6b7280;margin-top:3px">Contrato 4.26/28510.0005 · Mantenimiento RC Sur · ADIF</div></div>'
+    + '<div style="font-size:13px;font-weight:700;color:#003087;background:#e8eef8;padding:4px 14px;border-radius:99px">'+d.tipoLabel+'</div>'
+    + '</div><div style="background:#FFD100;height:3px;margin-bottom:20px"></div>'
+    + '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:20px">'
+    + '<div style="background:#f4f6fa;border-radius:6px;padding:10px 12px"><div style="font-size:10px;font-weight:700;color:#6b7280;text-transform:uppercase;margin-bottom:3px">Instalación</div><div style="font-size:14px;font-weight:700;color:#003087">'+d.inst.nombre+'</div></div>'
+    + '<div style="background:#f4f6fa;border-radius:6px;padding:10px 12px"><div style="font-size:10px;font-weight:700;color:#6b7280;text-transform:uppercase;margin-bottom:3px">Código</div><div style="font-size:14px;font-weight:700;color:#003087">'+d.inst.codigo+'</div></div>'
+    + '<div style="background:#f4f6fa;border-radius:6px;padding:10px 12px"><div style="font-size:10px;font-weight:700;color:#6b7280;text-transform:uppercase;margin-bottom:3px">Provincia</div><div style="font-size:14px;font-weight:700;color:#003087">'+d.inst.provincia+'</div></div>'
+    + '<div style="background:#f4f6fa;border-radius:6px;padding:10px 12px"><div style="font-size:10px;font-weight:700;color:#6b7280;text-transform:uppercase;margin-bottom:3px">Fecha de visita</div><div style="font-size:14px;font-weight:700;color:#003087">'+fecha+'</div></div>'
+    + '<div style="background:#f4f6fa;border-radius:6px;padding:10px 12px"><div style="font-size:10px;font-weight:700;color:#6b7280;text-transform:uppercase;margin-bottom:3px">Técnico</div><div style="font-size:14px;font-weight:700;color:#003087">'+tecnico+'</div></div>'
+    + '<div style="background:#f4f6fa;border-radius:6px;padding:10px 12px"><div style="font-size:10px;font-weight:700;color:#6b7280;text-transform:uppercase;margin-bottom:3px">Tipo de revisión</div><div style="font-size:14px;font-weight:700;color:#003087">'+d.tipoLabel+'</div></div>'
+    + '</div>'
+    + seccionesHTML
+    + notaGeneral
+    + '<div style="display:flex;gap:10px;margin:16px 0">'
+    + '<div style="flex:1;text-align:center;padding:8px;border-radius:6px;background:#dcfce7"><div style="font-size:22px;font-weight:800;color:#16a34a">'+d.nOk+'</div><div style="font-size:10px;font-weight:700;text-transform:uppercase;color:#166534;margin-top:2px">Correctos</div></div>'
+    + '<div style="flex:1;text-align:center;padding:8px;border-radius:6px;background:#fee2e2"><div style="font-size:22px;font-weight:800;color:#dc2626">'+d.nInc+'</div><div style="font-size:10px;font-weight:700;text-transform:uppercase;color:#991b1b;margin-top:2px">Incidencias</div></div>'
+    + '<div style="flex:1;text-align:center;padding:8px;border-radius:6px;background:#f3f4f6"><div style="font-size:22px;font-weight:800;color:#6b7280">'+d.nNa+'</div><div style="font-size:10px;font-weight:700;text-transform:uppercase;color:#4b5563;margin-top:2px">No aplica</div></div>'
+    + '</div>'
+    + '<div style="margin-top:20px;padding-top:10px;border-top:1px solid #e5e7eb;display:flex;justify-content:space-between;font-size:10px;color:#9ca3af">'
+    + '<span>Ingloba Seguridad · Contrato ADIF 4.26/28510.0005 · RC Sur</span>'
+    + '<span>'+d.tipoLabel+' · '+d.inst.nombre+' · '+fecha+'</span>'
+    + '</div>'
+    + '</body></html>';
 }
 
 // Construye el nombre de archivo segun lo acordado: Instalacion_Tipo_Fecha
@@ -4169,6 +4268,9 @@ async function _firmarYSincronizar() {
     // M2 — Guardar histórico del checklist completo
     var checklistOk = await corelinkGuardarChecklist();
 
+    // Guardar informe HTML (sin fotos) para historial
+    await corelinkSubirInformeHTML();
+
     if (subido) {
       cacheChecklistsIndex = null;
       btn.textContent = '✓ Sincronizado';
@@ -4726,33 +4828,56 @@ async function cargarP2Averias() {
 
 async function cargarP2Anterior() {
   const cont = document.getElementById('p2AnteriorContenido');
-  cont.innerHTML = '<div class="empty-state">Cargando...</div>';
+  cont.innerHTML = '<div class="empty-state">Cargando informes...</div>';
   try {
-    const resp = await fetch(CORELINK_URL + '/api/checklists?codigo=' + encodeURIComponent(state.instalacion.codigo), { headers: { 'X-CoreLink-Key': CORELINK_API_KEY } });
+    const resp = await fetch(CORELINK_URL + '/api/informes-html?codigo=' + encodeURIComponent(state.instalacion.codigo), {
+      headers: { 'X-CoreLink-Key': CORELINK_API_KEY }
+    });
     const data = await resp.json();
-    const todos = Object.values(data.checklists || {}).sort((a,b) => b.fecha < a.fecha ? -1 : 1);
-    if (todos.length === 0) { cont.innerHTML = '<div class="empty-state">Sin visitas anteriores</div>'; return; }
-    const ultimo = todos[0];
-    const fecha = new Date(ultimo.fecha+'T12:00:00').toLocaleDateString('es-ES', { day:'numeric', month:'long', year:'numeric' });
-    const LABEL = { anual:'🔧 Anual', trimestral:'💻 Trimestral', 'pci-trim':'🔥 PCI' };
-    const ok  = (ultimo.items||[]).filter(i=>i.estado==='ok').length;
-    const inc = (ultimo.items||[]).filter(i=>i.estado==='inc').length;
-    const na  = (ultimo.items||[]).filter(i=>i.estado==='na').length;
-    cont.innerHTML = `
-      <div style="font-size:12px;color:var(--gris-medio);margin-bottom:10px">${LABEL[ultimo.tipo]||ultimo.tipo} · ${fecha} · ${ultimo.tecnico||''}</div>
-      <div style="display:flex;gap:10px;margin-bottom:12px">
-        <div style="flex:1;text-align:center;background:#dcfce7;border-radius:7px;padding:8px"><div style="font-size:20px;font-weight:800;color:#16a34a">${ok}</div><div style="font-size:10px;color:#166534">OK</div></div>
-        <div style="flex:1;text-align:center;background:#fee2e2;border-radius:7px;padding:8px"><div style="font-size:20px;font-weight:800;color:#dc2626">${inc}</div><div style="font-size:10px;color:#991b1b">Incidencias</div></div>
-        <div style="flex:1;text-align:center;background:#f3f4f6;border-radius:7px;padding:8px"><div style="font-size:20px;font-weight:800;color:#6b7280">${na}</div><div style="font-size:10px;color:#4b5563">N/A</div></div>
-      </div>
-      ${inc > 0 ? `<div style="font-size:12px;font-weight:700;color:var(--naranja);margin-bottom:6px">⚠ Incidencias de la última visita:</div>
-        ${(ultimo.incidencias||[]).map(i=>`
-          <div style="padding:6px 0;border-bottom:0.5px solid var(--gris-borde);font-size:12px">
-            ${i.codigo?`<span style="font-weight:800;color:var(--azul)">${i.codigo}</span> `:'' }
-            <span>${i.nombre}</span>
-            ${i.desc?`<div style="font-size:11px;color:var(--gris-medio)">→ ${i.desc}</div>`:''}
-          </div>`).join('')}` : '<div style="color:var(--verde);font-size:13px;font-weight:600">✓ Sin incidencias en la última visita</div>'}`;
-  } catch(e) { cont.innerHTML = '<div class="empty-state">Sin conexión</div>'; }
+    const informes = (data.informes || []).sort((a,b) => b.fecha.localeCompare(a.fecha));
+    if (informes.length === 0) {
+      cont.innerHTML = '<div class="empty-state">Sin informes guardados todavía.<br>Se guardarán automáticamente al sincronizar cada visita.</div>';
+      return;
+    }
+    const TIPO_ICON = { Anual:'\u{1F527}', Trimestral:'\u{1F4BB}', PCI:'\u{1F525}' };
+    cont.innerHTML = informes.map(function(inf) {
+      const fecha = new Date(inf.fecha+'T12:00:00').toLocaleDateString('es-ES',{day:'numeric',month:'long',year:'numeric'});
+      const icon = TIPO_ICON[inf.tipo] || '\u{1F4C4}';
+      return '<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:0.5px solid var(--gris-borde)">'
+        + '<div>'
+        + '<div style="font-size:13px;font-weight:600">' + icon + ' ' + inf.tipo + '</div>'
+        + '<div style="font-size:11px;color:var(--gris-medio);margin-top:2px">' + fecha + '</div>'
+        + '</div>'
+        + '<button onclick="verInformePNT(\'' + encodeURIComponent(state.instalacion.codigo) + '\',\'' + encodeURIComponent(inf.nombre) + '\')" '
+        + 'style="background:var(--azul);color:#fff;border:none;border-radius:7px;padding:6px 14px;font-size:12px;font-weight:600;cursor:pointer">Ver</button>'
+        + '</div>';
+    }).join('');
+  } catch(e) { cont.innerHTML = '<div class="empty-state">Sin conexi\u00f3n</div>'; }
+}
+
+async function verInformePNT(codigoEnc, nombreEnc) {
+  const codigo = decodeURIComponent(codigoEnc);
+  const nombre = decodeURIComponent(nombreEnc);
+  toast('Cargando informe...');
+  try {
+    const resp = await fetch(CORELINK_URL + '/api/informes-html?codigo=' + encodeURIComponent(codigo) + '&nombre=' + encodeURIComponent(nombre), {
+      headers: { 'X-CoreLink-Key': CORELINK_API_KEY }
+    });
+    const data = await resp.json();
+    if (!data.ok || !data.html) { toast('No se pudo cargar el informe'); return; }
+    var ventana = document.getElementById('pdfVisorOverlay');
+    var iframe  = document.getElementById('pdfIframe');
+    var blob    = new Blob([data.html], { type: 'text/html' });
+    var blobUrl = URL.createObjectURL(blob);
+    iframe.src  = blobUrl;
+    window._pdfBlobUrl     = blobUrl;
+    window._pdfHtmlBlob    = blob;
+    window._pdfHtmlContent = data.html;
+    window._pdfNombre      = nombre;
+    window._pdfTitulo      = nombre;
+    ventana.style.display  = 'flex';
+    document.getElementById('btnVolverAppBox').classList.add('hidden');
+  } catch(e) { toast('Error al cargar el informe'); }
 }
 
 // ═══════════════════════════════════════════════════════════════════════

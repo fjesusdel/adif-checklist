@@ -378,6 +378,7 @@ body.dark .item-card { background:#1e2433;border-color:#2d3548; }
 <!-- RESUMEN                                          -->
 <!-- ════════════════════════════════════════════════ -->
 <div id="seccionResumen" class="container">
+  <div id="avisoInformesCaducidad" style="display:none;background:#fff7ed;border:1.5px solid #f59e0b;border-radius:var(--radio);padding:14px 16px;margin-bottom:14px"></div>
   <div class="card">
     <div class="card-title">Vista general</div>
     <div class="stat-grid" id="resumenStatGrid"><div class="empty-state">Cargando datos...</div></div>
@@ -422,6 +423,7 @@ body.dark .item-card { background:#1e2433;border-color:#2d3548; }
       <button class="modal-tab"        id="modalTabFotos"      onclick="cambiarModalTab('fotos')">📷 Fotos</button>
       <button class="modal-tab"        id="modalTabDocumentos" onclick="cambiarModalTab('documentos')">📎 Docs</button>
       <button class="modal-tab"        id="modalTabVisitas"    onclick="cambiarModalTab('visitas')">📋 Visitas</button>
+      <button class="modal-tab"        id="modalTabInformes"   onclick="cambiarModalTab('informes')">📄 Informes</button>
       <button class="modal-tab"        id="modalTabNotas"      onclick="cambiarModalTab('notas')">📝 Notas</button>
       <button class="modal-tab"        id="modalTabHistorial"  onclick="cambiarModalTab('historial')">⚠ Averías</button>
     </div>
@@ -430,6 +432,7 @@ body.dark .item-card { background:#1e2433;border-color:#2d3548; }
       <div id="modalPanelFotos"      class="hidden"></div>
       <div id="modalPanelDocumentos" class="hidden"></div>
       <div id="modalPanelVisitas"    class="hidden"></div>
+      <div id="modalPanelInformes"   class="hidden"></div>
       <div id="modalPanelNotas"      class="hidden"></div>
       <div id="modalPanelHistorial"  class="hidden"></div>
     </div>
@@ -974,6 +977,13 @@ body.dark .item-card { background:#1e2433;border-color:#2d3548; }
         <div><div class="ajuste-label">Versión de CoreLink</div></div>
         <div style="font-size:13px;font-weight:700;color:var(--azul)">v3.7</div>
       </div>
+      <div class="ajuste-row" style="border-top:1px solid var(--gris-borde);margin-top:10px;padding-top:10px">
+        <div>
+          <div class="ajuste-label">⬇️ Exportar todos los informes</div>
+          <div class="ajuste-sub">Descarga un ZIP con todos los informes HTML de todas las instalaciones (últimos 12 meses).</div>
+        </div>
+      </div>
+      <button onclick="descargarZipTodosInformes()" style="width:100%;margin-top:10px;padding:11px;background:var(--azul-claro);color:var(--azul);border:1.5px solid var(--azul);border-radius:8px;font-size:14px;font-weight:700;cursor:pointer">⬇️ Descargar ZIP global de informes</button>
       <div class="ajuste-row" style="border-top:1px solid var(--gris-borde);margin-top:10px;padding-top:10px">
         <div>
           <div class="ajuste-label" style="color:var(--rojo)">🗑 Reset del sistema</div>
@@ -1536,6 +1546,9 @@ async function cargarResumen() {
       </div>
     `).join('');
   }
+
+  // Comprobar informes próximos a caducar (en segundo plano, no bloquea)
+  comprobarCaducidadInformes().catch(() => {});
 }
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -1652,7 +1665,7 @@ function cerrarModalInstalacion() {
 }
 
 function cambiarModalTab(tab) {
-  ['ficha','fotos','documentos','visitas','notas','historial'].forEach(t => {
+  ['ficha','fotos','documentos','visitas','informes','notas','historial'].forEach(t => {
     document.getElementById('modalTab' + t.charAt(0).toUpperCase() + t.slice(1)).classList.toggle('active', t === tab);
     document.getElementById('modalPanel' + t.charAt(0).toUpperCase() + t.slice(1)).classList.toggle('hidden', t !== tab);
   });
@@ -1660,6 +1673,7 @@ function cambiarModalTab(tab) {
   if (tab === 'fotos')       renderPanelFotos();
   if (tab === 'documentos')  renderPanelDocumentos();
   if (tab === 'visitas')     renderPanelVisitas();
+  if (tab === 'informes')    renderPanelInformes();
   if (tab === 'notas')       renderPanelNotas();
   if (tab === 'historial')   renderPanelHistorial();
 }
@@ -1848,6 +1862,197 @@ async function renderPanelVisitas() {
   }).join('');
 
   panel.innerHTML = html;
+}
+
+// ── Panel Informes HTML ──────────────────────────────────────────────
+let _informesVisorModal = null; // modal visor interno
+
+async function renderPanelInformes() {
+  const inst  = instalacionAbierta;
+  const panel = document.getElementById('modalPanelInformes');
+  panel.innerHTML = '<div class="empty-state">Cargando informes...</div>';
+
+  const data = await corelinkGet('/api/informes-html?codigo=' + encodeURIComponent(inst.codigo));
+  const informes = data ? (data.informes || []).sort((a,b) => b.fecha.localeCompare(a.fecha)) : [];
+
+  if (informes.length === 0) {
+    panel.innerHTML = '<div class="empty-state">Sin informes guardados todavía.</div>';
+    return;
+  }
+
+  const TIPO_ICON = { Anual:'🔧', Trimestral:'💻', PCI:'🔥' };
+
+  let html = `<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+    <span style="font-size:12px;color:var(--gris-medio)">${informes.length} informe${informes.length>1?'s':''} guardado${informes.length>1?'s':''}</span>
+    <button onclick="descargarZipInformes('${encodeURIComponent(inst.codigo)}','${encodeURIComponent(inst.nombre)}')"
+      style="background:var(--azul);color:#fff;border:none;border-radius:7px;padding:6px 14px;font-size:12px;font-weight:600;cursor:pointer">
+      ⬇️ Descargar ZIP
+    </button>
+  </div>`;
+
+  html += informes.map(inf => {
+    const fecha = new Date(inf.fecha+'T12:00:00').toLocaleDateString('es-ES',{day:'numeric',month:'long',year:'numeric'});
+    const icon  = TIPO_ICON[inf.tipo] || '📄';
+    return `<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:0.5px solid var(--gris-borde)">
+      <div>
+        <div style="font-size:13px;font-weight:600">${icon} ${inf.tipo}</div>
+        <div style="font-size:11px;color:var(--gris-medio);margin-top:2px">${fecha}</div>
+      </div>
+      <div style="display:flex;gap:6px">
+        <button onclick="verInformePNC('${encodeURIComponent(inst.codigo)}','${encodeURIComponent(inf.nombre)}')"
+          style="background:var(--azul);color:#fff;border:none;border-radius:7px;padding:5px 12px;font-size:12px;font-weight:600;cursor:pointer">Ver</button>
+        <button onclick="eliminarInformePNC('${encodeURIComponent(inst.codigo)}','${encodeURIComponent(inf.nombre)}')"
+          style="background:#fee2e2;color:var(--rojo);border:none;border-radius:7px;padding:5px 10px;font-size:12px;font-weight:600;cursor:pointer">🗑</button>
+      </div>
+    </div>`;
+  }).join('');
+
+  panel.innerHTML = html;
+}
+
+async function verInformePNC(codigoEnc, nombreEnc) {
+  const codigo = decodeURIComponent(codigoEnc);
+  const nombre = decodeURIComponent(nombreEnc);
+  toast('Cargando informe...');
+  const data = await corelinkGet('/api/informes-html?codigo=' + encodeURIComponent(codigo) + '&nombre=' + encodeURIComponent(nombre));
+  if (!data || !data.html) { toast('No se pudo cargar el informe'); return; }
+
+  // Abrir en modal visor (iframe)
+  let modal = document.getElementById('informesVisorModal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'informesVisorModal';
+    modal.style.cssText = 'position:fixed;inset:0;z-index:9000;background:rgba(0,0,0,0.75);display:flex;flex-direction:column';
+    modal.innerHTML = `
+      <div style="background:var(--azul);padding:10px 16px;display:flex;justify-content:space-between;align-items:center;flex-shrink:0">
+        <span id="informesVisorTitulo" style="color:#fff;font-size:13px;font-weight:700"></span>
+        <button onclick="cerrarVisorInformePNC()" style="background:#fff;color:var(--azul);border:none;border-radius:7px;padding:6px 14px;font-size:13px;font-weight:700;cursor:pointer">✕ Cerrar</button>
+      </div>
+      <iframe id="informesVisorIframe" style="flex:1;border:none;background:#fff"></iframe>`;
+    document.body.appendChild(modal);
+  }
+  document.getElementById('informesVisorTitulo').textContent = nombre;
+  const blob = new Blob([data.html], { type: 'text/html' });
+  document.getElementById('informesVisorIframe').src = URL.createObjectURL(blob);
+  modal.style.display = 'flex';
+}
+
+function cerrarVisorInformePNC() {
+  const modal = document.getElementById('informesVisorModal');
+  if (modal) modal.style.display = 'none';
+}
+
+async function eliminarInformePNC(codigoEnc, nombreEnc) {
+  const codigo = decodeURIComponent(codigoEnc);
+  const nombre = decodeURIComponent(nombreEnc);
+  if (!confirm('¿Eliminar el informe "' + nombre + '"? Esta acción no se puede deshacer.')) return;
+  try {
+    const resp = await fetch(CORELINK_URL + '/api/informes-html', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json', 'X-CoreLink-Key': CORELINK_API_KEY },
+      body: JSON.stringify({ codigo, nombreArchivo: nombre })
+    });
+    const data = await resp.json();
+    if (data.ok) { toast('Informe eliminado ✓'); renderPanelInformes(); }
+    else { toast('Error al eliminar'); }
+  } catch(e) { toast('Sin conexión'); }
+}
+
+async function descargarZipInformes(codigoEnc, nombreEnc) {
+  const codigo = decodeURIComponent(codigoEnc);
+  const nombre = decodeURIComponent(nombreEnc);
+  toast('Preparando ZIP...');
+  const data = await corelinkGet('/api/informes-html?codigo=' + encodeURIComponent(codigo));
+  const informes = data ? (data.informes || []) : [];
+  if (informes.length === 0) { toast('Sin informes para descargar'); return; }
+
+  // Usar JSZip si está disponible, sino descarga individual
+  if (typeof JSZip === 'undefined') {
+    toast('Cargando JSZip...');
+    await new Promise((res, rej) => {
+      const s = document.createElement('script');
+      s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js';
+      s.onload = res; s.onerror = rej;
+      document.head.appendChild(s);
+    });
+  }
+
+  const zip = new JSZip();
+  for (const inf of informes) {
+    const d = await corelinkGet('/api/informes-html?codigo=' + encodeURIComponent(codigo) + '&nombre=' + encodeURIComponent(inf.nombre));
+    if (d && d.html) zip.file(inf.nombre, d.html);
+  }
+  const blob = await zip.generateAsync({ type: 'blob' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url; a.download = nombre + '_informes.zip';
+  a.click();
+  URL.revokeObjectURL(url);
+  toast('ZIP descargado ✓');
+}
+
+async function descargarZipTodosInformes() {
+  toast('Preparando ZIP global...');
+  const data = await corelinkGet('/api/informes-html');
+  const indice = data ? (data.indice || {}) : {};
+  const totalInst = Object.keys(indice).length;
+  if (totalInst === 0) { toast('Sin informes para descargar'); return; }
+
+  if (typeof JSZip === 'undefined') {
+    await new Promise((res, rej) => {
+      const s = document.createElement('script');
+      s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js';
+      s.onload = res; s.onerror = rej;
+      document.head.appendChild(s);
+    });
+  }
+
+  const zip = new JSZip();
+  for (const [codigo, informes] of Object.entries(indice)) {
+    for (const inf of (informes || [])) {
+      const d = await corelinkGet('/api/informes-html?codigo=' + encodeURIComponent(codigo) + '&nombre=' + encodeURIComponent(inf.nombre));
+      if (d && d.html) zip.file((inf.instalacion || codigo) + '/' + inf.nombre, d.html);
+    }
+  }
+  const blob = await zip.generateAsync({ type: 'blob' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url; a.download = 'CoreLink_informes_todos.zip';
+  a.click();
+  URL.revokeObjectURL(url);
+  toast('ZIP global descargado ✓');
+}
+
+async function comprobarCaducidadInformes() {
+  const data = await corelinkGet('/api/informes-html');
+  if (!data || !data.indice) return;
+  const hoy = new Date();
+  const en30dias = new Date(); en30dias.setDate(hoy.getDate() + 30);
+  const hace12m  = new Date(); hace12m.setMonth(hoy.getMonth() - 12);
+  const proximosACaducar = [];
+  for (const [codigo, informes] of Object.entries(data.indice)) {
+    for (const inf of (informes || [])) {
+      const fechaInf = new Date(inf.fecha + 'T12:00:00');
+      const fechaCaducidad = new Date(fechaInf);
+      fechaCaducidad.setMonth(fechaCaducidad.getMonth() + 12);
+      if (fechaCaducidad <= en30dias && fechaCaducidad > hoy) {
+        proximosACaducar.push({ ...inf, codigo, fechaCaducidad });
+      }
+    }
+  }
+  if (proximosACaducar.length === 0) return;
+
+  const avisoEl = document.getElementById('avisoInformesCaducidad');
+  if (!avisoEl) return;
+  avisoEl.style.display = 'block';
+  avisoEl.innerHTML = `
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px">
+      <div>
+        <div style="font-size:13px;font-weight:700;color:#92400e;margin-bottom:4px">⚠ ${proximosACaducar.length} informe${proximosACaducar.length>1?'s':''} próximo${proximosACaducar.length>1?'s':''} a caducar (retención 12 meses)</div>
+        <div style="font-size:12px;color:#92400e">${proximosACaducar.map(i => i.instalacion + ' — ' + new Date(i.fechaCaducidad).toLocaleDateString('es-ES')).join('<br>')}</div>
+      </div>
+      <button onclick="descargarZipTodosInformes()" style="white-space:nowrap;background:#92400e;color:#fff;border:none;border-radius:7px;padding:7px 14px;font-size:12px;font-weight:700;cursor:pointer">⬇️ Descargar ZIP</button>
+    </div>`;
 }
 
 function renderPanelHistorial() {
