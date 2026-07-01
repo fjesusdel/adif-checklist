@@ -1342,6 +1342,7 @@ header {
       <div class="tipo-grid" id="tipoGrid"></div>
     </div>
     <button class="btn-primary" id="btnConfirmarTipo" onclick="irPaso3()" disabled>Iniciar revisión →</button>
+    <button class="btn-secondary" id="btnMarcarRealizada" onclick="mostrarModalMarcarRealizada()" style="display:none;width:100%;margin-top:8px;background:#f0fdf4;color:#16a34a;border-color:#16a34a">✓ Marcar como realizada sin checklist</button>
   </div>
 
   <!-- Panel docs -->
@@ -1404,6 +1405,7 @@ header {
       <div class="ficha-field">
         <label>Fecha</label>
         <input type="date" id="fFecha">
+        <div style="font-size:10px;color:var(--gris-medio);margin-top:3px">Puedes cambiarla si la visita fue en otra fecha.</div>
       </div>
       <div class="ficha-field">
         <label>Hora llegada</label>
@@ -3033,6 +3035,7 @@ function seleccionarTipo(tipo) {
   document.querySelectorAll('.tipo-btn').forEach(el => el.classList.remove('selected'));
   event.currentTarget.classList.add('selected');
   document.getElementById('btnConfirmarTipo').disabled = false;
+  document.getElementById('btnMarcarRealizada').style.display = 'block';
 }
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -5380,6 +5383,110 @@ setInterval(async function() {
     }
   } catch(e) {}
 }, 30000);
+
+// ═══════════════════════════════════════════════════════════════════════
+// MARCAR VISITA COMO REALIZADA SIN CHECKLIST
+// ═══════════════════════════════════════════════════════════════════════
+function mostrarModalMarcarRealizada() {
+  const inst = state.instalacion;
+  const tipo = state.tipoVisita;
+  if (!inst || !tipo) return;
+  const hoy = new Date().toISOString().split('T')[0];
+  const TIPO_LABEL = { anual: 'Revisión Anual', trimestral: 'Revisión Trimestral', 'pci-trim': 'Revisión Trimestral PCI' };
+
+  let modal = document.getElementById('modalMarcarRealizada');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'modalMarcarRealizada';
+    modal.style.cssText = 'position:fixed;inset:0;z-index:8000;background:rgba(0,0,0,0.6);display:flex;align-items:center;justify-content:center;padding:20px';
+    document.body.appendChild(modal);
+  }
+  modal.innerHTML = `
+    <div style="background:#fff;border-radius:12px;padding:24px;width:100%;max-width:380px;box-shadow:0 8px 32px rgba(0,0,0,0.2)">
+      <div style="font-size:16px;font-weight:800;color:var(--azul);margin-bottom:4px">✓ Marcar visita como realizada</div>
+      <div style="font-size:12px;color:var(--gris-medio);margin-bottom:20px">${inst.nombre} · ${TIPO_LABEL[tipo]||tipo}</div>
+
+      <div style="margin-bottom:14px">
+        <label style="font-size:12px;font-weight:700;color:var(--gris-oscuro);display:block;margin-bottom:6px">Fecha de la visita</label>
+        <input type="date" id="mrFecha" value="${hoy}"
+          style="width:100%;border:1.5px solid var(--gris-borde);border-radius:8px;padding:9px 12px;font-size:14px;font-family:inherit;box-sizing:border-box">
+        <div style="font-size:11px;color:var(--gris-medio);margin-top:4px">Puedes cambiarla si la visita fue en otra fecha.</div>
+      </div>
+
+      <div style="margin-bottom:20px">
+        <label style="font-size:12px;font-weight:700;color:var(--gris-oscuro);display:block;margin-bottom:6px">Nota (opcional)</label>
+        <input type="text" id="mrNota" placeholder="Ej: Realizado en GAM, sin incidencias"
+          style="width:100%;border:1.5px solid var(--gris-borde);border-radius:8px;padding:9px 12px;font-size:14px;font-family:inherit;box-sizing:border-box">
+      </div>
+
+      <div style="display:flex;gap:10px">
+        <button onclick="cerrarModalMarcarRealizada()" style="flex:1;padding:11px;background:#f3f4f6;color:var(--gris-oscuro);border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer">Cancelar</button>
+        <button onclick="confirmarMarcarRealizada()" style="flex:2;padding:11px;background:#16a34a;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer">✓ Confirmar</button>
+      </div>
+    </div>`;
+  modal.style.display = 'flex';
+}
+
+function cerrarModalMarcarRealizada() {
+  const modal = document.getElementById('modalMarcarRealizada');
+  if (modal) modal.style.display = 'none';
+}
+
+async function confirmarMarcarRealizada() {
+  const inst = state.instalacion;
+  const tipo = state.tipoVisita;
+  const fecha = document.getElementById('mrFecha').value;
+  const nota  = document.getElementById('mrNota').value.trim();
+  if (!fecha) { toast('Indica la fecha de la visita'); return; }
+
+  cerrarModalMarcarRealizada();
+  toast('Registrando visita...');
+
+  const tecnico = (sesionPNT && sesionPNT.nombre) || 'Técnico';
+
+  try {
+    // 1 — Guardar en checklists con flag sinChecklist
+    await fetch(CORELINK_URL + '/api/checklists', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CoreLink-Key': CORELINK_API_KEY },
+      body: JSON.stringify({
+        codigoInstalacion:  inst.codigo,
+        nombreInstalacion:  inst.nombre,
+        tipo,
+        fecha,
+        tecnico,
+        horaIn:      '',
+        horaOut:     '',
+        items:       [],
+        incidencias: [],
+        sinChecklist: true,
+        nota
+      })
+    });
+
+    // 2 — Marcar tarea de agenda como completada si existe una para esta instalación y fecha
+    if (todasLasTareas) {
+      const tareaVinculada = Object.entries(todasLasTareas).find(([id, t]) =>
+        t.codigoInstalacion === inst.codigo &&
+        t.fecha === fecha &&
+        t.estado !== 'completada' &&
+        (t.tipo === tipo || (tipo === 'pci-trim' && t.tipo === 'pci-trim'))
+      );
+      if (tareaVinculada) {
+        await cambiarEstadoTarea(tareaVinculada[0], 'completada');
+      }
+    }
+
+    toast('Visita registrada ✓');
+    // Volver al listado
+    mostrarPaso('paso1');
+    await corelinkObtenerFichas();
+    renderInstList();
+
+  } catch(e) {
+    toast('Error al registrar la visita');
+  }
+}
 </script>
 
 <div id="pdfVisor" style="display:none;position:fixed;inset:0;z-index:9999;background:#fff;overflow-y:auto;">
