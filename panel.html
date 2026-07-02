@@ -5008,7 +5008,7 @@ const _importXLSXConfig = {
   },
   contactos: {
     titulo: '📥 Importar contactos desde Excel',
-    info: '<strong>Columnas:</strong> A = Provincia · B = Nombre · C = Teléfono · D = Email · E = Horarios · F = Notas. ⚠ Se sustituyen los contactos de cada provincia incluida en el archivo.',
+    info: '<strong>Columnas:</strong> A = Provincia · B = Nombre · C = Teléfono 1 · D = Teléfono 2 (opcional) · E = Teléfono 3 (opcional) · F = Email · G = Horarios · H = Notas. ⚠ Se sustituyen los contactos de cada provincia incluida en el archivo.',
     btnConfirmar: '✓ Importar contactos',
   },
   stock: {
@@ -5090,13 +5090,15 @@ async function leerXLSXGenerico(input) {
         } else if (_importXLSXContexto === 'contactos') {
           const nombre = String(r[1] || '').trim();
           if (!nombre) continue;
+          // Concatenar hasta 3 teléfonos separados por ' / '
+          const tlfs = [String(r[2]||'').trim(), String(r[3]||'').trim(), String(r[4]||'').trim()].filter(Boolean);
           _importXLSXFilas.push({
             provincia: a.toUpperCase(),
             nombre,
-            telefono:  String(r[2] || '').trim(),
-            email:     String(r[3] || '').trim(),
-            horarios:  String(r[4] || '').trim(),
-            notas:     String(r[5] || '').trim(),
+            telefono:  tlfs.join(' / '),
+            email:     String(r[5] || '').trim(),
+            horarios:  String(r[6] || '').trim(),
+            notas:     String(r[7] || '').trim(),
           });
         } else if (_importXLSXContexto === 'stock') {
           if (!a) continue; // a = nombre material (columna A ahora)
