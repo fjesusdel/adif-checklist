@@ -445,7 +445,11 @@ body.dark .item-card { background:#1e2433;border-color:#2d3548; }
 <div id="seccionAverias" class="container hidden">
   <div class="card">
     <div class="card-title">⚠ Averías</div>
-    <button class="btn-primary" onclick="abrirFormNuevaAveria()" style="margin-bottom:14px">+ Nueva avería</button>
+    <button class="btn-primary" onclick="abrirFormNuevaAveria()" style="margin-bottom:8px">+ Nueva avería</button>
+    <div style="display:flex;gap:8px;margin-bottom:14px">
+      <button class="btn-secondary" onclick="exportarAveriasXLSX()">📤 Exportar .xlsx</button>
+      <button class="btn-secondary" onclick="abrirImportarXLSX('averias')">📥 Importar .xlsx</button>
+    </div>
     <div id="formNuevaAveria" class="form-flotante hidden" style="margin-bottom:14px">
       <div class="ficha-field" style="margin-bottom:10px">
         <label>Instalación</label>
@@ -494,6 +498,7 @@ body.dark .item-card { background:#1e2433;border-color:#2d3548; }
     <div id="agendaVistaLista">
       <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">
         <button class="btn-primary" onclick="abrirFormNuevaTarea()">+ Nueva tarea</button>
+        <button class="btn-secondary" onclick="exportarAgendaXLSX()">📤 Exportar .xlsx</button>
         <button class="btn-secondary" onclick="abrirImportarAgenda()">📥 Importar .xlsx</button>
       </div>
       <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">
@@ -637,7 +642,11 @@ body.dark .item-card { background:#1e2433;border-color:#2d3548; }
     <div id="stockCategoriasContainer"></div>
     <!-- Botón añadir material -->
     <button class="btn-primary" onclick="abrirModalMaterial(null)" style="margin-bottom:8px">+ Nuevo material</button>
-    <button class="btn-secondary" onclick="abrirModalCategoria(null)" style="margin-bottom:16px">+ Nueva categoría</button>
+    <button class="btn-secondary" onclick="abrirModalCategoria(null)" style="margin-bottom:8px">+ Nueva categoría</button>
+    <div style="display:flex;gap:8px;margin-bottom:16px">
+      <button class="btn-secondary" onclick="exportarStockXLSX()">📤 Exportar .xlsx</button>
+      <button class="btn-secondary" onclick="abrirImportarXLSX('stock')">📥 Importar .xlsx</button>
+    </div>
   </div>
 
   <!-- Vista pedidos -->
@@ -754,7 +763,11 @@ body.dark .item-card { background:#1e2433;border-color:#2d3548; }
 <div id="seccionContactos" class="container hidden">
   <div class="card">
     <div class="card-title">📞 Contactos por provincia</div>
-    <button class="btn-primary" onclick="abrirModalNuevoContacto()" style="margin-bottom:16px">+ Añadir contacto</button>
+    <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">
+      <button class="btn-primary" onclick="abrirModalNuevoContacto()">+ Añadir contacto</button>
+      <button class="btn-secondary" onclick="exportarContactosXLSX()">📤 Exportar .xlsx</button>
+      <button class="btn-secondary" onclick="abrirImportarXLSX('contactos')">📥 Importar .xlsx</button>
+    </div>
     <div id="contactosListContainer"><div class="empty-state">Cargando...</div></div>
   </div>
 </div>
@@ -4856,6 +4869,335 @@ function cerrarSesionPNC() {
 })();
 
 // ═══════════════════════════════════════════════════════════════════════
+// EXPORTAR / IMPORTAR .XLSX — AVERÍAS, CONTACTOS, STOCK, AGENDA
+// ═══════════════════════════════════════════════════════════════════════
+
+// ── Carga SheetJS si no está ─────────────────────────────────────────
+async function _cargarSheetJS() {
+  if (typeof XLSX !== 'undefined') return;
+  await new Promise((res, rej) => {
+    const s = document.createElement('script');
+    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+    s.onload = res; s.onerror = rej;
+    document.head.appendChild(s);
+  });
+}
+
+function _descargarXLSX(wb, nombre) {
+  XLSX.writeFile(wb, nombre);
+}
+
+// ── Variable de contexto para el modal genérico ───────────────────────
+let _importXLSXContexto = null; // 'averias' | 'contactos' | 'stock'
+let _importXLSXFilas   = [];
+
+// ── EXPORTAR AGENDA ───────────────────────────────────────────────────
+async function exportarAgendaXLSX() {
+  toast('Exportando agenda...');
+  await _cargarSheetJS();
+  const data = await corelinkGet('/api/agenda');
+  const tareas = Object.entries(data ? (data.tareas || {}) : {});
+  const TIPO_LABEL = { anual:'Anual', trimestral:'Trimestral', 'pci-trim':'Trimestral PCI', 'revision-remota':'Revisión Remota' };
+  const ASIG_LABEL = { jesus:'Jesús', fran:'Fran', '':'Sin asignar' };
+
+  const filas = [['Código Instalación', 'Nombre Instalación', 'Tipo', 'Fecha', 'Estado', 'Asignado a', 'Nota', 'ID (no modificar)']];
+  tareas.sort((a,b) => a[1].fecha < b[1].fecha ? -1 : 1).forEach(([id, t]) => {
+    filas.push([
+      t.codigoInstalacion || '',
+      t.nombreInstalacion || '',
+      TIPO_LABEL[t.tipo] || t.tipo || '',
+      t.fecha || '',
+      t.estado || '',
+      ASIG_LABEL[t.asignadoA] ?? t.asignadoA ?? '',
+      t.nota || '',
+      id
+    ]);
+  });
+
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.aoa_to_sheet(filas);
+  ws['!cols'] = [20,28,18,14,14,14,30,28].map(w => ({ wch: w }));
+  XLSX.utils.book_append_sheet(wb, ws, 'Agenda CoreLink');
+  _descargarXLSX(wb, 'Agenda_CoreLink_' + new Date().toISOString().split('T')[0] + '.xlsx');
+}
+
+// ── EXPORTAR AVERÍAS ──────────────────────────────────────────────────
+async function exportarAveriasXLSX() {
+  toast('Exportando averías...');
+  await _cargarSheetJS();
+  const data = await corelinkGet('/api/incidencias');
+  const todas = Object.values(data ? (data.incidencias || {}) : {});
+
+  const filas = [['Nº Avería', 'Código Instalación', 'Nombre Instalación', 'Fecha Apertura', 'Descripción', 'Prioridad', 'Urgente', 'Estado', 'Quién Avisó', 'Observaciones Cierre']];
+  todas.sort((a,b) => a.fechaApertura < b.fechaApertura ? -1 : 1).forEach(t => {
+    filas.push([
+      t.numeroAveria || '',
+      t.codigoInstalacion || '',
+      t.nombreInstalacion || '',
+      t.fechaApertura || '',
+      t.descripcion || '',
+      t.prioridad || '',
+      t.urgente ? 'si' : 'no',
+      t.estado || '',
+      t.quienAviso || '',
+      t.observacionesCierre || '',
+    ]);
+  });
+
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.aoa_to_sheet(filas);
+  ws['!cols'] = [12,18,24,14,36,12,10,12,20,28].map(w => ({ wch: w }));
+  XLSX.utils.book_append_sheet(wb, ws, 'Averías CoreLink');
+  _descargarXLSX(wb, 'Averias_CoreLink_' + new Date().toISOString().split('T')[0] + '.xlsx');
+}
+
+// ── EXPORTAR CONTACTOS ────────────────────────────────────────────────
+async function exportarContactosXLSX() {
+  toast('Exportando contactos...');
+  await _cargarSheetJS();
+  const data = await corelinkGet('/api/contactos');
+  const contactos = data ? (data.contactos || {}) : {};
+
+  const filas = [['Provincia', 'Nombre', 'Teléfono', 'Email', 'Horarios', 'Notas']];
+  Object.entries(contactos).sort((a,b) => a[0].localeCompare(b[0])).forEach(([prov, lista]) => {
+    (lista || []).forEach(c => {
+      filas.push([prov, c.nombre || '', c.telefono || '', c.email || '', c.horarios || '', c.notas || '']);
+    });
+  });
+
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.aoa_to_sheet(filas);
+  ws['!cols'] = [16,30,16,28,20,32].map(w => ({ wch: w }));
+  XLSX.utils.book_append_sheet(wb, ws, 'Contactos CoreLink');
+  _descargarXLSX(wb, 'Contactos_CoreLink_' + new Date().toISOString().split('T')[0] + '.xlsx');
+}
+
+// ── EXPORTAR STOCK ────────────────────────────────────────────────────
+async function exportarStockXLSX() {
+  toast('Exportando stock...');
+  await _cargarSheetJS();
+  const data = await corelinkGet('/api/stock');
+  const stock = data ? (data.stock || {}) : {};
+  const categorias = stock.categorias || {};
+  const materiales = stock.materiales || {};
+
+  const filas = [['ID Material (no modificar)', 'Nombre Material', 'Categoría', 'Uds. Almacén', 'Uds. Furgón', 'Mín. Almacén', 'Mín. Furgón']];
+  Object.entries(materiales).forEach(([id, m]) => {
+    const cat = categorias[m.categoriaId] ? categorias[m.categoriaId].nombre : (m.categoriaId || '');
+    filas.push([id, m.nombre || '', cat, m.almacen ?? 0, m.furgon ?? 0, m.minimoAlmacen ?? 0, m.minimoFurgon ?? 0]);
+  });
+
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.aoa_to_sheet(filas);
+  ws['!cols'] = [18,32,22,14,12,13,13].map(w => ({ wch: w }));
+  XLSX.utils.book_append_sheet(wb, ws, 'Stock CoreLink');
+  _descargarXLSX(wb, 'Stock_CoreLink_' + new Date().toISOString().split('T')[0] + '.xlsx');
+}
+
+// ── MODAL GENÉRICO DE IMPORTACIÓN ────────────────────────────────────
+const _importXLSXConfig = {
+  averias: {
+    titulo: '📥 Importar averías desde Excel',
+    info: '<strong>Columnas:</strong> A = Código instalación · B = Fecha apertura (AAAA-MM-DD) · C = Descripción · D = Prioridad (critica/normal/leve) · E = Urgente (si/no) · F = Quién avisó · G = Observaciones. La primera fila se ignora si es cabecera.',
+    btnConfirmar: '✓ Importar averías',
+  },
+  contactos: {
+    titulo: '📥 Importar contactos desde Excel',
+    info: '<strong>Columnas:</strong> A = Provincia · B = Nombre · C = Teléfono · D = Email · E = Horarios · F = Notas. ⚠ Se sustituyen los contactos de cada provincia incluida en el archivo.',
+    btnConfirmar: '✓ Importar contactos',
+  },
+  stock: {
+    titulo: '📥 Actualizar stock desde Excel',
+    info: '<strong>Columnas:</strong> A = ID Material (no modificar) · B = Nombre (ignorado) · C = Categoría (ignorada) · D = Uds. Almacén · E = Uds. Furgón. Las cantidades se sobreescriben con los valores del archivo.',
+    btnConfirmar: '✓ Actualizar stock',
+  },
+};
+
+function abrirImportarXLSX(contexto) {
+  _importXLSXContexto = contexto;
+  _importXLSXFilas    = [];
+  const cfg = _importXLSXConfig[contexto];
+  document.getElementById('importXLSXTitulo').textContent    = cfg.titulo;
+  document.getElementById('importXLSXInfo').innerHTML        = cfg.info;
+  document.getElementById('btnConfirmarImportXLSX').textContent = cfg.btnConfirmar;
+  document.getElementById('importXLSXPaso1').style.display   = 'block';
+  document.getElementById('importXLSXPaso2').style.display   = 'none';
+  document.getElementById('importXLSXCargando').style.display= 'none';
+  document.getElementById('importXLSXFileInput').value       = '';
+  document.getElementById('modalImportarXLSX').style.display = 'block';
+}
+
+function cerrarImportarXLSX() {
+  document.getElementById('modalImportarXLSX').style.display = 'none';
+  _importXLSXContexto = null;
+  _importXLSXFilas    = [];
+}
+
+async function leerXLSXGenerico(input) {
+  const file = input.files[0];
+  if (!file) return;
+  document.getElementById('importXLSXCargando').style.display = 'block';
+  await _cargarSheetJS();
+
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const wb   = XLSX.read(e.target.result, { type: 'array', cellDates: true });
+      const ws   = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+
+      // Detectar cabecera: si la primera celda no parece un dato real
+      let inicio = 0;
+      if (rows.length > 0) {
+        const a0 = String(rows[0][0] || '').trim().toLowerCase();
+        // Es cabecera si contiene palabras clave comunes
+        if (/código|codigo|provincia|id |nombre|material/.test(a0)) inicio = 1;
+      }
+
+      function parseFecha(val) {
+        if (!val) return null;
+        if (val instanceof Date) return val.toISOString().split('T')[0];
+        const s = String(val).trim();
+        if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+        const m = s.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})$/);
+        if (m) return `${m[3]}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`;
+        return null;
+      }
+
+      _importXLSXFilas = [];
+      for (let i = inicio; i < rows.length; i++) {
+        const r = rows[i];
+        const a = String(r[0] || '').trim();
+        if (!a) continue;
+
+        if (_importXLSXContexto === 'averias') {
+          const fecha = parseFecha(r[1]);
+          if (!fecha) continue;
+          _importXLSXFilas.push({
+            codigoInstalacion: a,
+            fechaApertura:     fecha,
+            descripcion:       String(r[2] || '').trim(),
+            prioridad:         String(r[3] || 'normal').trim().toLowerCase() || 'normal',
+            urgente:           String(r[4] || '').trim().toLowerCase() === 'si',
+            quienAviso:        String(r[5] || '').trim(),
+            observaciones:     String(r[6] || '').trim(),
+          });
+        } else if (_importXLSXContexto === 'contactos') {
+          const nombre = String(r[1] || '').trim();
+          if (!nombre) continue;
+          _importXLSXFilas.push({
+            provincia: a.toUpperCase(),
+            nombre,
+            telefono:  String(r[2] || '').trim(),
+            email:     String(r[3] || '').trim(),
+            horarios:  String(r[4] || '').trim(),
+            notas:     String(r[5] || '').trim(),
+          });
+        } else if (_importXLSXContexto === 'stock') {
+          _importXLSXFilas.push({
+            id:      a,
+            nombre:  String(r[1] || '').trim(),
+            almacen: r[3] !== '' ? Number(r[3]) : undefined,
+            furgon:  r[4] !== '' ? Number(r[4]) : undefined,
+          });
+        }
+      }
+
+      document.getElementById('importXLSXCargando').style.display = 'none';
+
+      if (_importXLSXFilas.length === 0) {
+        toast('No se encontraron datos válidos en el archivo');
+        return;
+      }
+
+      renderImportXLSXLista();
+      document.getElementById('importXLSXPaso1').style.display = 'none';
+      document.getElementById('importXLSXPaso2').style.display = 'block';
+
+    } catch(err) {
+      document.getElementById('importXLSXCargando').style.display = 'none';
+      toast('Error al leer el archivo: ' + err.message);
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function renderImportXLSXLista() {
+  const n = _importXLSXFilas.length;
+  const ctx = _importXLSXContexto;
+
+  let resumen = '', html = '';
+
+  if (ctx === 'averias') {
+    resumen = `${n} avería${n!==1?'s':''} leída${n!==1?'s':''}`;
+    html = _importXLSXFilas.map((f, i) => {
+      const nombre = (INSTALACIONES.find(inst => inst.codigo === f.codigoInstalacion) || {}).nombre || f.codigoInstalacion;
+      return `<div style="padding:8px 0;border-bottom:0.5px solid var(--gris-borde);font-size:12px">
+        <div style="font-weight:700;color:var(--azul)">${f.codigoInstalacion} <span style="font-weight:400;color:var(--gris-medio)">${nombre}</span></div>
+        <div style="color:var(--gris-medio);margin-top:2px">${f.fechaApertura} · ${f.prioridad}${f.urgente?' · ⚠ URGENTE':''}</div>
+        <div style="margin-top:2px">${f.descripcion || '<em style="color:var(--gris-medio)">Sin descripción</em>'}</div>
+      </div>`;
+    }).join('');
+  } else if (ctx === 'contactos') {
+    const provincias = [...new Set(_importXLSXFilas.map(f => f.provincia))];
+    resumen = `${n} contacto${n!==1?'s':''} en ${provincias.length} provincia${provincias.length!==1?'s':''}`;
+    html = _importXLSXFilas.map(f => `<div style="padding:6px 0;border-bottom:0.5px solid var(--gris-borde);font-size:12px;display:flex;gap:10px">
+      <span style="font-weight:700;color:var(--azul);min-width:90px">${f.provincia}</span>
+      <span>${f.nombre}${f.telefono?' · '+f.telefono:''}${f.email?' · '+f.email:''}</span>
+    </div>`).join('');
+  } else if (ctx === 'stock') {
+    resumen = `${n} material${n!==1?'es':''} a actualizar`;
+    html = _importXLSXFilas.map(f => `<div style="padding:6px 0;border-bottom:0.5px solid var(--gris-borde);font-size:12px;display:flex;gap:10px;align-items:center">
+      <span style="color:var(--gris-medio);font-size:11px;min-width:110px">${f.id}</span>
+      <span style="flex:1">${f.nombre}</span>
+      <span style="color:var(--azul);font-weight:700">Alm: ${f.almacen??'—'} · Furg: ${f.furgon??'—'}</span>
+    </div>`).join('');
+  }
+
+  document.getElementById('importXLSXResumen').textContent = resumen;
+  document.getElementById('importXLSXLista').innerHTML = html;
+}
+
+async function confirmarImportXLSX() {
+  if (_importXLSXFilas.length === 0) return;
+  const ctx = _importXLSXContexto;
+  let ruta, body, msgOk;
+
+  if (ctx === 'averias') {
+    ruta   = '/api/importar/averias';
+    body   = { averias: _importXLSXFilas };
+    msgOk  = d => `${d.creadas} avería${d.creadas!==1?'s':''} importada${d.creadas!==1?'s':''}`;
+  } else if (ctx === 'contactos') {
+    ruta   = '/api/importar/contactos';
+    body   = { contactos: _importXLSXFilas };
+    msgOk  = d => `${d.contactos} contacto${d.contactos!==1?'s':''} en ${d.provincias} provincia${d.provincias!==1?'s':''}`;
+  } else if (ctx === 'stock') {
+    ruta   = '/api/importar/stock';
+    body   = { materiales: _importXLSXFilas };
+    msgOk  = d => `${d.actualizados} material${d.actualizados!==1?'es':''} actualizado${d.actualizados!==1?'s':''}`;
+  }
+
+  try {
+    const resp = await fetch(CORELINK_URL + ruta, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CoreLink-Key': CORELINK_API_KEY },
+      body: JSON.stringify(body)
+    });
+    const data = await resp.json();
+    if (data.ok) {
+      toast('✓ ' + msgOk(data));
+      cerrarImportarXLSX();
+      if (ctx === 'averias')   cargarAverias();
+      if (ctx === 'contactos') cargarContactos();
+      if (ctx === 'stock')     cargarStock();
+    } else {
+      toast('Error: ' + (data.error || 'No se pudo completar'));
+    }
+  } catch(e) { toast('Sin conexión'); }
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════
 // IMPORTAR AGENDA DESDE EXCEL
 // ═══════════════════════════════════════════════════════════════════════
 
@@ -5056,6 +5398,31 @@ async function confirmarImportacion() {
 
 
 </script>
+<!-- ── MODAL IMPORTAR .XLSX GENÉRICO ──────────────────────────────── -->
+<div id="modalImportarXLSX" style="display:none;position:fixed;inset:0;z-index:9000;background:rgba(0,0,0,0.65);overflow-y:auto;padding:20px">
+  <div style="background:#fff;border-radius:12px;max-width:700px;margin:0 auto;overflow:hidden">
+    <div style="background:var(--azul);padding:16px 20px;display:flex;justify-content:space-between;align-items:center">
+      <div id="importXLSXTitulo" style="color:#fff;font-size:15px;font-weight:800"></div>
+      <button onclick="cerrarImportarXLSX()" style="background:rgba(255,255,255,0.15);color:#fff;border:none;border-radius:7px;padding:5px 12px;font-size:13px;cursor:pointer">✕ Cerrar</button>
+    </div>
+    <div id="importXLSXPaso1" style="padding:20px">
+      <div id="importXLSXInfo" style="background:#eff6ff;border:1.5px solid #bfdbfe;border-radius:8px;padding:14px 16px;margin-bottom:16px;font-size:13px;color:#1e40af"></div>
+      <label style="display:block;font-size:13px;font-weight:700;color:var(--gris-oscuro);margin-bottom:8px">Selecciona el archivo Excel (.xlsx)</label>
+      <input type="file" id="importXLSXFileInput" accept=".xlsx" onchange="leerXLSXGenerico(this)"
+        style="width:100%;border:2px dashed var(--gris-borde);border-radius:8px;padding:20px;font-size:13px;cursor:pointer;box-sizing:border-box">
+      <div id="importXLSXCargando" style="display:none;text-align:center;padding:20px;color:var(--gris-medio);font-size:13px">Leyendo archivo...</div>
+    </div>
+    <div id="importXLSXPaso2" style="display:none;padding:20px">
+      <div id="importXLSXResumen" style="font-size:13px;color:var(--gris-medio);margin-bottom:12px"></div>
+      <div id="importXLSXLista" style="max-height:380px;overflow-y:auto;margin-bottom:16px"></div>
+      <div style="padding-top:14px;border-top:1px solid var(--gris-borde);display:flex;justify-content:flex-end;gap:10px">
+        <button onclick="cerrarImportarXLSX()" style="padding:10px 20px;background:#f3f4f6;color:var(--gris-oscuro);border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer">Cancelar</button>
+        <button onclick="confirmarImportXLSX()" style="padding:10px 24px;background:var(--azul);color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer" id="btnConfirmarImportXLSX"></button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- ── MODAL IMPORTAR AGENDA ─────────────────────────────────────── -->
 <div id="modalImportarAgenda" style="display:none;position:fixed;inset:0;z-index:9000;background:rgba(0,0,0,0.65);overflow-y:auto;padding:20px">
   <div style="background:#fff;border-radius:12px;max-width:700px;margin:0 auto;overflow:hidden">
