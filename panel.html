@@ -1898,6 +1898,11 @@ async function eliminarVisita(id) {
     const data = await resp.json();
     if (data.ok) {
       toast('Visita eliminada ✓');
+      // Actualizar caché local para que el listado se refresque sin recargar todo
+      if (cacheChecklists && cacheChecklists[id]) {
+        delete cacheChecklists[id];
+        renderListaInstalaciones();
+      }
       renderPanelVisitas();
     } else {
       toast('Error: ' + (data.error || 'No se pudo eliminar'));
@@ -5008,7 +5013,7 @@ const _importXLSXConfig = {
   },
   stock: {
     titulo: '📥 Actualizar stock desde Excel',
-    info: '<strong>Columnas:</strong> A = ID Material (no modificar) · B = Nombre (ignorado) · C = Categoría (ignorada) · D = Uds. Almacén · E = Uds. Furgón. Las cantidades se sobreescriben con los valores del archivo.',
+    info: '<strong>Columnas:</strong> A = Nombre material (obligatorio) · B = Categoría · C = Uds. Almacén · D = Uds. Furgón · E = Mín. Almacén · F = Mín. Furgón. Si el material no existe se crea. Si la categoría no existe se crea. Los materiales no incluidos en el archivo no se borran.',
     btnConfirmar: '✓ Actualizar stock',
   },
 };
@@ -5094,11 +5099,14 @@ async function leerXLSXGenerico(input) {
             notas:     String(r[5] || '').trim(),
           });
         } else if (_importXLSXContexto === 'stock') {
+          if (!a) continue; // a = nombre material (columna A ahora)
           _importXLSXFilas.push({
-            id:      a,
-            nombre:  String(r[1] || '').trim(),
-            almacen: r[3] !== '' ? Number(r[3]) : undefined,
-            furgon:  r[4] !== '' ? Number(r[4]) : undefined,
+            nombre:        a,
+            categoria:     String(r[1] || '').trim(),
+            almacen:       r[2] !== '' ? Number(r[2]) : undefined,
+            furgon:        r[3] !== '' ? Number(r[3]) : undefined,
+            minimoAlmacen: r[4] !== '' ? Number(r[4]) : undefined,
+            minimoFurgon:  r[5] !== '' ? Number(r[5]) : undefined,
           });
         }
       }
@@ -5146,11 +5154,11 @@ function renderImportXLSXLista() {
       <span>${f.nombre}${f.telefono?' · '+f.telefono:''}${f.email?' · '+f.email:''}</span>
     </div>`).join('');
   } else if (ctx === 'stock') {
-    resumen = `${n} material${n!==1?'es':''} a actualizar`;
+    resumen = `${n} material${n!==1?'es':''} a procesar`;
     html = _importXLSXFilas.map(f => `<div style="padding:6px 0;border-bottom:0.5px solid var(--gris-borde);font-size:12px;display:flex;gap:10px;align-items:center">
-      <span style="color:var(--gris-medio);font-size:11px;min-width:110px">${f.id}</span>
-      <span style="flex:1">${f.nombre}</span>
-      <span style="color:var(--azul);font-weight:700">Alm: ${f.almacen??'—'} · Furg: ${f.furgon??'—'}</span>
+      <span style="flex:1;font-weight:600">${f.nombre}</span>
+      <span style="color:var(--gris-medio);font-size:11px">${f.categoria||''}</span>
+      <span style="color:var(--azul);font-weight:700;white-space:nowrap">Alm: ${f.almacen??'—'} · Furg: ${f.furgon??'—'}</span>
     </div>`).join('');
   }
 
@@ -5174,7 +5182,7 @@ async function confirmarImportXLSX() {
   } else if (ctx === 'stock') {
     ruta   = '/api/importar/stock';
     body   = { materiales: _importXLSXFilas };
-    msgOk  = d => `${d.actualizados} material${d.actualizados!==1?'es':''} actualizado${d.actualizados!==1?'s':''}`;
+    msgOk  = d => `Stock actualizado: ${d.actualizados} material${d.actualizados!==1?'es':''} actualizado${d.actualizados!==1?'s':''}${d.creados?`, ${d.creados} creado${d.creados!==1?'s':''}`:''}`;
   }
 
   try {
