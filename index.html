@@ -4027,7 +4027,7 @@ function abrirInformePDF() {
 }
 
 function volverDesdeInforme() {
-  document.getElementById('btnVolverAppBox').classList.add('hidden');
+  document.getElementById('btnVolverAppBox')?.classList.add('hidden');
   mostrarPaso('paso5');
 }
 
@@ -4150,7 +4150,7 @@ function _generarInformePDF() {
   window._pdfTitulo  = d.inst.nombre + ' — ' + fecha;
 
   ventana.style.display = 'flex';
-  document.getElementById('btnVolverAppBox').classList.add('hidden');
+  document.getElementById('btnVolverAppBox')?.classList.add('hidden');
 }
 
 let _pdfBlobUrl = null;
@@ -4880,7 +4880,7 @@ async function verInformePNT(codigoEnc, nombreEnc) {
     window._pdfNombre      = nombre;
     window._pdfTitulo      = nombre;
     ventana.style.display  = 'flex';
-    document.getElementById('btnVolverAppBox').classList.add('hidden');
+    document.getElementById('btnVolverAppBox')?.classList.add('hidden');
   } catch(e) { toast('Error al cargar el informe'); }
 }
 
