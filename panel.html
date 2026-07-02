@@ -492,7 +492,10 @@ body.dark .item-card { background:#1e2433;border-color:#2d3548; }
     </div>
     <!-- Vista lista -->
     <div id="agendaVistaLista">
-      <button class="btn-primary" onclick="abrirFormNuevaTarea()" style="margin-bottom:14px">+ Nueva tarea</button>
+      <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">
+        <button class="btn-primary" onclick="abrirFormNuevaTarea()">+ Nueva tarea</button>
+        <button class="btn-secondary" onclick="abrirImportarAgenda()">📥 Importar agenda</button>
+      </div>
       <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">
         <button class="pill active" id="filtroAgendaPendientes"  onclick="setFiltroAgenda('pendientes')">Pendientes</button>
         <button class="pill"        id="filtroAgendaCompletadas" onclick="setFiltroAgenda('completadas')">Completadas</button>
@@ -4850,8 +4853,242 @@ function cerrarSesionPNC() {
   } else {
     document.getElementById('loginScreen').style.display = 'flex';
   }
+
+// ═══════════════════════════════════════════════════════════════════════
+// IMPORTAR AGENDA DESDE EXCEL
+// ═══════════════════════════════════════════════════════════════════════
+
+let importTareasLeidas = []; // { codigo, nombre, tipo, fecha, nota, incluir, asignadoA }
+
+function abrirImportarAgenda() {
+  document.getElementById('modalImportarAgenda').style.display = 'block';
+  document.getElementById('importPaso1').style.display = 'block';
+  document.getElementById('importPaso2').style.display = 'none';
+  document.getElementById('importCargando').style.display = 'none';
+  document.getElementById('importFileInput').value = '';
+  importTareasLeidas = [];
+}
+
+function cerrarImportarAgenda() {
+  document.getElementById('modalImportarAgenda').style.display = 'none';
+  importTareasLeidas = [];
+}
+
+async function leerExcelImportacion(input) {
+  const file = input.files[0];
+  if (!file) return;
+
+  document.getElementById('importCargando').style.display = 'block';
+
+  // Cargar SheetJS si no está disponible
+  if (typeof XLSX === 'undefined') {
+    await new Promise((res, rej) => {
+      const s = document.createElement('script');
+      s.src = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+      s.onload = res; s.onerror = rej;
+      document.head.appendChild(s);
+    });
+  }
+
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const wb   = XLSX.read(e.target.result, { type: 'array', cellDates: true });
+      const ws   = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+
+      // Detectar si la primera fila es cabecera (columna A no parece código de instalación)
+      let inicio = 0;
+      if (rows.length > 0) {
+        const primeraCelda = String(rows[0][0] || '').trim();
+        // Código de instalación: patrón como 06E010S001 (dígitos+letras, ~10 chars)
+        if (!/^\d{2}[A-Z]\d{3}S\d{3}$/.test(primeraCelda)) {
+          inicio = 1; // saltar cabecera
+        }
+      }
+
+      // Resolver nombre de instalación desde INSTALACIONES
+      function nombreDecodigo(codigo) {
+        const inst = INSTALACIONES.find(i => i.codigo === codigo);
+        return inst ? inst.nombre : codigo;
+      }
+
+      importTareasLeidas = [];
+      for (let i = inicio; i < rows.length; i++) {
+        const fila = rows[i];
+        const codigo = String(fila[0] || '').trim();
+        if (!codigo) continue; // fila vacía
+
+        const rawAnual = fila[1];
+        const rawTrim  = fila[2];
+        const nota     = String(fila[3] || '').trim();
+
+        function parseFecha(val) {
+          if (!val) return null;
+          if (val instanceof Date) return val.toISOString().split('T')[0];
+          const s = String(val).trim();
+          // Formato YYYY-MM-DD
+          if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+          // Formato DD/MM/YYYY
+          const m = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+          if (m) return `${m[3]}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`;
+          return null;
+        }
+
+        const fechaAnual = parseFecha(rawAnual);
+        const fechaTrim  = parseFecha(rawTrim);
+        const nombre     = nombreDecodigo(codigo);
+
+        if (fechaAnual) {
+          importTareasLeidas.push({ id: importTareasLeidas.length, codigo, nombre, tipo: 'anual', fecha: fechaAnual, nota, incluir: true, asignadoA: 'jesus' });
+        }
+        if (fechaTrim) {
+          importTareasLeidas.push({ id: importTareasLeidas.length, codigo, nombre, tipo: 'trimestral', fecha: fechaTrim, nota, incluir: true, asignadoA: 'jesus' });
+        }
+      }
+
+      document.getElementById('importCargando').style.display = 'none';
+
+      if (importTareasLeidas.length === 0) {
+        toast('No se encontraron tareas válidas en el archivo');
+        return;
+      }
+
+      renderImportListaTareas();
+      document.getElementById('importPaso1').style.display = 'none';
+      document.getElementById('importPaso2').style.display = 'block';
+
+    } catch(err) {
+      document.getElementById('importCargando').style.display = 'none';
+      toast('Error al leer el archivo: ' + err.message);
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function renderImportListaTareas() {
+  const incluidas = importTareasLeidas.filter(t => t.incluir).length;
+  document.getElementById('importResumen').textContent =
+    `${importTareasLeidas.length} tarea${importTareasLeidas.length!==1?'s':''} leída${importTareasLeidas.length!==1?'s':''} · ${incluidas} seleccionada${incluidas!==1?'s':''}`;
+
+  const TIPO_LABEL = { anual: '🔧 Anual', trimestral: '💻 Trimestral', 'pci-trim': '🔥 Trim. PCI' };
+  const ASIG_LABEL = { jesus: '👷 Jesús', fran: '🖥 Fran', '': 'Sin asignar' };
+
+  const cont = document.getElementById('importListaTareas');
+  cont.innerHTML = importTareasLeidas.map(t => {
+    const fecha = new Date(t.fecha+'T12:00:00').toLocaleDateString('es-ES', { day:'numeric', month:'long', year:'numeric' });
+    const instDesc = t.nombre !== t.codigo ? `<span style="font-size:11px;color:var(--gris-medio)">${t.codigo}</span> ${t.nombre}` : t.codigo;
+    return `<div style="display:flex;align-items:flex-start;gap:10px;padding:10px 0;border-bottom:0.5px solid var(--gris-borde);opacity:${t.incluir?1:0.4}">
+      <!-- Checkbox incluir -->
+      <input type="checkbox" ${t.incluir?'checked':''} onchange="importToggleIncluir(${t.id}, this.checked)"
+        style="margin-top:3px;width:16px;height:16px;cursor:pointer;flex-shrink:0">
+      <!-- Info tarea -->
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;font-weight:700;color:var(--azul);margin-bottom:2px">${instDesc}</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:${t.nota?'4px':'0'}">
+          <span style="font-size:11px;font-weight:700;background:var(--azul-claro);color:var(--azul);padding:1px 8px;border-radius:99px">${TIPO_LABEL[t.tipo]||t.tipo}</span>
+          <span style="font-size:12px;color:var(--gris-medio)">${fecha}</span>
+        </div>
+        ${t.nota?`<div style="font-size:11px;color:var(--gris-medio);font-style:italic">→ ${t.nota}</div>`:''}
+      </div>
+      <!-- Selector asignación -->
+      <select onchange="importCambiarAsignacion(${t.id}, this.value)" ${!t.incluir?'disabled':''}
+        style="border:1px solid var(--gris-borde);border-radius:7px;padding:5px 8px;font-size:12px;font-family:inherit;background:#fff;cursor:pointer;flex-shrink:0">
+        <option value="jesus" ${t.asignadoA==='jesus'?'selected':''}>👷 Jesús</option>
+        <option value="fran"  ${t.asignadoA==='fran'?'selected':''}>🖥 Fran</option>
+        <option value=""      ${t.asignadoA===''?'selected':''}>Sin asignar</option>
+      </select>
+    </div>`;
+  }).join('');
+}
+
+function importToggleIncluir(id, incluir) {
+  const t = importTareasLeidas.find(t => t.id === id);
+  if (t) t.incluir = incluir;
+  renderImportListaTareas();
+}
+
+function importCambiarAsignacion(id, asignadoA) {
+  const t = importTareasLeidas.find(t => t.id === id);
+  if (t) t.asignadoA = asignadoA;
+}
+
+function importAsignarTodas(asignadoA) {
+  importTareasLeidas.forEach(t => { t.asignadoA = asignadoA; });
+  renderImportListaTareas();
+}
+
+async function confirmarImportacion() {
+  const aImportar = importTareasLeidas.filter(t => t.incluir);
+  if (aImportar.length === 0) { toast('No hay tareas seleccionadas'); return; }
+
+  // Obtener nombres de instalaciones desde el caché de fichas
+  const fichas = await corelinkGet('/api/fichas');
+
+  let ok = 0, errores = 0;
+  for (const t of aImportar) {
+    const ficha = fichas && fichas.fichas ? fichas.fichas[t.codigo] : null;
+    const nombreInstalacion = (ficha && ficha.nombre) ? ficha.nombre : t.nombre;
+    try {
+      const resp = await fetch(CORELINK_URL + '/api/agenda', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CoreLink-Key': CORELINK_API_KEY },
+        body: JSON.stringify({
+          codigoInstalacion:  t.codigo,
+          nombreInstalacion:  nombreInstalacion,
+          fecha:              t.fecha,
+          tipo:               t.tipo,
+          nota:               t.nota,
+          recurrente:         'no',
+          asignadoA:          t.asignadoA
+        })
+      });
+      const data = await resp.json();
+      if (data.ok) ok++; else errores++;
+    } catch(e) { errores++; }
+  }
+
+  cerrarImportarAgenda();
+  toast(`Importación completada: ${ok} tarea${ok!==1?'s':''} añadida${ok!==1?'s':''}${errores?` · ${errores} error${errores!==1?'es':''}`:''}`);
+  cargarAgenda();
+}
+
 })();
 </script>
+<!-- ── MODAL IMPORTAR AGENDA ─────────────────────────────────────── -->
+<div id="modalImportarAgenda" style="display:none;position:fixed;inset:0;z-index:9000;background:rgba(0,0,0,0.65);overflow-y:auto;padding:20px">
+  <div style="background:#fff;border-radius:12px;max-width:700px;margin:0 auto;overflow:hidden">
+    <div style="background:var(--azul);padding:16px 20px;display:flex;justify-content:space-between;align-items:center">
+      <div style="color:#fff;font-size:15px;font-weight:800">📥 Importar agenda desde Excel</div>
+      <button onclick="cerrarImportarAgenda()" style="background:rgba(255,255,255,0.15);color:#fff;border:none;border-radius:7px;padding:5px 12px;font-size:13px;cursor:pointer">✕ Cerrar</button>
+    </div>
+    <div id="importPaso1" style="padding:20px">
+      <div style="background:#eff6ff;border:1.5px solid #bfdbfe;border-radius:8px;padding:14px 16px;margin-bottom:16px;font-size:13px;color:#1e40af">
+        <strong>Formato esperado:</strong> columna A = código instalación · B = fecha anual (AAAA-MM-DD) · C = fecha trimestral (AAAA-MM-DD) · D = observaciones (opcional).<br>
+        La primera fila se ignora si parece una cabecera.
+      </div>
+      <label style="display:block;font-size:13px;font-weight:700;color:var(--gris-oscuro);margin-bottom:8px">Selecciona el archivo Excel (.xlsx)</label>
+      <input type="file" id="importFileInput" accept=".xlsx" onchange="leerExcelImportacion(this)"
+        style="width:100%;border:2px dashed var(--gris-borde);border-radius:8px;padding:20px;font-size:13px;cursor:pointer;box-sizing:border-box">
+      <div id="importCargando" style="display:none;text-align:center;padding:20px;color:var(--gris-medio);font-size:13px">Leyendo archivo...</div>
+    </div>
+    <div id="importPaso2" style="display:none;padding:20px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:8px">
+        <div id="importResumen" style="font-size:13px;color:var(--gris-medio)"></div>
+        <div style="display:flex;gap:8px">
+          <button onclick="importAsignarTodas('jesus')" style="background:#eff6ff;color:var(--azul);border:1px solid var(--azul);border-radius:7px;padding:5px 12px;font-size:12px;font-weight:600;cursor:pointer">Asignar todas a Jesús</button>
+          <button onclick="importAsignarTodas('')" style="background:#f3f4f6;color:var(--gris-oscuro);border:1px solid var(--gris-borde);border-radius:7px;padding:5px 12px;font-size:12px;font-weight:600;cursor:pointer">Sin asignar todas</button>
+        </div>
+      </div>
+      <div id="importListaTareas" style="max-height:420px;overflow-y:auto"></div>
+      <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--gris-borde);display:flex;justify-content:flex-end;gap:10px">
+        <button onclick="cerrarImportarAgenda()" style="padding:10px 20px;background:#f3f4f6;color:var(--gris-oscuro);border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer">Cancelar</button>
+        <button onclick="confirmarImportacion()" style="padding:10px 24px;background:var(--azul);color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer">✓ Importar tareas seleccionadas</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div id="toast" style="position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(80px);background:#1e293b;color:#fff;padding:11px 20px;border-radius:8px;font-size:14px;font-weight:500;z-index:9999;transition:transform 0.3s ease;white-space:nowrap;pointer-events:none"></div>
 </body>
 </html>
