@@ -1813,7 +1813,7 @@ async function renderPanelVisitas() {
   panel.innerHTML = '<div class="empty-state">Cargando visitas...</div>';
 
   const data = await corelinkGet('/api/checklists?codigo=' + encodeURIComponent(inst.codigo));
-  const checklists = data ? Object.values(data.checklists) : [];
+  const checklists = data ? Object.entries(data.checklists || {}) : [];
 
   if (checklists.length === 0) {
     panel.innerHTML = '<div class="empty-state">Sin visitas registradas todavía</div>';
@@ -1821,12 +1821,10 @@ async function renderPanelVisitas() {
   }
 
   const LABEL_TIPO = { anual:'🔧 Anual', trimestral:'💻 Trimestral', 'pci-trim':'🔥 Trim. PCI' };
-  const ordenadas  = checklists.sort((a,b) => b.fecha < a.fecha ? -1 : 1);
+  const ordenadas  = checklists.sort((a,b) => b[1].fecha < a[1].fecha ? -1 : 1);
 
-  // Resumen rápido
-  const totalAnual = checklists.filter(c => c.tipo === 'anual').length;
-  const totalTrim  = checklists.filter(c => c.tipo === 'trimestral' || c.tipo === 'pci-trim').length;
-  const ultimaVisita = ordenadas[0];
+  const totalAnual = checklists.filter(([,c]) => c.tipo === 'anual').length;
+  const totalTrim  = checklists.filter(([,c]) => c.tipo === 'trimestral' || c.tipo === 'pci-trim').length;
 
   let html = `
     <div style="display:flex;gap:10px;margin-bottom:14px">
@@ -1835,33 +1833,60 @@ async function renderPanelVisitas() {
       <div class="stat-box info" style="flex:1;padding:12px 8px"><div class="stat-num" style="font-size:22px">${totalTrim}</div><div class="stat-label">Trimestrales</div></div>
     </div>`;
 
-  html += ordenadas.map(c => {
+  html += ordenadas.map(([id, c]) => {
     const fecha    = new Date(c.fecha+'T12:00:00').toLocaleDateString('es-ES', { day:'numeric', month:'long', year:'numeric' });
     const ok       = c.items ? c.items.filter(i => i.estado === 'ok').length : 0;
     const inc      = c.items ? c.items.filter(i => i.estado === 'inc').length : 0;
     const na       = c.items ? c.items.filter(i => i.estado === 'na').length : 0;
     const duracion = c.horaIn && c.horaOut ? ` · ${c.horaIn} — ${c.horaOut}` : '';
+    const sinChk   = c.sinChecklist ? `<span style="font-size:10px;background:#f3f4f6;color:var(--gris-medio);padding:1px 6px;border-radius:99px;margin-left:4px">Sin checklist</span>` : '';
     return `<div style="background:var(--blanco);border-radius:9px;border-left:4px solid ${inc>0?'var(--naranja)':'var(--verde)'};padding:12px 14px;margin-bottom:8px;box-shadow:var(--sombra)">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px">
         <div>
           <span style="font-size:11px;font-weight:800;background:var(--azul-claro);color:var(--azul);padding:2px 8px;border-radius:99px">${LABEL_TIPO[c.tipo]||c.tipo}</span>
+          ${sinChk}
           ${c.tecnico?`<span style="font-size:11px;color:var(--gris-medio);margin-left:6px">👤 ${c.tecnico}</span>`:''}
         </div>
         <span style="font-size:12px;color:var(--gris-medio);white-space:nowrap">${fecha}${duracion}</span>
       </div>
-      <div style="display:flex;gap:12px;font-size:12px">
+      ${!c.sinChecklist ? `<div style="display:flex;gap:12px;font-size:12px">
         <span style="color:var(--verde)">✓ ${ok} correctos</span>
         ${inc>0?`<span style="color:var(--naranja)">⚠ ${inc} incidencias</span>`:''}
         ${na>0?`<span style="color:var(--gris-medio)">N/A: ${na}</span>`:''}
-      </div>
+      </div>` : `<div style="font-size:12px;color:var(--gris-medio)">${c.nota||'Visita registrada manualmente'}</div>`}
       ${inc>0 && c.incidencias && c.incidencias.length>0 ? `
         <div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--gris-borde)">
           ${c.incidencias.map(i => `<div style="font-size:12px;color:var(--naranja)">→ ${i.codigo} ${i.nombre}${i.desc?' — '+i.desc:''}</div>`).join('')}
         </div>` : ''}
+      <div style="margin-top:10px;padding-top:8px;border-top:1px solid var(--gris-borde);text-align:right">
+        <button onclick="eliminarVisita('${id}')"
+          style="background:#fee2e2;color:var(--rojo);border:none;border-radius:7px;padding:5px 12px;font-size:12px;font-weight:600;cursor:pointer">
+          🗑 Eliminar visita
+        </button>
+      </div>
     </div>`;
   }).join('');
 
   panel.innerHTML = html;
+}
+
+async function eliminarVisita(id) {
+  if (!confirm('¿Eliminar esta visita del historial?\n\nLa instalación quedará como si esta visita nunca hubiera ocurrido.')) return;
+  if (!confirm('Segunda confirmación — esta acción no se puede deshacer.\n\n¿Confirmas la eliminación?')) return;
+  try {
+    const resp = await fetch(CORELINK_URL + '/api/checklists', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json', 'X-CoreLink-Key': CORELINK_API_KEY },
+      body: JSON.stringify({ id })
+    });
+    const data = await resp.json();
+    if (data.ok) {
+      toast('Visita eliminada ✓');
+      renderPanelVisitas();
+    } else {
+      toast('Error: ' + (data.error || 'No se pudo eliminar'));
+    }
+  } catch(e) { toast('Sin conexión'); }
 }
 
 // ── Panel Informes HTML ──────────────────────────────────────────────
