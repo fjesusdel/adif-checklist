@@ -5589,6 +5589,7 @@ async function confirmarImportacion() {
   for (const t of aImportar) {
     const ficha = fichas && fichas.fichas ? fichas.fichas[t.codigo] : null;
     const nombreInstalacion = (ficha && ficha.nombre) ? ficha.nombre : t.nombre;
+    const provincia = (ficha && ficha.provincia) ? ficha.provincia : '';
     try {
       const resp = await fetch(CORELINK_URL + '/api/agenda', {
         method: 'POST',
@@ -5596,6 +5597,7 @@ async function confirmarImportacion() {
         body: JSON.stringify({
           codigoInstalacion:  t.codigo,
           nombreInstalacion:  nombreInstalacion,
+          provincia,
           fecha:              t.fecha,
           tipo:               t.tipo,
           nota:               t.nota,
