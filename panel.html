@@ -2679,13 +2679,15 @@ async function guardarNuevaTareaPanel() {
   const descripcion  = document.getElementById('tareaDescripcion').value.trim();
   const nota         = document.getElementById('tareaNota').value.trim();
   const notaFinal    = [descripcion, nota].filter(Boolean).join(' — ');
-  const codigo       = instalacionTareaSeleccionada ? instalacionTareaSeleccionada.codigo : null;
-  const nombre       = instalacionTareaSeleccionada ? instalacionTareaSeleccionada.nombre : (descripcion || 'Tarea libre');
+  const codigo       = instalacionTareaSeleccionada ? instalacionTareaSeleccionada.codigo    : null;
+  const nombre       = instalacionTareaSeleccionada ? instalacionTareaSeleccionada.nombre    : (descripcion || 'OT sin instalación');
+  const provincia    = instalacionTareaSeleccionada ? instalacionTareaSeleccionada.provincia : '';
   const recurrente   = document.getElementById('tareaRecurrente').value;
   const asignadoA    = document.getElementById('tareaAsignadoA').value;
   const resp = await corelinkPost('/api/agenda', {
     codigoInstalacion: codigo,
     nombreInstalacion: nombre,
+    provincia,
     fecha,
     tipo: document.getElementById('tareaTipo').value,
     nota: notaFinal,
