@@ -5457,53 +5457,86 @@ async function leerExcelImportacion(input) {
       const ws   = wb.Sheets[wb.SheetNames[0]];
       const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
 
-      // Detectar si la primera fila es cabecera (columna A no parece código de instalación)
-      let inicio = 0;
-      if (rows.length > 0) {
-        const primeraCelda = String(rows[0][0] || '').trim();
-        // Código de instalación: patrón como 06E010S001 (dígitos+letras, ~10 chars)
-        if (!/^\d{2}[A-Z]\d{3}S\d{3}$/.test(primeraCelda)) {
-          inicio = 1; // saltar cabecera
-        }
+      function parseFecha(val) {
+        if (!val) return null;
+        if (val instanceof Date) return val.toISOString().split('T')[0];
+        const s = String(val).trim();
+        if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+        const m = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+        if (m) return `${m[3]}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`;
+        return null;
       }
 
-      // Resolver nombre de instalación desde INSTALACIONES
       function nombreDecodigo(codigo) {
         const inst = INSTALACIONES.find(i => i.codigo === codigo);
         return inst ? inst.nombre : codigo;
       }
 
+      // Detectar si la primera fila es cabecera y mapear columnas
+      // Soporta tanto la plantilla de importación como el formato exportado
+      let inicio = 0;
+      let colCodigo = 0, colFechaAnual = 1, colFechaTrim = 2, colNota = 3;
+      let colTipo = -1, colFecha = -1, colEstado = -1, colAsignado = -1, colId = -1;
+      let modoExportado = false;
+
+      if (rows.length > 0) {
+        const cab = rows[0].map(c => String(c || '').trim().toLowerCase());
+        // Detectar si es cabecera (contiene palabras clave)
+        if (cab.some(c => /código|codigo|tipo|fecha|estado|asignado|instalaci/.test(c))) {
+          inicio = 1;
+          // Mapear columnas por nombre de cabecera
+          cab.forEach((c, i) => {
+            if (/^código|^codigo/.test(c) && c.includes('instal')) colCodigo = i;
+            else if (/tipo/.test(c)) colTipo = i;
+            else if (/fecha/.test(c) && !/anual|trim/.test(c)) colFecha = i;
+            else if (/anual/.test(c)) colFechaAnual = i;
+            else if (/trimestral|trim/.test(c)) colFechaTrim = i;
+            else if (/nota|observ/.test(c)) colNota = i;
+            else if (/estado/.test(c)) colEstado = i;
+            else if (/asignado/.test(c)) colAsignado = i;
+            else if (/^id/.test(c)) colId = i;
+          });
+          // Si tiene columna Tipo y Fecha únicas → es el formato exportado
+          if (colTipo >= 0 && colFecha >= 0) modoExportado = true;
+        }
+      }
+
+      const TIPO_MAP = {
+        'mant. anual': 'anual', 'anual': 'anual',
+        'mant. trimestral': 'trimestral', 'trimestral': 'trimestral',
+        'avería correctiva': 'averia-correctiva', 'averia correctiva': 'averia-correctiva',
+        'instalación': 'instalacion', 'instalacion': 'instalacion',
+        'trabajo libre': 'libre', 'libre': 'libre'
+      };
+      const ASIG_MAP = { 'jesús': 'jesus', 'jesus': 'jesus', 'fran': 'fran', 'sin asignar': '', '': '' };
+
       importTareasLeidas = [];
       for (let i = inicio; i < rows.length; i++) {
         const fila = rows[i];
-        const codigo = String(fila[0] || '').trim();
-        if (!codigo) continue; // fila vacía
+        const codigo = String(fila[colCodigo] || '').trim();
+        if (!codigo) continue;
 
-        const rawAnual = fila[1];
-        const rawTrim  = fila[2];
-        const nota     = String(fila[3] || '').trim();
+        const nombre = nombreDecodigo(codigo);
 
-        function parseFecha(val) {
-          if (!val) return null;
-          if (val instanceof Date) return val.toISOString().split('T')[0];
-          const s = String(val).trim();
-          // Formato YYYY-MM-DD
-          if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
-          // Formato DD/MM/YYYY
-          const m = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
-          if (m) return `${m[3]}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`;
-          return null;
-        }
-
-        const fechaAnual = parseFecha(rawAnual);
-        const fechaTrim  = parseFecha(rawTrim);
-        const nombre     = nombreDecodigo(codigo);
-
-        if (fechaAnual) {
-          importTareasLeidas.push({ id: importTareasLeidas.length, codigo, nombre, tipo: 'anual', fecha: fechaAnual, nota, incluir: true, asignadoA: 'jesus' });
-        }
-        if (fechaTrim) {
-          importTareasLeidas.push({ id: importTareasLeidas.length, codigo, nombre, tipo: 'trimestral', fecha: fechaTrim, nota, incluir: true, asignadoA: 'jesus' });
+        if (modoExportado) {
+          // Formato exportado: una fila = una OT con tipo y fecha propios
+          const tipo    = TIPO_MAP[String(fila[colTipo] || '').trim().toLowerCase()] || 'anual';
+          const fecha   = parseFecha(fila[colFecha]);
+          const nota    = String(fila[colNota] || '').trim();
+          const estado  = String(fila[colEstado] || '').trim().toLowerCase();
+          const asigRaw = String(fila[colAsignado] || '').trim().toLowerCase();
+          const asig    = ASIG_MAP[asigRaw] !== undefined ? ASIG_MAP[asigRaw] : 'jesus';
+          if (!fecha) continue;
+          // No importar las ya completadas salvo que el usuario lo quiera
+          if (estado === 'completada') continue;
+          importTareasLeidas.push({ id: importTareasLeidas.length, codigo, nombre, tipo, fecha, nota, incluir: true, asignadoA: asig });
+        } else {
+          // Formato plantilla: columna B = fecha anual, columna C = fecha trimestral
+          const nota = String(fila[colNota] || '').trim();
+          const fechaAnual = parseFecha(fila[colFechaAnual]);
+          const fechaTrim  = parseFecha(fila[colFechaTrim]);
+          if (fechaAnual) importTareasLeidas.push({ id: importTareasLeidas.length, codigo, nombre, tipo: 'anual',      fecha: fechaAnual, nota, incluir: true, asignadoA: 'jesus' });
+          if (fechaTrim)  importTareasLeidas.push({ id: importTareasLeidas.length, codigo, nombre, tipo: 'trimestral', fecha: fechaTrim,  nota, incluir: true, asignadoA: 'jesus' });
         }
       }
 
@@ -5698,9 +5731,8 @@ async function confirmarImportacion() {
       <button onclick="cerrarImportarAgenda()" style="background:rgba(255,255,255,0.15);color:#fff;border:none;border-radius:7px;padding:5px 12px;font-size:13px;cursor:pointer">✕ Cerrar</button>
     </div>
     <div id="importPaso1" style="padding:20px">
-      <div style="background:#eff6ff;border:1.5px solid #bfdbfe;border-radius:8px;padding:14px 16px;margin-bottom:16px;font-size:13px;color:#1e40af">
-        <strong>Formato esperado:</strong> columna A = código instalación · B = fecha anual (AAAA-MM-DD) · C = fecha trimestral (AAAA-MM-DD) · D = observaciones (opcional).<br>
-        La primera fila se ignora si parece una cabecera.
+      <div id="importXLSXInfo" style="background:#eff6ff;border:1.5px solid #bfdbfe;border-radius:8px;padding:14px 16px;margin-bottom:16px;font-size:13px;color:#1e40af">
+        Acepta dos formatos: <strong>plantilla de importación</strong> (A=código, B=fecha anual, C=fecha trimestral, D=observaciones) o el <strong>archivo exportado desde CoreLink</strong> (las columnas se detectan automáticamente por cabecera). Las OT ya completadas no se reimportan.
       </div>
       <label style="display:block;font-size:13px;font-weight:700;color:var(--gris-oscuro);margin-bottom:8px">Selecciona el archivo Excel (.xlsx)</label>
       <input type="file" id="importFileInput" accept=".xlsx" onchange="leerExcelImportacion(this)"
