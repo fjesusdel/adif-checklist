@@ -4034,16 +4034,27 @@ async function cargarEstadisticas() {
   const cont = document.getElementById('estadContenido');
   cont.innerHTML = '<div class="empty-state">Cargando...</div>';
 
-  const [chData, avData, stData] = await Promise.all([
+  const [chData, avData, stData, agData] = await Promise.all([
     corelinkGet('/api/checklists'),
     corelinkGet('/api/incidencias'),
-    corelinkGet('/api/stock')
+    corelinkGet('/api/stock'),
+    corelinkGet('/api/agenda')
   ]);
 
   const checklists  = Object.values(chData ? chData.checklists || {} : {}).filter(c => c.fecha && c.fecha.startsWith(anio));
   const incidencias = Object.values(avData ? avData.incidencias || {} : {}).filter(i => i.fechaApertura && i.fechaApertura.startsWith(anio));
   const movimientos = Object.values(stData ? stData.stock.movimientos || {} : {}).filter(m => m.fecha && m.fecha.startsWith(anio) && m.tipo === 'uso');
   const materiales  = stData ? stData.stock.materiales || {} : {};
+
+  // OT completadas del año (excluyendo mantenimientos que van por checklist)
+  const todasOT = Object.values(agData ? agData.tareas || {} : {});
+  const otCompletadas = todasOT.filter(t =>
+    t.estado === 'completada' &&
+    (t.fechaCompletada || t.fecha || '').startsWith(anio) &&
+    t.tipo !== 'anual' && t.tipo !== 'trimestral'
+  );
+  const mttoRealizados = checklists.length;
+  const otTotal = otCompletadas.length;
 
   // Visitas por mes
   const visitasPorMes = Array(12).fill(0);
@@ -4083,10 +4094,10 @@ async function cargarEstadisticas() {
   cont.innerHTML = `
     <!-- Resumen stats -->
     <div class="stat-grid" style="margin-bottom:20px">
-      <div class="stat-box info"><div class="stat-num">${checklists.length}</div><div class="stat-label">Visitas realizadas</div></div>
+      <div class="stat-box info"><div class="stat-num">${mttoRealizados}</div><div class="stat-label">Mantenimientos realizados</div></div>
+      <div class="stat-box info"><div class="stat-num">${otTotal}</div><div class="stat-label">OT completadas</div></div>
       <div class="stat-box ${incidencias.length>0?'warn':'ok'}"><div class="stat-num">${incidencias.length}</div><div class="stat-label">Incidencias abiertas</div></div>
       <div class="stat-box info"><div class="stat-num">${movimientos.reduce((a,m)=>a+m.cantidad,0)}</div><div class="stat-label">Materiales usados</div></div>
-      <div class="stat-box info"><div class="stat-num">${new Set(checklists.map(c=>c.codigoInstalacion)).size}</div><div class="stat-label">Instalaciones visitadas</div></div>
     </div>
 
     <!-- Gráfico visitas por mes -->
