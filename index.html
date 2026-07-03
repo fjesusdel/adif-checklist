@@ -639,6 +639,8 @@ header {
 .agenda-tarea.tipo-anual    { border-left-color: var(--azul); }
 .agenda-tarea.tipo-trimestral { border-left-color: #0891b2; }
 .agenda-tarea.tipo-pci-trim { border-left-color: var(--rojo); }
+.agenda-tarea.completada { opacity: 0.5; background: #f3f4f6; border-left-color: var(--gris-borde); }
+.agenda-tarea.completada .agenda-tarea-nombre { color: var(--gris-medio); }
 .agenda-tarea.tipo-averia   { border-left-color: var(--naranja); }
 .agenda-tarea.estado-completada { opacity: 0.55; }
 .agenda-tarea-tipo-tag {
@@ -1217,7 +1219,7 @@ header {
             <select id="tareaTipo" style="width:100%;border:1.5px solid var(--gris-borde);border-radius:7px;padding:9px 11px;font-size:14px;outline:none;font-family:inherit">
               <option value="anual">🔧 Anual</option>
               <option value="trimestral">💻 Trimestral</option>
-              <option value="pci-trim">🔥 Trimestral PCI</option>
+
               <option value="averia">⚠ Avería</option>
             </select>
           </div>
@@ -1767,7 +1769,8 @@ let state = {
   fichaVisita: {},
   fichaTecnica: {},
   firmaTecnico: null,
-  notaGeneral: ''
+  notaGeneral: '',
+  otVinculadaId: null
 };
 
 const SISTEMAS_LABELS = {
@@ -2418,7 +2421,7 @@ async function corelinkActualizarEstadoTarea(id, estado) {
 }
 
 const LABEL_TIPO_TAREA = {
-  anual: '🔧 Anual', trimestral: '💻 Trimestral', 'pci-trim': '🔥 Trim. PCI', averia: '⚠ Avería', libre: '📌 Tarea'
+  anual: '🔧 Mant. Anual', trimestral: '💻 Mant. Trimestral', 'averia-correctiva': '⚠ Avería Correctiva', instalacion: '🏗️ Instalación', libre: '📋 Trabajo libre', 'pci-trim': '🔥 Trim. PCI'
 };
 
 // Devuelve una etiqueta de día legible: "Hoy", "Mañana", o la fecha formateada
@@ -2473,19 +2476,49 @@ async function cargarYRenderizarAgenda() {
       const asigTxt = esJesus ? '<span style="font-size:10px;font-weight:800;background:#1e40af;color:#fff;padding:2px 8px;border-radius:99px;margin-left:6px">👷 Asignada a ti</span>'
                     : (!t.asignadoA || t.asignadoA === '') ? '<span style="font-size:10px;font-weight:700;background:#e5e7eb;color:#6b7280;padding:2px 8px;border-radius:99px;margin-left:6px">Sin asignar</span>'
                     : '';
-      html += `<div class="agenda-tarea tipo-${t.tipo} estado-${t.estado}" style="${esJesus?'background:#eff6ff;border-left:4px solid #1e40af':''}">
-        <span class="agenda-tarea-tipo-tag">${LABEL_TIPO_TAREA[t.tipo] || t.tipo}</span>${asigTxt}
-        <div class="agenda-inst-nombre">${t.nombreInstalacion || t.codigoInstalacion}</div>
+      const esCompletada = t.estado === 'completada';
+      const esMtto = t.tipo === 'anual' || t.tipo === 'trimestral';
+      const numOT  = t.numeroOT ? `<span style="font-size:10px;color:var(--gris-medio);margin-left:6px">${t.numeroOT}</span>` : '';
+      html += `<div class="agenda-tarea${esCompletada?' completada':''}" style="${esJesus&&!esCompletada?'background:#eff6ff;border-left:4px solid #1e40af':''}">
+        <span class="agenda-tarea-tipo-tag">${LABEL_TIPO_TAREA[t.tipo] || t.tipo}</span>${asigTxt}${numOT}
+        <div class="agenda-inst-nombre">${t.nombreInstalacion || t.codigoInstalacion || 'OT sin instalación'}</div>
         ${t.nota ? `<div class="agenda-nota">→ ${t.nota}</div>` : ''}
         <div class="agenda-tarea-btns">
-          <button class="btn-tarea-estado ${t.estado==='en_curso'?'active en_curso':''}" onclick="cambiarEstadoTarea('${id}','en_curso')">▶ En curso</button>
-          <button class="btn-tarea-estado ${t.estado==='completada'?'active completada':''}" onclick="cambiarEstadoTarea('${id}','completada')">✓ Completada</button>
+          ${esCompletada
+            ? `<span style="font-size:11px;color:var(--gris-medio);font-style:italic">✓ Completada</span>`
+            : esMtto && t.codigoInstalacion
+              ? `<button class="btn-tarea-estado ${t.estado==='en_curso'?'active en_curso':''}" onclick="cambiarEstadoTarea('${id}','en_curso')">▶ En curso</button>
+                 <button class="btn-primary" style="padding:5px 14px;font-size:12px" onclick="irAInstalacionDesdeOT('${id}','${t.codigoInstalacion}','${t.tipo}')">🏁 En la instalación</button>`
+              : `<button class="btn-tarea-estado ${t.estado==='en_curso'?'active en_curso':''}" onclick="cambiarEstadoTarea('${id}','en_curso')">▶ En curso</button>
+                 <button class="btn-tarea-estado ${t.estado==='completada'?'active completada':''}" onclick="cambiarEstadoTarea('${id}','completada')">✓ Completada</button>`
+          }
         </div>
       </div>`;
     });
   });
 
   cont.innerHTML = html;
+}
+
+
+// Navegar directamente a la instalación desde una OT de mantenimiento
+async function irAInstalacionDesdeOT(otId, codigoInstalacion, tipoChecklist) {
+  // Marcar OT en curso
+  await corelinkActualizarEstadoTarea(otId, 'en_curso');
+  // Guardar referencia a la OT para completarla al sincronizar
+  state.otVinculadaId = otId;
+  // Buscar la instalación y navegar al paso 2 con el tipo de checklist
+  const inst = INSTALACIONES.find(i => i.codigo === codigoInstalacion);
+  if (!inst) { toast('Instalación no encontrada'); return; }
+  state.instalacion = inst;
+  state.tipoVisita  = tipoChecklist;
+  await irPaso2();
+  // Preseleccionar el tipo de visita
+  document.querySelectorAll('.tipo-btn').forEach(el => {
+    el.classList.toggle('selected', el.dataset.tipo === tipoChecklist);
+  });
+  document.getElementById('btnConfirmarTipo').disabled = false;
+  document.getElementById('btnMarcarRealizada').style.display = 'block';
 }
 
 async function cambiarEstadoTarea(id, estado) {
@@ -2907,6 +2940,7 @@ function seleccionarInst(codigo) {
   state.instalacion = INSTALACIONES.find(i => i.codigo === codigo);
   state.tipoVisita = null;
   state.resultados = {};
+  state.otVinculadaId = null;
   irPaso2();
 }
 
@@ -4287,6 +4321,17 @@ async function _firmarYSincronizar() {
       toast('Sincronizado ✓ — Abriendo informe...');
       // B7 — Actualizar cache offline tras sincronizar
       precacharDatosOffline();
+      // Completar OT vinculada si existe (mantenimiento anual/trimestral)
+      if (state.otVinculadaId) {
+        try {
+          await fetch(CORELINK_URL + '/api/ot/completar-checklist', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CoreLink-Key': CORELINK_API_KEY },
+            body: JSON.stringify({ id: state.otVinculadaId, fecha: state.fv ? state.fv.fecha : null })
+          });
+          state.otVinculadaId = null;
+        } catch(e) { /* silencioso */ }
+      }
       // Abrir visor del informe automáticamente
       setTimeout(function() { _generarInformePDF(); }, 600);
     } else {
