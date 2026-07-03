@@ -1193,8 +1193,9 @@ header {
     <div class="card-title">📅 Agenda</div>
     <!-- Selector vista -->
     <div style="display:flex;gap:8px;margin-bottom:12px">
-      <button class="pill active" id="agendaVistaListaBtn" onclick="setVistaAgendaPNT('lista')">Lista</button>
-      <button class="pill" id="agendaVistaCalBtn" onclick="setVistaAgendaPNT('calendario')">Calendario</button>
+      <button class="pill active" id="agendaVistaListaBtn"  onclick="setVistaAgendaPNT('lista')">Lista</button>
+      <button class="pill"        id="agendaVistaCalBtn"    onclick="setVistaAgendaPNT('calendario')">Calendario</button>
+      <button class="pill"        id="agendaVistaCompBtn"   onclick="setVistaAgendaPNT('completadas')">✓ Completadas</button>
     </div>
     <!-- Vista lista -->
     <div id="agendaVistaListaPNT">
@@ -1247,6 +1248,11 @@ header {
         <div id="pntCalDiaTitulo" style="font-size:13px;font-weight:800;color:var(--azul);margin-bottom:8px"></div>
         <div id="pntCalDiaLista"></div>
       </div>
+    </div>
+
+    <!-- Panel OT completadas -->
+    <div id="agendaVistaCompPNT" class="hidden">
+      <div id="agendaCompContenido"><div class="empty-state">Cargando...</div></div>
     </div>
   </div>
 </div>
@@ -4617,9 +4623,24 @@ async function cargarEstadisticasPNT() {
   cont.innerHTML = '<div style="text-align:center;padding:20px;color:#6b6b6b">Cargando...</div>';
 
   try {
-    const resp = await fetch(CORELINK_URL + '/api/checklists', { headers: { 'X-CoreLink-Key': CORELINK_API_KEY } });
-    const data = await resp.json();
-    const checklists = Object.values(data.checklists || {}).filter(c => c.fecha && c.fecha.startsWith(anio) && c.tecnico === sesionPNT?.nombre);
+    const [chResp, agResp] = await Promise.all([
+      fetch(CORELINK_URL + '/api/checklists', { headers: { 'X-CoreLink-Key': CORELINK_API_KEY } }),
+      fetch(CORELINK_URL + '/api/agenda',     { headers: { 'X-CoreLink-Key': CORELINK_API_KEY } })
+    ]);
+    const chData = await chResp.json();
+    const agData = await agResp.json();
+
+    const miNombre = sesionPNT?.nombre;
+    const checklists = Object.values(chData.checklists || {}).filter(c =>
+      c.fecha && c.fecha.startsWith(anio) && c.tecnico === miNombre
+    );
+
+    const otCompletadas = Object.values(agData.tareas || {}).filter(t =>
+      t.estado === 'completada' &&
+      (t.fechaCompletada || t.fecha || '').startsWith(anio) &&
+      t.tipo !== 'anual' && t.tipo !== 'trimestral' &&
+      (!t.parte?.tecnico || t.parte?.tecnico === miNombre)
+    );
 
     const visitasPorMes = Array(12).fill(0);
     checklists.forEach(c => { const m = parseInt(c.fecha.split('-')[1])-1; if(m>=0&&m<12) visitasPorMes[m]++; });
@@ -4632,11 +4653,12 @@ async function cargarEstadisticasPNT() {
 
     cont.innerHTML = `
       <div class="stat-grid" style="margin-bottom:16px">
-        <div class="stat-box info"><div class="stat-num">${checklists.length}</div><div class="stat-label">Mis visitas</div></div>
+        <div class="stat-box info"><div class="stat-num">${checklists.length}</div><div class="stat-label">Mantenimientos</div></div>
+        <div class="stat-box info"><div class="stat-num">${otCompletadas.length}</div><div class="stat-label">OT completadas</div></div>
         <div class="stat-box ${totalInc>0?'warn':'ok'}"><div class="stat-num">${totalInc}</div><div class="stat-label">Incidencias</div></div>
         <div class="stat-box info"><div class="stat-num">${Math.round(tiempoTotal/60*10)/10}h</div><div class="stat-label">Tiempo total</div></div>
       </div>
-      <div style="font-size:12px;font-weight:700;color:var(--azul);margin-bottom:8px">Visitas por mes — ${anio}</div>
+      <div style="font-size:12px;font-weight:700;color:var(--azul);margin-bottom:8px">Mantenimientos por mes — ${anio}</div>
       <div style="display:flex;align-items:flex-end;gap:3px;height:80px;padding:4px 0">
         ${visitasPorMes.map((n,i)=>`
           <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:2px">
@@ -4646,7 +4668,6 @@ async function cargarEstadisticasPNT() {
           </div>`).join('')}
       </div>`;
   } catch(e) {
-    // Usar cache offline
     cont.innerHTML = '<div class="empty-state">Sin conexión. Datos no disponibles.</div>';
   }
 }
@@ -5254,9 +5275,48 @@ function setVistaAgendaPNT(v) {
   vistaPNT = v;
   document.getElementById('agendaVistaListaBtn').classList.toggle('active', v === 'lista');
   document.getElementById('agendaVistaCalBtn').classList.toggle('active', v === 'calendario');
+  document.getElementById('agendaVistaCompBtn').classList.toggle('active', v === 'completadas');
   document.getElementById('agendaVistaListaPNT').classList.toggle('hidden', v !== 'lista');
   document.getElementById('agendaVistaCalPNT').classList.toggle('hidden', v !== 'calendario');
+  document.getElementById('agendaVistaCompPNT').classList.toggle('hidden', v !== 'completadas');
   if (v === 'calendario') renderCalPNT();
+  if (v === 'completadas') renderCompletadasPNT();
+}
+
+async function renderCompletadasPNT() {
+  const cont = document.getElementById('agendaCompContenido');
+  cont.innerHTML = '<div class="empty-state">Cargando...</div>';
+  try {
+    const data = await fetch(CORELINK_URL + '/api/agenda', {
+      headers: { 'X-CoreLink-Key': CORELINK_API_KEY }
+    }).then(r => r.json());
+    const todas = Object.entries(data.tareas || {});
+    const completadas = todas
+      .filter(([,t]) => t.estado === 'completada')
+      .sort((a,b) => (b[1].fechaCompletada||b[1].fecha) < (a[1].fechaCompletada||a[1].fecha) ? -1 : 1);
+
+    if (completadas.length === 0) {
+      cont.innerHTML = '<div class="empty-state">Sin OT completadas todavía</div>';
+      return;
+    }
+
+    cont.innerHTML = completadas.map(([id, t]) => {
+      const fecha = new Date((t.fecha)+'T12:00:00').toLocaleDateString('es-ES',{day:'numeric',month:'long',year:'numeric'});
+      const numOT = t.numeroOT ? `<span style="font-size:10px;color:var(--gris-medio);margin-left:6px">${t.numeroOT}</span>` : '';
+      const tieneParte = t.parte && t.parte.archivoHtml;
+      return `<div style="background:var(--blanco);border-radius:9px;border-left:4px solid var(--verde);padding:12px 14px;margin-bottom:8px;box-shadow:var(--sombra);opacity:.85">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px">
+          <span style="font-size:11px;font-weight:800;background:var(--verde);color:#fff;padding:2px 8px;border-radius:99px">${LABEL_TIPO_TAREA[t.tipo]||t.tipo}</span>${numOT}
+          <span style="font-size:11px;color:var(--gris-medio)">${fecha}</span>
+        </div>
+        <div style="font-size:14px;font-weight:700;color:var(--gris-oscuro);margin-bottom:2px">${t.nombreInstalacion||t.codigoInstalacion||'Sin instalación'}</div>
+        ${t.nota?`<div style="font-size:12px;color:var(--gris-medio)">→ ${t.nota}</div>`:''}
+        ${t.parte&&t.parte.resumen?`<div style="font-size:12px;color:var(--gris-medio);margin-top:4px;font-style:italic">"${t.parte.resumen.slice(0,80)}${t.parte.resumen.length>80?'…':''}"</div>`:''}
+      </div>`;
+    }).join('');
+  } catch(e) {
+    cont.innerHTML = '<div class="empty-state">Sin conexión</div>';
+  }
 }
 
 function pntCalMes(delta) {
