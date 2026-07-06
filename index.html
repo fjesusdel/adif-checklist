@@ -5378,22 +5378,33 @@ function pntSelDia(dia) {
   } else {
     document.getElementById('pntCalDiaLista').innerHTML = tareas.map(([id,t]) => {
       const esJesus = t.asignadoA === 'jesus';
+      const esMtto  = t.tipo === 'anual' || t.tipo === 'trimestral';
+      const esParte = t.tipo === 'averia-correctiva' || t.tipo === 'instalacion' || t.tipo === 'libre';
+      const numOT   = t.numeroOT ? '<span style="font-size:10px;color:var(--gris-medio);margin-left:6px">'+t.numeroOT+'</span>' : '';
       const asigTxt = esJesus ? '<span style="font-size:10px;font-weight:800;background:#1e40af;color:#fff;padding:2px 8px;border-radius:99px;margin-left:6px">👷 Asignada a ti</span>'
                     : (!t.asignadoA || t.asignadoA === '') ? '<span style="font-size:10px;font-weight:700;background:#e5e7eb;color:#6b7280;padding:2px 8px;border-radius:99px;margin-left:6px">Sin asignar</span>'
                     : '';
-      return `
-      <div class="agenda-tarea tipo-${t.tipo} estado-${t.estado}" style="margin-bottom:8px;${esJesus?'background:#eff6ff;border-left:4px solid #1e40af':''}">
-        <span class="agenda-tarea-tipo-tag">${LABEL_TIPO_TAREA[t.tipo]||t.tipo}</span>${asigTxt}
-        <div class="agenda-inst-nombre">${t.nombreInstalacion||t.codigoInstalacion||'Tarea libre'}</div>
-        ${t.nota?`<div class="agenda-nota">→ ${t.nota}</div>`:''}
-        <div class="agenda-tarea-btns">
-          <button class="btn-tarea-estado" onclick="cambiarEstadoTarea('${id}','completada')">✓ Completada</button>
-        </div>
-      </div>
-    `;
+      let btns = '';
+      if (esMtto && t.codigoInstalacion) {
+        btns = '<button class="btn-tarea-estado '+(t.estado==="en_curso"?"active en_curso":"")+'" onclick="cambiarEstadoTarea(\''+id+'\',\'en_curso\')">▶ En curso</button>'
+             + '<button class="btn-primary" style="padding:5px 14px;font-size:12px" onclick="irAInstalacionDesdeOT(\''+id+'\',\''+t.codigoInstalacion+'\',\''+t.tipo+'\')">🏁 En la instalación</button>';
+      } else if (esParte) {
+        btns = '<button class="btn-tarea-estado '+(t.estado==="en_curso"?"active en_curso":"")+'" onclick="cambiarEstadoTarea(\''+id+'\',\'en_curso\')">▶ En curso</button>'
+             + '<button class="btn-primary" style="padding:5px 14px;font-size:12px;background:var(--verde)" onclick="abrirParteOTPNT(\''+id+'\',\'OT\')">✓ Completar OT</button>';
+      } else {
+        btns = '<button class="btn-tarea-estado '+(t.estado==="en_curso"?"active en_curso":"")+'" onclick="cambiarEstadoTarea(\''+id+'\',\'en_curso\')">▶ En curso</button>'
+             + '<button class="btn-tarea-estado" onclick="cambiarEstadoTarea(\''+id+'\',\'completada\')">✓ Completada</button>';
+      }
+      return '<div class="agenda-tarea" style="margin-bottom:8px;'+(esJesus?'background:#eff6ff;border-left:4px solid #1e40af':'')+'">'
+        + '<span class="agenda-tarea-tipo-tag">'+(LABEL_TIPO_TAREA[t.tipo]||t.tipo)+'</span>'+asigTxt+numOT
+        + '<div class="agenda-inst-nombre">'+(t.nombreInstalacion||t.codigoInstalacion||'Sin instalación')+'</div>'
+        + (t.nota?'<div class="agenda-nota">→ '+t.nota+'</div>':'')
+        + '<div class="agenda-tarea-btns">'+btns+'</div>'
+        + '</div>';
     }).join('');
   }
   diaAgenda.classList.remove('hidden');
+
 }
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -5686,6 +5697,11 @@ async function guardarParteOTPNT() {
   var horaOut = document.getElementById('parteOTPNTHoraOut').value;
   var canvas  = document.getElementById('parteOTPNTCanvas');
   var firma   = canvas.toDataURL('image/png');
+  // Verificar que hay firma (canvas no vacío)
+  var ctxCheck = canvas.getContext('2d');
+  var pixelData = ctxCheck.getImageData(0, 0, canvas.width, canvas.height).data;
+  var hasFirma = Array.from(pixelData).some(v => v !== 0);
+  if (!hasFirma) { toast('La firma es obligatoria'); return; }
   var mats    = (_pntParteOTMats || []).filter(function(m) { return m && m.materialId; });
   var tecnico = (sesionPNT && sesionPNT.nombre) || '';
 
