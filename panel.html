@@ -337,10 +337,8 @@ body.dark .item-card { background:#1e2433;border-color:#2d3548; }
   <div style="position:relative;display:inline-block">
     <button class="nav-tab" id="tabInformes" onclick="toggleInformesMenu()">📊 Informes ▾</button>
     <div id="informesDropdown" class="hidden" style="position:fixed;background:#fff;border:1.5px solid var(--gris-borde);border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,0.15);z-index:500;min-width:190px;padding:6px 0">
-      <button class="dropdown-item" onclick="seleccionarInforme('trimestral')">📋 Trimestral</button>
-      <button class="dropdown-item" onclick="seleccionarInforme('jornada')">📅 Jornada diaria</button>
-      <button class="dropdown-item" onclick="seleccionarInforme('rutas')">🗺 Historial rutas</button>
-      <button class="dropdown-item" onclick="seleccionarInforme('rentabilidad')">📊 Rentabilidad</button>
+      <button class="dropdown-item" onclick="seleccionarInforme('trimestral')">📋 Resumen trimestral</button>
+      <button class="dropdown-item" onclick="seleccionarInforme('jornada')">👷 Jornada del técnico</button>
       <button class="dropdown-item" onclick="seleccionarInforme('estadisticas')">📈 Estadísticas</button>
       <button class="dropdown-item" onclick="seleccionarInforme('informepdf')">📄 Informe período</button>
       <button class="dropdown-item" onclick="seleccionarInforme('exportar')">⬇️ Exportar Excel</button>
@@ -379,6 +377,14 @@ body.dark .item-card { background:#1e2433;border-color:#2d3548; }
 <!-- ════════════════════════════════════════════════ -->
 <div id="seccionResumen" class="container">
   <div id="avisoInformesCaducidad" style="display:none;background:#fff7ed;border:1.5px solid #f59e0b;border-radius:var(--radio);padding:14px 16px;margin-bottom:14px"></div>
+  <!-- Tarjeta partes del día -->
+  <div class="card" id="cardPartesHoy" style="display:none">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+      <div class="card-title" style="margin-bottom:0">📋 Partes de hoy</div>
+      <button onclick="seleccionarInforme('jornada')" style="background:var(--azul-claro);color:var(--azul);border:none;border-radius:7px;padding:5px 12px;font-size:12px;font-weight:600;cursor:pointer">Ver jornada completa →</button>
+    </div>
+    <div id="resumenPartesHoy"></div>
+  </div>
   <div class="card">
     <div class="card-title">Vista general</div>
     <div class="stat-grid" id="resumenStatGrid"><div class="empty-state">Cargando datos...</div></div>
@@ -505,6 +511,12 @@ body.dark .item-card { background:#1e2433;border-color:#2d3548; }
         <button class="pill active" id="filtroAgendaPendientes"  onclick="setFiltroAgenda('pendientes')">Pendientes</button>
         <button class="pill"        id="filtroAgendaCompletadas" onclick="setFiltroAgenda('completadas')">Completadas</button>
         <button class="pill"        id="filtroAgendaMias"        onclick="setFiltroAgenda('mias')">🖥 Mis revisiones</button>
+      </div>
+      <!-- Filtro fecha para completadas -->
+      <div id="filtroFechaCompletadas" style="display:none;margin-bottom:12px;display:flex;gap:8px;align-items:center">
+        <label style="font-size:12px;font-weight:700;color:var(--gris-oscuro)">Filtrar por fecha:</label>
+        <input type="date" id="completadasFechaFiltro" onchange="renderAgendaLista()" style="border:1.5px solid var(--gris-borde);border-radius:8px;padding:6px 10px;font-size:13px;font-family:inherit">
+        <button onclick="document.getElementById('completadasFechaFiltro').value='';renderAgendaLista()" style="background:none;border:none;color:var(--gris-medio);font-size:12px;cursor:pointer;text-decoration:underline">Ver todas</button>
       </div>
       <div id="formNuevaTarea" class="form-flotante hidden" style="margin-bottom:14px">
         <div class="ficha-field" style="margin-bottom:10px">
@@ -830,7 +842,17 @@ body.dark .item-card { background:#1e2433;border-color:#2d3548; }
     <div class="card-title">📋 Resumen trimestral</div>
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap">
       <select id="trimestralSelector" onchange="cargarResumenTrimestral()" style="border:1.5px solid var(--gris-borde);border-radius:8px;padding:9px 12px;font-size:14px;font-family:inherit"></select>
+      <select id="trimestralTipo" style="border:1.5px solid var(--gris-borde);border-radius:8px;padding:9px 12px;font-size:14px;font-family:inherit">
+        <option value="todo">Todo</option>
+        <option value="mtto">Solo mantenimientos</option>
+        <option value="ot">Solo OT</option>
+        <option value="averias">Solo averías</option>
+      </select>
+      <select id="trimestralProvincia" style="border:1.5px solid var(--gris-borde);border-radius:8px;padding:9px 12px;font-size:14px;font-family:inherit">
+        <option value="">Todas las provincias</option>
+      </select>
       <button class="btn-secondary" onclick="cargarResumenTrimestral()">Actualizar</button>
+      <button class="btn-secondary" onclick="imprimirSeccion('trimestralContenido','Resumen trimestral')">🖨 Imprimir</button>
     </div>
     <div id="trimestralContenido"><div class="empty-state">Selecciona un trimestre</div></div>
   </div>
@@ -844,10 +866,14 @@ body.dark .item-card { background:#1e2433;border-color:#2d3548; }
 <!-- ════════════════════════════════════════════════ -->
 <div id="seccionJornada" class="container hidden">
   <div class="card">
-    <div class="card-title">📅 Jornada diaria</div>
-    <div style="display:flex;gap:8px;margin-bottom:14px;align-items:center">
+    <div class="card-title">👷 Jornada del técnico</div>
+    <div style="display:flex;gap:8px;margin-bottom:14px;align-items:center;flex-wrap:wrap">
+      <select id="jornadaTecnico" style="border:1.5px solid var(--gris-borde);border-radius:8px;padding:9px 12px;font-size:14px;font-family:inherit">
+        <option value="">Todos los técnicos</option>
+      </select>
       <input type="date" id="jornadaFecha" style="border:1.5px solid var(--gris-borde);border-radius:8px;padding:9px 12px;font-size:14px;font-family:inherit">
       <button class="btn-primary" onclick="cargarJornada()">Ver jornada</button>
+      <button class="btn-secondary" onclick="imprimirSeccion('jornadaContenido','Jornada del técnico')">🖨 Imprimir</button>
     </div>
     <div id="jornadaContenido"><div class="empty-state">Selecciona un día</div></div>
   </div>
@@ -906,13 +932,23 @@ body.dark .item-card { background:#1e2433;border-color:#2d3548; }
 <div id="seccionEstadisticas" class="container hidden">
   <div class="card">
     <div class="card-title">📈 Estadísticas anuales</div>
-    <div style="display:flex;gap:8px;margin-bottom:14px;align-items:center">
+    <div style="display:flex;gap:8px;margin-bottom:14px;align-items:center;flex-wrap:wrap">
       <select id="estadAnio" style="border:1.5px solid var(--gris-borde);border-radius:8px;padding:9px 12px;font-size:14px;font-family:inherit">
         <option value="2026">2026</option>
         <option value="2027">2027</option>
         <option value="2028">2028</option>
       </select>
+      <select id="estadTipo" style="border:1.5px solid var(--gris-borde);border-radius:8px;padding:9px 12px;font-size:14px;font-family:inherit">
+        <option value="todo">Todo</option>
+        <option value="mtto">Solo mantenimientos</option>
+        <option value="ot">Solo OT</option>
+        <option value="averias">Solo averías</option>
+      </select>
+      <select id="estadProvincia" style="border:1.5px solid var(--gris-borde);border-radius:8px;padding:9px 12px;font-size:14px;font-family:inherit">
+        <option value="">Todas las provincias</option>
+      </select>
       <button class="btn-primary" onclick="cargarEstadisticas()">Ver estadísticas</button>
+      <button class="btn-secondary" onclick="imprimirSeccion('estadContenido','Estadísticas')">🖨 Imprimir</button>
     </div>
     <div id="estadContenido"><div class="empty-state">Selecciona un año</div></div>
   </div>
@@ -924,17 +960,31 @@ body.dark .item-card { background:#1e2433;border-color:#2d3548; }
 <div id="seccionInformepdf" class="container hidden">
   <div class="card">
     <div class="card-title">📄 Informe de período</div>
-    <p style="font-size:13px;color:var(--gris-medio);margin-bottom:14px">Genera un informe PDF con el resumen de visitas, incidencias y estado del contrato para el período seleccionado.</p>
-    <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;align-items:center">
+    <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;align-items:center">
       <input type="date" id="informeDesde" style="border:1.5px solid var(--gris-borde);border-radius:8px;padding:9px 12px;font-size:14px;font-family:inherit">
       <span style="color:var(--gris-medio)">→</span>
       <input type="date" id="informeHasta" style="border:1.5px solid var(--gris-borde);border-radius:8px;padding:9px 12px;font-size:14px;font-family:inherit">
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;align-items:center">
+      <select id="informeTipo" style="border:1.5px solid var(--gris-borde);border-radius:8px;padding:9px 12px;font-size:14px;font-family:inherit">
+        <option value="todo">Todo</option>
+        <option value="mtto">Solo mantenimientos</option>
+        <option value="ot">Solo OT</option>
+        <option value="averias">Solo averías</option>
+      </select>
+      <select id="informeProvincia" style="border:1.5px solid var(--gris-borde);border-radius:8px;padding:9px 12px;font-size:14px;font-family:inherit">
+        <option value="">Todas las provincias</option>
+      </select>
     </div>
     <div class="ficha-field" style="margin-bottom:14px">
       <label>Título del informe (opcional)</label>
       <input type="text" id="informeTitulo" placeholder="Ej: Informe 1er Trimestre 2026">
     </div>
-    <button class="btn-primary" onclick="generarInformePeriodo()">📄 Generar PDF</button>
+    <div style="display:flex;gap:8px">
+      <button class="btn-primary" onclick="generarInformePeriodo()">📄 Generar informe</button>
+      <button class="btn-secondary" id="btnImprimirInforme" style="display:none" onclick="imprimirSeccion('informePeriodoContenido','Informe período')">🖨 Imprimir / Compartir</button>
+    </div>
+    <div id="informePeriodoContenido" style="margin-top:16px"></div>
   </div>
 </div>
 
@@ -1408,7 +1458,7 @@ let seccionActual = 'resumen';
 
 function cambiarSeccion(seccion) {
   seccionActual = seccion;
-  const informesSecciones = ['trimestral','jornada','rutas','rentabilidad','estadisticas','informepdf','exportar'];
+  const informesSecciones = ['trimestral','jornada','estadisticas','informepdf','exportar'];
   ['Resumen','Instalaciones','Averias','Agenda','Stock','Notas','Contactos','Mensajes','Horas','Trimestral','Jornada','Rutas','Rentabilidad','Estadisticas','Informepdf','Exportar','Ajustes'].forEach(s => {
     const tab  = document.getElementById('tab' + s);
     const cont = document.getElementById('seccion' + s);
@@ -1564,6 +1614,9 @@ async function cargarResumen() {
 
   // Comprobar informes próximos a caducar (en segundo plano, no bloquea)
   comprobarCaducidadInformes().catch(() => {});
+
+  // Cargar partes del día en la tarjeta de resumen
+  cargarPartesHoyResumen().catch(() => {});
 }
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -2068,6 +2121,55 @@ async function descargarZipTodosInformes() {
   toast('ZIP global descargado ✓');
 }
 
+async function cargarPartesHoyResumen() {
+  const hoy = new Date().toISOString().split('T')[0];
+  const agData = await corelinkGet('/api/agenda');
+  const otHoy = Object.entries(agData ? agData.tareas || {} : {}).filter(([,t]) =>
+    t.estado === 'completada' &&
+    (t.fechaCompletada || t.fecha || '').startsWith(hoy) &&
+    t.tipo !== 'anual' && t.tipo !== 'trimestral'
+  );
+  const chData = await corelinkGet('/api/checklists');
+  const chHoy = Object.values(chData ? chData.checklists || {} : {}).filter(c => c.fecha === hoy);
+
+  const card = document.getElementById('cardPartesHoy');
+  const cont = document.getElementById('resumenPartesHoy');
+  if (otHoy.length === 0 && chHoy.length === 0) { card.style.display = 'none'; return; }
+  card.style.display = 'block';
+
+  let html = '';
+
+  // Mantenimientos del día
+  if (chHoy.length > 0) {
+    chHoy.forEach(c => {
+      const LABEL = { anual:'🔧 Anual', trimestral:'💻 Trimestral' };
+      html += `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:0.5px solid var(--gris-borde)">
+        <div>
+          <div style="font-size:13px;font-weight:600">${c.nombreInstalacion||c.codigoInstalacion}</div>
+          <div style="font-size:11px;color:var(--gris-medio)">${LABEL[c.tipo]||c.tipo}${c.tecnico?' · '+c.tecnico:''}</div>
+        </div>
+        <span style="font-size:11px;background:var(--verde);color:#fff;padding:2px 8px;border-radius:99px;font-weight:700">✓ Mtto</span>
+      </div>`;
+    });
+  }
+
+  // OT del día
+  otHoy.forEach(([id, t]) => {
+    const tieneParte = t.parte && t.parte.archivoHtml;
+    html += `<div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:0.5px solid var(--gris-borde)">
+      <div>
+        <div style="font-size:13px;font-weight:600">${t.nombreInstalacion||t.codigoInstalacion||'Sin instalación'}</div>
+        <div style="font-size:11px;color:var(--gris-medio)">${LABEL_TIPO_TAREA[t.tipo]||t.tipo}${t.numeroOT?' · '+t.numeroOT:''}</div>
+      </div>
+      ${tieneParte
+        ? `<button onclick="verParteOT('${id}','${t.numeroOT||'OT'}')" style="background:var(--azul-claro);color:var(--azul);border:none;border-radius:7px;padding:4px 10px;font-size:11px;font-weight:600;cursor:pointer">📄 Ver</button>`
+        : `<span style="font-size:11px;color:var(--naranja);font-weight:600">Sin parte</span>`}
+    </div>`;
+  });
+
+  cont.innerHTML = html;
+}
+
 async function comprobarCaducidadInformes() {
   const data = await corelinkGet('/api/informes-html');
   if (!data || !data.indice) return;
@@ -2227,6 +2329,7 @@ function renderAverias() {
         <div class="item-card-meta">Abierta el ${fecha.toLocaleDateString('es-ES')} (hace ${dias} día${dias!==1?'s':''})</div>
         <div class="item-card-btns">
           <button class="btn-mini verde" onclick="abrirModalCierreAveria('${id}','${instEsc}')">✓ Resuelta</button>
+          <button class="btn-mini" style="background:#eff6ff;color:var(--azul);border-color:var(--azul)" onclick="abrirModalCrearOTdesdeAveria('${id}')">📋 Crear OT</button>
           <button class="btn-mini" onclick="editarAveria('${id}')">✏ Editar</button>
           <button class="btn-mini" onclick="abrirModalAgendaAveria('${id}','${instEsc}','${a.codigoInstalacion}','${descEsc}')">📅 Agenda</button>
           <button class="btn-mini" onclick="abrirModalDescartarAveria('${id}','${instEsc}')">🚫 Descartar</button>
@@ -2479,6 +2582,8 @@ function setFiltroAgenda(f) {
   document.getElementById('filtroAgendaPendientes').classList.toggle('active', f === 'pendientes');
   document.getElementById('filtroAgendaCompletadas').classList.toggle('active', f === 'completadas');
   document.getElementById('filtroAgendaMias').classList.toggle('active', f === 'mias');
+  const filtroFecha = document.getElementById('filtroFechaCompletadas');
+  if (filtroFecha) filtroFecha.style.display = f === 'completadas' ? 'flex' : 'none';
   renderAgendaLista();
 }
 
@@ -2515,9 +2620,11 @@ function renderAgendaLista() {
           <div class="item-card-btns">
             <button class="btn-mini ${t.estado==='en_curso'?'activo-amarillo':''}" onclick="cambiarEstadoTareaPanel('${id}','en_curso')">▶ En curso</button>
             ${esParte
-              ? `<button class="btn-mini verde" onclick="abrirModalParteOT('${id}','${(t.numeroOT||'OT')+' — '+(t.nombreInstalacion||t.tipo||'')}')" >✓ Completar OT</button>`
+              ? `<button class="btn-mini verde" onclick="abrirModalParteOT('${id}','${(t.numeroOT||'OT')+' — '+(t.nombreInstalacion||t.tipo||'')}')">✓ Completar OT</button>`
               : `<button class="btn-mini verde" onclick="cambiarEstadoTareaPanel('${id}','completada')">✓ Completada</button>`}
             <button class="btn-mini" onclick="abrirModalAsignarTarea('${id}','${t.asignadoA||''}')">👤 Asignar</button>
+            <button class="btn-mini" onclick="abrirModalEditarOT('${id}')">✏ Fecha</button>
+            <button class="btn-mini" onclick="abrirModalDuplicarOT('${id}')">⎘ Duplicar</button>
             <button class="btn-mini rojo" onclick="eliminarTarea('${id}')">🗑 Eliminar</button>
           </div>
         </div>`;
@@ -2525,7 +2632,10 @@ function renderAgendaLista() {
     });
     cont.innerHTML = html;
   } else {
-    const ordenadas = lista.sort((a,b) => b[1].fecha < a[1].fecha ? -1 : 1);
+    const fechaFiltro = document.getElementById('completadasFechaFiltro')?.value || '';
+    const ordenadas = lista
+      .filter(([,t]) => !fechaFiltro || t.fecha === fechaFiltro || (t.fechaCompletada||'').startsWith(fechaFiltro))
+      .sort((a,b) => b[1].fecha < a[1].fecha ? -1 : 1);
     cont.innerHTML = ordenadas.map(([id,t]) => {
       const numOT = t.numeroOT ? `<span style="font-size:10px;color:var(--gris-medio);margin-left:6px">${t.numeroOT}</span>` : '';
       const tieneParte = t.parte && t.parte.archivoHtml;
@@ -3787,6 +3897,7 @@ function iniciarTrimestral() {
   sel.innerHTML = trimestres.reverse().map((t, i) =>
     `<option value="${t.inicio}|${t.fin}"${i===0?' selected':''}>${t.label}</option>`
   ).join('');
+  _cargarProvinciasSel('trimestralProvincia');
   cargarResumenTrimestral();
 }
 
@@ -4024,8 +4135,16 @@ async function borrarPuntoPersonalizado(codigo, id) {
 // ═══════════════════════════════════════════════════════════════════════
 // ESTADÍSTICAS ANUALES (B11)
 // ═══════════════════════════════════════════════════════════════════════
+function _cargarProvinciasSel(selId) {
+  const sel = document.getElementById(selId);
+  if (!sel || sel.options.length > 1) return;
+  const provs = [...new Set(INSTALACIONES.map(i => i.provincia).filter(Boolean))].sort();
+  provs.forEach(p => { const o = document.createElement('option'); o.value = p; o.textContent = p; sel.appendChild(o); });
+}
+
 function iniciarEstadisticas() {
   document.getElementById('estadAnio').value = new Date().getFullYear();
+  _cargarProvinciasSel('estadProvincia');
   cargarEstadisticas();
 }
 
@@ -4158,6 +4277,7 @@ function iniciarInformePeriodo() {
   const hace90= new Date(Date.now()-90*86400000).toISOString().split('T')[0];
   if (!document.getElementById('informeDesde').value) document.getElementById('informeDesde').value = hace90;
   if (!document.getElementById('informeHasta').value) document.getElementById('informeHasta').value = hoy;
+  _cargarProvinciasSel('informeProvincia');
 }
 
 async function generarInformePeriodo() {
@@ -4313,31 +4433,86 @@ async function borrarNotaInst(id) {
 // ═══════════════════════════════════════════════════════════════════════
 // JORNADA DIARIA (B12)
 // ═══════════════════════════════════════════════════════════════════════
-function iniciarJornada() {
+// Función genérica para imprimir/compartir una sección como HTML
+function imprimirSeccion(idContenido, titulo) {
+  const cont = document.getElementById(idContenido);
+  if (!cont) return;
+  const html = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">
+    <title>${titulo}</title>
+    <style>body{font-family:Arial,sans-serif;padding:24px;max-width:900px;margin:0 auto;font-size:13px}
+    table{border-collapse:collapse;width:100%}td,th{padding:6px 10px;border:1px solid #d1d5db}
+    th{background:#003087;color:#fff;font-weight:700}
+    .stat-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px}
+    .stat-box{background:#eff6ff;border-radius:8px;padding:12px;text-align:center}
+    .stat-num{font-size:24px;font-weight:800;color:#003087}
+    .stat-label{font-size:11px;color:#6b7280;margin-top:4px}
+    h1{color:#003087;border-bottom:3px solid #003087;padding-bottom:8px}
+    h2{color:#1e40af;font-size:14px;margin:16px 0 8px}
+    @media print{body{padding:12px}}</style>
+  </head><body>
+  <h1>${titulo}</h1>
+  <div style="font-size:12px;color:#6b7280;margin-bottom:16px">
+    Ingloba Seguridad · Contrato ADIF 4.26/28510.0005 · RC Sur · ${new Date().toLocaleDateString('es-ES',{day:'numeric',month:'long',year:'numeric'})}
+  </div>
+  ${cont.innerHTML}
+  </body></html>`;
+  const blob = new Blob([html], { type: 'text/html' });
+  const url  = URL.createObjectURL(blob);
+  const win  = window.open(url, '_blank');
+  if (win) win.onload = () => { setTimeout(() => win.print(), 300); }
+}
+
+async function iniciarJornada() {
   const hoy = new Date().toISOString().split('T')[0];
   document.getElementById('jornadaFecha').value = hoy;
+  // Cargar técnicos en el selector
+  const sel = document.getElementById('jornadaTecnico');
+  if (sel && sel.options.length <= 1) {
+    const data = await corelinkGet('/api/tecnicos');
+    if (data && data.tecnicos) {
+      data.tecnicos.forEach(t => {
+        const opt = document.createElement('option');
+        opt.value = t.nombre; opt.textContent = t.nombre;
+        sel.appendChild(opt);
+      });
+    }
+  }
   cargarJornada();
 }
 
 async function cargarJornada() {
-  const fecha = document.getElementById('jornadaFecha').value;
+  const fecha   = document.getElementById('jornadaFecha').value;
+  const tecnico = document.getElementById('jornadaTecnico').value; // '' = todos
   if (!fecha) return;
   const cont = document.getElementById('jornadaContenido');
   cont.innerHTML = '<div class="empty-state">Cargando...</div>';
-  const data = await corelinkGet('/api/jornada?fecha=' + fecha);
-  if (!data) { cont.innerHTML = '<div class="empty-state">Sin conexión</div>'; return; }
 
-  const { visitas, materialUsado, incidencias } = data;
+  const [jorData, agData] = await Promise.all([
+    corelinkGet('/api/jornada?fecha=' + fecha),
+    corelinkGet('/api/agenda')
+  ]);
+  if (!jorData) { cont.innerHTML = '<div class="empty-state">Sin conexión</div>'; return; }
+
+  const { visitas: visitasRaw, materialUsado, incidencias } = jorData;
+  // Filtrar por técnico si se ha seleccionado uno
+  const visitas = tecnico ? visitasRaw.filter(v => v.tecnico === tecnico) : visitasRaw;
+
+  // OT completadas del día (todos los tipos, filtradas por técnico si aplica)
+  const otDia = Object.entries(agData ? agData.tareas || {} : {}).filter(([,t]) =>
+    t.estado === 'completada' &&
+    (t.fechaCompletada || t.fecha || '').startsWith(fecha) &&
+    t.tipo !== 'anual' && t.tipo !== 'trimestral' &&
+    (!tecnico || !t.parte || t.parte.tecnico === tecnico || !t.parte.tecnico)
+  );
+
   const fechaLabel = new Date(fecha+'T12:00:00').toLocaleDateString('es-ES', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
+  const tecnicoLabel = tecnico ? ' — ' + tecnico : '';
 
-  if (visitas.length === 0 && materialUsado.length === 0) {
-    cont.innerHTML = `<div class="empty-state">Sin actividad el ${fechaLabel}</div>`;
+  if (visitas.length === 0 && otDia.length === 0) {
+    cont.innerHTML = `<div class="empty-state">Sin actividad el ${fechaLabel}${tecnicoLabel}</div>`;
     return;
   }
 
-  let html = `<div style="font-size:14px;font-weight:700;color:var(--azul);margin-bottom:14px;text-transform:capitalize">${fechaLabel}</div>`;
-
-  // Stats rápidos
   const tiempoTotal = visitas.reduce((acc, v) => {
     if (v.horaIn && v.horaOut) {
       const [h1,m1] = v.horaIn.split(':').map(Number);
@@ -4347,44 +4522,57 @@ async function cargarJornada() {
     return acc;
   }, 0);
 
+  let html = `<div style="font-size:14px;font-weight:700;color:var(--azul);margin-bottom:14px;text-transform:capitalize">${fechaLabel}${tecnicoLabel}</div>`;
+
   html += `<div class="stat-grid" style="margin-bottom:14px">
-    <div class="stat-box info"><div class="stat-num">${visitas.length}</div><div class="stat-label">Visitas</div></div>
+    <div class="stat-box info"><div class="stat-num">${visitas.length}</div><div class="stat-label">Mantenimientos</div></div>
+    <div class="stat-box info"><div class="stat-num">${otDia.length}</div><div class="stat-label">OT completadas</div></div>
     <div class="stat-box ${incidencias.length>0?'warn':'ok'}"><div class="stat-num">${incidencias.length}</div><div class="stat-label">Incidencias</div></div>
-    <div class="stat-box info"><div class="stat-num">${materialUsado.length}</div><div class="stat-label">Materiales usados</div></div>
-    <div class="stat-box info"><div class="stat-num">${tiempoTotal>0?Math.round(tiempoTotal/60*10)/10+'h':'—'}</div><div class="stat-label">Tiempo total</div></div>
+    <div class="stat-box info"><div class="stat-num">${tiempoTotal>0?Math.round(tiempoTotal/60*10)/10+'h':'—'}</div><div class="stat-label">Tiempo en campo</div></div>
   </div>`;
 
-  // Visitas
+  // Mantenimientos
   if (visitas.length > 0) {
-    html += '<div style="font-size:12px;font-weight:800;color:var(--azul);text-transform:uppercase;margin-bottom:8px">Instalaciones visitadas</div>';
+    html += '<div style="font-size:12px;font-weight:800;color:var(--azul);text-transform:uppercase;margin-bottom:8px">Mantenimientos</div>';
+    const LABEL = { anual:'🔧 Anual', trimestral:'💻 Trimestral' };
     html += visitas.map(v => {
-      const LABEL = { anual:'🔧 Anual', trimestral:'💻 Trimestral', 'pci-trim':'🔥 PCI', averia:'⚠ Avería' };
       const durMin = v.horaIn && v.horaOut ? (() => { const [h1,m1]=v.horaIn.split(':').map(Number); const [h2,m2]=v.horaOut.split(':').map(Number); return (h2*60+m2)-(h1*60+m1); })() : null;
       const inc = (v.incidencias||[]).length;
       return `<div style="background:var(--blanco);border-radius:9px;padding:11px 14px;margin-bottom:7px;box-shadow:var(--sombra);border-left:4px solid ${inc>0?'var(--naranja)':'var(--verde)'}">
         <div style="display:flex;justify-content:space-between;align-items:flex-start">
           <div>
             <div style="font-size:13px;font-weight:700">${v.nombreInstalacion}</div>
-            <div style="font-size:11px;color:var(--gris-medio)">${LABEL[v.tipo]||v.tipo} ${v.tecnico?'· '+v.tecnico:''}</div>
+            <div style="font-size:11px;color:var(--gris-medio)">${LABEL[v.tipo]||v.tipo}${v.tecnico?' · '+v.tecnico:''}</div>
           </div>
           <div style="text-align:right;font-size:12px;color:var(--gris-medio)">
             ${v.horaIn?v.horaIn:'—'} ${v.horaOut?'→ '+v.horaOut:''}
             ${durMin?`<div style="font-weight:700;color:var(--azul)">${durMin} min</div>`:''}
           </div>
         </div>
-        ${inc>0?`
-          <div style="margin-top:8px;padding-top:8px;border-top:1px solid #fee2e2">
-            <div style="font-size:11px;font-weight:700;color:var(--naranja);margin-bottom:4px">⚠ Incidencias detectadas:</div>
-            ${(v.incidencias||[]).map(i => {
-              const esManual = !i.codigo || i.codigo === 'MANUAL';
-              return `<div style="font-size:12px;padding:4px 0;border-bottom:0.5px solid #fef2f2">
-                ${!esManual ? `<span style="font-size:10px;font-weight:800;background:var(--azul-claro);color:var(--azul);padding:1px 5px;border-radius:3px;margin-right:4px">${i.codigo}</span>` : '<span style="font-size:10px;font-weight:800;background:#fee2e2;color:var(--rojo);padding:1px 5px;border-radius:3px;margin-right:4px">Manual</span>'}
-                <span style="color:var(--gris-oscuro);font-weight:600">${i.nombre}</span>
-                ${i.desc?`<div style="font-size:11px;color:var(--naranja);margin-top:1px">→ ${i.desc}</div>`:''}
-              </div>`;
-            }).join('')}
-          </div>`:''
-        }
+        ${inc>0?`<div style="margin-top:8px;padding-top:8px;border-top:1px solid #fee2e2">
+          <div style="font-size:11px;font-weight:700;color:var(--naranja);margin-bottom:4px">⚠ Incidencias detectadas:</div>
+          ${(v.incidencias||[]).map(i => `<div style="font-size:12px;padding:4px 0">${i.codigo?`<span style="font-size:10px;font-weight:800;background:var(--azul-claro);color:var(--azul);padding:1px 5px;border-radius:3px;margin-right:4px">${i.codigo}</span>`:''}<span>${i.nombre}</span>${i.desc?`<div style="font-size:11px;color:var(--naranja)">→ ${i.desc}</div>`:''}</div>`).join('')}
+        </div>`:''}
+      </div>`;
+    }).join('');
+  }
+
+  // OT del día
+  if (otDia.length > 0) {
+    html += '<div style="font-size:12px;font-weight:800;color:var(--azul);text-transform:uppercase;margin:12px 0 8px">Órdenes de trabajo</div>';
+    html += otDia.map(([id, t]) => {
+      const numOT = t.numeroOT || '';
+      const tieneParte = t.parte && t.parte.archivoHtml;
+      return `<div style="background:var(--blanco);border-radius:9px;padding:11px 14px;margin-bottom:7px;box-shadow:var(--sombra);border-left:4px solid var(--verde)">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px">
+          <div>
+            <div style="font-size:13px;font-weight:700">${t.nombreInstalacion||t.codigoInstalacion||'Sin instalación'}</div>
+            <div style="font-size:11px;color:var(--gris-medio)">${LABEL_TIPO_TAREA[t.tipo]||t.tipo}${t.parte&&t.parte.tecnico?' · '+t.parte.tecnico:''}</div>
+          </div>
+          <span style="font-size:11px;font-weight:700;color:var(--gris-medio)">${numOT}</span>
+        </div>
+        ${t.parte&&t.parte.resumen?`<div style="font-size:12px;color:var(--gris-medio);font-style:italic;margin-bottom:8px">"${t.parte.resumen.slice(0,120)}${t.parte.resumen.length>120?'…':''}"</div>`:''}
+        ${tieneParte?`<button onclick="verParteOT('${id}','${numOT}')" style="background:var(--azul-claro);color:var(--azul);border:1px solid var(--azul);border-radius:7px;padding:5px 12px;font-size:12px;font-weight:600;cursor:pointer">📄 Ver parte</button>`:'<span style="font-size:11px;color:var(--naranja)">Sin parte registrado</span>'}
       </div>`;
     }).join('');
   }
@@ -4989,6 +5177,11 @@ async function guardarParteOT() {
   const horaOut  = document.getElementById('parteOTHoraOut').value;
   const canvas   = document.getElementById('parteOTFirmaCanvas');
   const firma    = canvas.toDataURL('image/png');
+  // Verificar que hay firma
+  const ctxCheck = canvas.getContext('2d');
+  const pixelData = ctxCheck.getImageData(0, 0, canvas.width, canvas.height).data;
+  const hasFirma = Array.from(pixelData).some(v => v !== 0);
+  if (!hasFirma) { toast('La firma es obligatoria'); return; }
   const material = (_parteOTMateriales || []).filter(m => m && m.materialId);
 
   if (!resumen) { toast('Añade un resumen del trabajo'); return; }
@@ -5426,6 +5619,110 @@ async function confirmarImportXLSX() {
 
 
 // ═══════════════════════════════════════════════════════════════════════
+// EDITAR FECHA / DUPLICAR OT
+// ═══════════════════════════════════════════════════════════════════════
+
+let _editarOTId = null;
+let _duplicarOTId = null;
+
+function abrirModalEditarOT(id) {
+  _editarOTId = id;
+  const t = cacheAgenda[id];
+  if (!t) return;
+  document.getElementById('editarOTFecha').value = t.fecha || '';
+  document.getElementById('editarOTAsignado').value = t.asignadoA || '';
+  document.getElementById('modalEditarOT').style.display = 'flex';
+}
+
+function cerrarModalEditarOT() {
+  document.getElementById('modalEditarOT').style.display = 'none';
+  _editarOTId = null;
+}
+
+async function confirmarEditarOT() {
+  if (!_editarOTId) return;
+  const fecha = document.getElementById('editarOTFecha').value;
+  const asignadoA = document.getElementById('editarOTAsignado').value;
+  if (!fecha) { toast('Selecciona una fecha'); return; }
+  const resp = await corelinkPost('/api/agenda/editar', { id: _editarOTId, fecha, asignadoA });
+  if (resp.ok) {
+    toast('OT actualizada ✓');
+    cerrarModalEditarOT();
+    await cargarAgenda();
+  } else { toast('Error al actualizar'); }
+}
+
+function abrirModalDuplicarOT(id) {
+  _duplicarOTId = id;
+  const t = cacheAgenda[id];
+  if (!t) return;
+  // Sugerir el día siguiente como fecha por defecto
+  const fechaOrig = t.fecha ? new Date(t.fecha+'T12:00:00') : new Date();
+  fechaOrig.setDate(fechaOrig.getDate() + 1);
+  document.getElementById('duplicarOTFecha').value = fechaOrig.toISOString().split('T')[0];
+  document.getElementById('duplicarOTAsignado').value = t.asignadoA || '';
+  document.getElementById('modalDuplicarOT').style.display = 'flex';
+}
+
+function cerrarModalDuplicarOT() {
+  document.getElementById('modalDuplicarOT').style.display = 'none';
+  _duplicarOTId = null;
+}
+
+async function confirmarDuplicarOT() {
+  if (!_duplicarOTId) return;
+  const fecha = document.getElementById('duplicarOTFecha').value;
+  const asignadoA = document.getElementById('duplicarOTAsignado').value;
+  if (!fecha) { toast('Selecciona una fecha'); return; }
+  const resp = await corelinkPost('/api/agenda/duplicar', { id: _duplicarOTId, fecha, asignadoA });
+  if (resp.ok) {
+    toast('OT duplicada ✓ — ' + resp.numeroOT);
+    cerrarModalDuplicarOT();
+    await cargarAgenda();
+  } else { toast('Error al duplicar'); }
+}
+
+// ═══════════════════════════════════════════════════════════════════════
+// CREAR OT DESDE AVERÍA
+// ═══════════════════════════════════════════════════════════════════════
+
+let _crearOTAveriaId = null;
+
+function abrirModalCrearOTdesdeAveria(averiaId) {
+  _crearOTAveriaId = averiaId;
+  const av = cacheIncidencias[averiaId];
+  if (!av) return;
+  document.getElementById('crearOTAveriaInfo').textContent = (av.nombreInstalacion||'') + ' — ' + (av.descripcion||'').slice(0,80);
+  document.getElementById('crearOTFecha').value = new Date().toISOString().split('T')[0];
+  document.getElementById('crearOTAsignado').value = 'jesus';
+  document.getElementById('crearOTNota').value = av.descripcion || '';
+  document.getElementById('modalCrearOTAveria').style.display = 'flex';
+}
+
+function cerrarModalCrearOTAveria() {
+  document.getElementById('modalCrearOTAveria').style.display = 'none';
+  _crearOTAveriaId = null;
+}
+
+async function confirmarCrearOTAveria() {
+  if (!_crearOTAveriaId) return;
+  const fecha = document.getElementById('crearOTFecha').value;
+  const asignadoA = document.getElementById('crearOTAsignado').value;
+  const nota = document.getElementById('crearOTNota').value.trim();
+  if (!fecha) { toast('Selecciona una fecha'); return; }
+  const resp = await corelinkPost('/api/averias/crear-ot', {
+    averiaId: _crearOTAveriaId, fecha, asignadoA, nota
+  });
+  if (resp.ok) {
+    toast('OT ' + resp.numeroOT + ' creada y asignada ✓');
+    cerrarModalCrearOTAveria();
+    await cargarAverias();
+    await cargarAgenda();
+  } else { toast('Error al crear OT'); }
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════
 // IMPORTAR AGENDA DESDE EXCEL
 // ═══════════════════════════════════════════════════════════════════════
 
@@ -5768,5 +6065,96 @@ async function confirmarImportacion() {
 </div>
 
 <div id="toast" style="position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(80px);background:#1e293b;color:#fff;padding:11px 20px;border-radius:8px;font-size:14px;font-weight:500;z-index:9999;transition:transform 0.3s ease;white-space:nowrap;pointer-events:none"></div>
+
+<!-- ── MODAL EDITAR FECHA OT ──────────────────────────────────────────── -->
+<div id="modalEditarOT" style="display:none;position:fixed;inset:0;z-index:9000;background:rgba(0,0,0,0.65);align-items:center;justify-content:center;padding:20px">
+  <div style="background:#fff;border-radius:12px;max-width:400px;width:100%;overflow:hidden">
+    <div style="background:var(--azul);padding:14px 20px;display:flex;justify-content:space-between;align-items:center">
+      <div style="color:#fff;font-size:15px;font-weight:800">✏ Cambiar fecha de OT</div>
+      <button onclick="cerrarModalEditarOT()" style="background:rgba(255,255,255,0.15);color:#fff;border:none;border-radius:7px;padding:5px 12px;font-size:13px;cursor:pointer">✕</button>
+    </div>
+    <div style="padding:20px">
+      <div style="margin-bottom:12px">
+        <label style="font-size:12px;font-weight:700;color:var(--gris-oscuro);display:block;margin-bottom:6px">Nueva fecha</label>
+        <input type="date" id="editarOTFecha" style="width:100%;border:1.5px solid var(--gris-borde);border-radius:8px;padding:9px;font-size:14px;font-family:inherit;box-sizing:border-box">
+      </div>
+      <div style="margin-bottom:20px">
+        <label style="font-size:12px;font-weight:700;color:var(--gris-oscuro);display:block;margin-bottom:6px">Asignado a</label>
+        <select id="editarOTAsignado" style="width:100%;border:1.5px solid var(--gris-borde);border-radius:8px;padding:9px;font-size:14px;font-family:inherit">
+          <option value="jesus">👷 Jesús</option>
+          <option value="fran">🖥 Fran</option>
+          <option value="">Sin asignar</option>
+        </select>
+      </div>
+      <div style="display:flex;gap:10px">
+        <button onclick="cerrarModalEditarOT()" style="flex:1;padding:10px;background:#f3f4f6;color:var(--gris-oscuro);border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer">Cancelar</button>
+        <button onclick="confirmarEditarOT()" style="flex:2;padding:10px;background:var(--azul);color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer">✓ Guardar cambios</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── MODAL DUPLICAR OT ───────────────────────────────────────────────── -->
+<div id="modalDuplicarOT" style="display:none;position:fixed;inset:0;z-index:9000;background:rgba(0,0,0,0.65);align-items:center;justify-content:center;padding:20px">
+  <div style="background:#fff;border-radius:12px;max-width:400px;width:100%;overflow:hidden">
+    <div style="background:var(--azul);padding:14px 20px;display:flex;justify-content:space-between;align-items:center">
+      <div style="color:#fff;font-size:15px;font-weight:800">⎘ Duplicar OT</div>
+      <button onclick="cerrarModalDuplicarOT()" style="background:rgba(255,255,255,0.15);color:#fff;border:none;border-radius:7px;padding:5px 12px;font-size:13px;cursor:pointer">✕</button>
+    </div>
+    <div style="padding:20px">
+      <div style="font-size:13px;color:var(--gris-medio);margin-bottom:14px">Se creará una copia de esta OT para el día que elijas, con estado Pendiente.</div>
+      <div style="margin-bottom:12px">
+        <label style="font-size:12px;font-weight:700;color:var(--gris-oscuro);display:block;margin-bottom:6px">Fecha para la copia</label>
+        <input type="date" id="duplicarOTFecha" style="width:100%;border:1.5px solid var(--gris-borde);border-radius:8px;padding:9px;font-size:14px;font-family:inherit;box-sizing:border-box">
+      </div>
+      <div style="margin-bottom:20px">
+        <label style="font-size:12px;font-weight:700;color:var(--gris-oscuro);display:block;margin-bottom:6px">Asignado a</label>
+        <select id="duplicarOTAsignado" style="width:100%;border:1.5px solid var(--gris-borde);border-radius:8px;padding:9px;font-size:14px;font-family:inherit">
+          <option value="jesus">👷 Jesús</option>
+          <option value="fran">🖥 Fran</option>
+          <option value="">Sin asignar</option>
+        </select>
+      </div>
+      <div style="display:flex;gap:10px">
+        <button onclick="cerrarModalDuplicarOT()" style="flex:1;padding:10px;background:#f3f4f6;color:var(--gris-oscuro);border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer">Cancelar</button>
+        <button onclick="confirmarDuplicarOT()" style="flex:2;padding:10px;background:var(--azul);color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer">⎘ Crear copia</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── MODAL CREAR OT DESDE AVERÍA ────────────────────────────────────── -->
+<div id="modalCrearOTAveria" style="display:none;position:fixed;inset:0;z-index:9000;background:rgba(0,0,0,0.65);align-items:center;justify-content:center;padding:20px">
+  <div style="background:#fff;border-radius:12px;max-width:420px;width:100%;overflow:hidden">
+    <div style="background:var(--azul);padding:14px 20px;display:flex;justify-content:space-between;align-items:center">
+      <div style="color:#fff;font-size:15px;font-weight:800">📋 Crear OT desde avería</div>
+      <button onclick="cerrarModalCrearOTAveria()" style="background:rgba(255,255,255,0.15);color:#fff;border:none;border-radius:7px;padding:5px 12px;font-size:13px;cursor:pointer">✕</button>
+    </div>
+    <div style="padding:20px">
+      <div id="crearOTAveriaInfo" style="font-size:13px;font-weight:600;color:var(--azul);background:var(--azul-claro);padding:10px 12px;border-radius:8px;margin-bottom:16px"></div>
+      <div style="margin-bottom:12px">
+        <label style="font-size:12px;font-weight:700;color:var(--gris-oscuro);display:block;margin-bottom:6px">Fecha para la OT</label>
+        <input type="date" id="crearOTFecha" style="width:100%;border:1.5px solid var(--gris-borde);border-radius:8px;padding:9px;font-size:14px;font-family:inherit;box-sizing:border-box">
+      </div>
+      <div style="margin-bottom:12px">
+        <label style="font-size:12px;font-weight:700;color:var(--gris-oscuro);display:block;margin-bottom:6px">Asignar a</label>
+        <select id="crearOTAsignado" style="width:100%;border:1.5px solid var(--gris-borde);border-radius:8px;padding:9px;font-size:14px;font-family:inherit">
+          <option value="jesus">👷 Jesús</option>
+          <option value="fran">🖥 Fran</option>
+          <option value="">Sin asignar</option>
+        </select>
+      </div>
+      <div style="margin-bottom:20px">
+        <label style="font-size:12px;font-weight:700;color:var(--gris-oscuro);display:block;margin-bottom:6px">Nota para el técnico</label>
+        <textarea id="crearOTNota" rows="3" style="width:100%;border:1.5px solid var(--gris-borde);border-radius:8px;padding:9px;font-size:13px;font-family:inherit;box-sizing:border-box;resize:vertical"></textarea>
+      </div>
+      <div style="display:flex;gap:10px">
+        <button onclick="cerrarModalCrearOTAveria()" style="flex:1;padding:10px;background:#f3f4f6;color:var(--gris-oscuro);border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer">Cancelar</button>
+        <button onclick="confirmarCrearOTAveria()" style="flex:2;padding:10px;background:var(--azul);color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer">✓ Crear OT</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>
