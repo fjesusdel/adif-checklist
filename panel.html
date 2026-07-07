@@ -1201,6 +1201,20 @@ body.dark .item-card { background:#1e2433;border-color:#2d3548; }
   <div class="modal-box-mini">
     <div class="modal-titulo" style="margin-bottom:14px">✏ Editar avería</div>
     <input type="hidden" id="editAveriaId">
+    <div class="ficha-grid" style="margin-bottom:10px">
+      <div class="ficha-field">
+        <label>Fecha apertura</label>
+        <input type="date" id="editAveriaFecha" style="width:100%;border:1.5px solid var(--gris-borde);border-radius:7px;padding:9px 11px;font-size:14px;font-family:inherit;box-sizing:border-box">
+      </div>
+      <div class="ficha-field">
+        <label>Estado</label>
+        <select id="editAveriaEstado" style="width:100%;border:1.5px solid var(--gris-borde);border-radius:7px;padding:9px 11px;font-size:14px;font-family:inherit">
+          <option value="pendiente-aceptacion">⏳ Pte. aceptación</option>
+          <option value="abierta">🔴 Abierta</option>
+          <option value="cerrada">✅ Cerrada</option>
+        </select>
+      </div>
+    </div>
     <div class="ficha-field" style="margin-bottom:10px">
       <label>Descripción</label>
       <textarea id="editAveriaDesc" rows="3" style="width:100%;border:1.5px solid var(--gris-borde);border-radius:7px;padding:9px 11px;font-size:14px;font-family:inherit"></textarea>
@@ -2648,23 +2662,39 @@ function renderAgendaLista() {
         const asigEl = t.asignadoA === 'jesus' ? '<span style="font-size:10px;font-weight:700;background:#dbeafe;color:#1e40af;padding:1px 7px;border-radius:99px;margin-left:6px">👷 Jesús</span>'
                      : t.asignadoA === 'fran'  ? '<span style="font-size:10px;font-weight:700;background:#dcfce7;color:#166534;padding:1px 7px;border-radius:99px;margin-left:6px">🖥 Fran</span>'
                      : '<span style="font-size:10px;font-weight:700;background:var(--gris-borde);color:var(--gris-medio);padding:1px 7px;border-radius:99px;margin-left:6px">Sin asignar</span>';
-        const esParte = OT_CON_PARTE.includes(t.tipo);
-        const numOT   = t.numeroOT ? `<span style="font-size:10px;color:var(--gris-medio);margin-left:6px">${t.numeroOT}</span>` : '';
-        html += `<div class="item-card" style="${esCoord?'border-left:4px solid #7c3aed':''}">
-          <span class="item-tag" style="background:${esCoord?'#ede9fe':'var(--gris-fondo)'};color:${esCoord?'#7c3aed':'var(--gris-medio)'}">${LABEL_TIPO_TAREA[t.tipo]||t.tipo}</span>${asigEl}${numOT}
-          <div class="item-card-titulo">${t.nombreInstalacion||t.codigoInstalacion||'OT sin instalación'}</div>
-          ${t.nota ? `<div class="item-card-desc">→ ${t.nota}</div>` : ''}
-          <div class="item-card-btns">
-            <button class="btn-mini ${t.estado==='en_curso'?'activo-amarillo':''}" onclick="cambiarEstadoTareaPanel('${id}','en_curso')">▶ En curso</button>
-            ${esParte
-              ? `<button class="btn-mini verde" onclick="abrirModalParteOT('${id}','${(t.numeroOT||'OT')+' — '+(t.nombreInstalacion||t.tipo||'')}')">✓ Completar OT</button>`
-              : `<button class="btn-mini verde" onclick="cambiarEstadoTareaPanel('${id}','completada')">✓ Completada</button>`}
-            <button class="btn-mini" onclick="abrirModalAsignarTarea('${id}','${t.asignadoA||''}')">👤 Asignar</button>
-            <button class="btn-mini" onclick="abrirModalEditarOT('${id}')">✏ Fecha</button>
-            <button class="btn-mini" onclick="abrirModalDuplicarOT('${id}')">⎘ Duplicar</button>
-            <button class="btn-mini rojo" onclick="eliminarTarea('${id}')">🗑 Eliminar</button>
-          </div>
-        </div>`;
+        const esParte  = OT_CON_PARTE.includes(t.tipo);
+        const esParada  = t.estado === 'parada';
+        const esMtto    = t.tipo === 'anual' || t.tipo === 'trimestral';
+        const esParteOT = OT_CON_PARTE.includes(t.tipo);
+        const numOT     = t.numeroOT ? '<span style="font-size:10px;color:var(--gris-medio);margin-left:6px">'+t.numeroOT+'</span>' : '';
+        const bordEstilo = esCoord ? 'border-left:4px solid #7c3aed' : esParada ? 'border-left:4px solid #f59e0b;background:#fffbeb' : '';
+        const tagBg = esCoord ? '#ede9fe' : esParada ? '#fef3c7' : 'var(--gris-fondo)';
+        const tagColor = esCoord ? '#7c3aed' : esParada ? '#92400e' : 'var(--gris-medio)';
+        const _q = function(s){ return s.replace(/"/g,'&quot;'); };
+        let btns = '';
+        if (esParada) {
+          btns = '<button class="btn-mini verde" onclick="reanudarOT(&quot;'+id+'&quot;)">\u25b6 Reanudar</button>';
+        } else {
+          btns = '<button class="btn-mini '+(t.estado==='en_curso'?'activo-amarillo':'')+'" onclick="cambiarEstadoTareaPanel(&quot;'+id+'&quot;,&quot;en_curso&quot;)">\u25b6 En curso</button>'
+               + '<button class="btn-mini" style="background:#fff7ed;color:#92400e;border-color:#f59e0b" onclick="abrirModalPausa(&quot;'+id+'&quot;)">\u23f8 Pausar</button>';
+          if (esParteOT) {
+            btns += '<button class="btn-mini verde" onclick="abrirModalParteOT(&quot;'+id+'&quot;,&quot;'+_q((t.numeroOT||'OT')+' \u2014 '+(t.nombreInstalacion||t.tipo||''))+'&quot;)">\u2713 Completar OT</button>';
+          } else {
+            btns += '<button class="btn-mini verde" onclick="cambiarEstadoTareaPanel(&quot;'+id+'&quot;,&quot;completada&quot;)">\u2713 Completada</button>';
+          }
+        }
+        btns += '<button class="btn-mini" onclick="abrirModalAsignarTarea(&quot;'+id+'&quot;,&quot;'+(t.asignadoA||'')+'&quot;)">\ud83d\udc64 Asignar</button>'
+              + '<button class="btn-mini" onclick="abrirModalEditarOT(&quot;'+id+'&quot;)">\u270f Fecha</button>'
+              + '<button class="btn-mini" onclick="abrirModalDuplicarOT(&quot;'+id+'&quot;)">\u2398 Duplicar</button>'
+              + '<button class="btn-mini rojo" onclick="eliminarTarea(&quot;'+id+'&quot;)">\ud83d\uddd1 Eliminar</button>';
+        html += '<div class="item-card" style="'+bordEstilo+'">'
+              + '<span class="item-tag" style="background:'+tagBg+';color:'+tagColor+'">'+(LABEL_TIPO_TAREA[t.tipo]||t.tipo)+'</span>'+asigEl+numOT
+              + (esParada ? '<span style="font-size:10px;font-weight:700;background:#fef3c7;color:#92400e;padding:1px 8px;border-radius:99px;margin-left:6px">⏸ PARADA</span>' : '')
+              + '<div class="item-card-titulo">'+(t.nombreInstalacion||t.codigoInstalacion||'OT sin instalación')+'</div>'
+              + (t.nota ? '<div class="item-card-desc">→ '+t.nota+'</div>' : '')
+              + (esParada && t.motivoPausa ? '<div style="font-size:12px;color:#92400e;background:#fef3c7;border-radius:6px;padding:6px 10px;margin-top:4px">⏸ '+t.motivoPausa+'</div>' : '')
+              + '<div class="item-card-btns">'+btns+'</div>'
+              + '</div>';
       });
     });
     cont.innerHTML = html;
@@ -2909,10 +2939,12 @@ async function guardarNuevaTareaPanel() {
 function editarAveria(id) {
   const averia = cacheIncidencias && cacheIncidencias[id];
   if (!averia) { toast('Avería no encontrada'); return; }
-  document.getElementById('editAveriaId').value        = id;
-  document.getElementById('editAveriaDesc').value      = averia.descripcion || '';
-  document.getElementById('editAveriaQuienAviso').value = averia.quienAviso || '';
-  document.getElementById('editAveriaPrioridad').value  = averia.prioridad || 'normal';
+  document.getElementById('editAveriaId').value          = id;
+  document.getElementById('editAveriaDesc').value        = averia.descripcion   || '';
+  document.getElementById('editAveriaQuienAviso').value  = averia.quienAviso    || '';
+  document.getElementById('editAveriaPrioridad').value   = averia.prioridad     || 'normal';
+  document.getElementById('editAveriaFecha').value       = averia.fechaApertura || '';
+  document.getElementById('editAveriaEstado').value      = averia.estado        || 'abierta';
   document.getElementById('modalEditarAveria').classList.remove('hidden');
 }
 
@@ -2921,13 +2953,15 @@ function cerrarModalEditarAveria() {
 }
 
 async function guardarEdicionAveria() {
-  const id          = document.getElementById('editAveriaId').value;
-  const descripcion = document.getElementById('editAveriaDesc').value.trim();
-  const quienAviso  = document.getElementById('editAveriaQuienAviso').value.trim();
-  const prioridad   = document.getElementById('editAveriaPrioridad').value;
+  const id            = document.getElementById('editAveriaId').value;
+  const descripcion   = document.getElementById('editAveriaDesc').value.trim();
+  const quienAviso    = document.getElementById('editAveriaQuienAviso').value.trim();
+  const prioridad     = document.getElementById('editAveriaPrioridad').value;
+  const fechaApertura = document.getElementById('editAveriaFecha').value;
+  const estado        = document.getElementById('editAveriaEstado').value;
   if (!id) return;
   toast('Guardando...');
-  const resp = await corelinkPost('/api/incidencias/editar', { id, descripcion, quienAviso, prioridad });
+  const resp = await corelinkPost('/api/incidencias/editar', { id, descripcion, quienAviso, prioridad, fechaApertura, estado });
   if (resp && resp.ok) {
     toast('Avería actualizada ✓');
     cerrarModalEditarAveria();
@@ -6042,6 +6076,39 @@ function _generarHTMLGuardia({ descripcion, tecnico, fecha, horaIn, horaOut, des
 
 
 // ═══════════════════════════════════════════════════════════════════════
+// PAUSA / REANUDACIÓN DE OT
+// ═══════════════════════════════════════════════════════════════════════
+
+function abrirModalPausa(id) {
+  document.getElementById('pausaOTId').value = id;
+  document.getElementById('pausaMotivo').value = '';
+  document.getElementById('modalPausaOT').style.display = 'flex';
+}
+
+function cerrarModalPausa() {
+  document.getElementById('modalPausaOT').style.display = 'none';
+}
+
+async function confirmarPausaOT() {
+  const id     = document.getElementById('pausaOTId').value;
+  const motivo = document.getElementById('pausaMotivo').value.trim();
+  if (!motivo) { toast('El motivo de la pausa es obligatorio'); return; }
+  const resp = await corelinkPost('/api/agenda/estado', { id, estado: 'parada', motivoPausa: motivo });
+  if (resp && resp.ok) {
+    toast('OT pausada ✓');
+    cerrarModalPausa();
+    cargarAgenda();
+  } else { toast('Error al pausar'); }
+}
+
+async function reanudarOT(id) {
+  const resp = await corelinkPost('/api/agenda/estado', { id, estado: 'en_curso' });
+  if (resp && resp.ok) { toast('OT reanudada ✓'); cargarAgenda(); }
+  else { toast('Error al reanudar'); }
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════
 // IMPORTAR AGENDA DESDE EXCEL
 // ═══════════════════════════════════════════════════════════════════════
 
@@ -6540,6 +6607,28 @@ async function confirmarImportacion() {
       <div style="display:flex;gap:10px">
         <button onclick="cerrarModalGuardiaPNC()" style="flex:1;padding:11px;background:#f3f4f6;color:var(--gris-oscuro);border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer">Cancelar</button>
         <button onclick="guardarGuardiaPNC()" style="flex:2;padding:11px;background:#c05621;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer">🚨 Registrar guardia</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ── MODAL PONER OT EN PAUSA ────────────────────────────────────────── -->
+<div id="modalPausaOT" style="display:none;position:fixed;inset:0;z-index:9000;background:rgba(0,0,0,0.65);align-items:center;justify-content:center;padding:20px">
+  <div style="background:#fff;border-radius:12px;max-width:400px;width:100%;overflow:hidden">
+    <div style="background:#f59e0b;padding:14px 20px;display:flex;justify-content:space-between;align-items:center">
+      <div style="color:#fff;font-size:15px;font-weight:800">⏸ Poner OT en pausa</div>
+      <button onclick="cerrarModalPausa()" style="background:rgba(255,255,255,0.2);color:#fff;border:none;border-radius:7px;padding:5px 12px;font-size:13px;cursor:pointer">✕</button>
+    </div>
+    <div style="padding:20px">
+      <input type="hidden" id="pausaOTId">
+      <div style="margin-bottom:16px">
+        <label style="font-size:12px;font-weight:700;color:var(--gris-oscuro);display:block;margin-bottom:6px">Motivo de la pausa <span style="color:var(--rojo)">*</span></label>
+        <textarea id="pausaMotivo" rows="3" placeholder="Explica por qué se para esta OT..." style="width:100%;border:1.5px solid var(--gris-borde);border-radius:8px;padding:9px;font-size:14px;font-family:inherit;box-sizing:border-box;resize:vertical"></textarea>
+      </div>
+      <div style="display:flex;gap:10px">
+        <button onclick="cerrarModalPausa()" style="flex:1;padding:10px;background:#f3f4f6;color:var(--gris-oscuro);border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer">Cancelar</button>
+        <button onclick="confirmarPausaOT()" style="flex:2;padding:10px;background:#f59e0b;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer">⏸ Poner en pausa</button>
       </div>
     </div>
   </div>

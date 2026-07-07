@@ -1070,7 +1070,7 @@ header {
   <button class="nav-tab active" id="tabInicio"         onclick="cambiarSeccion('inicio')">🏠 Inicio</button>
   <button class="nav-tab"        id="tabMantenimientos" onclick="cambiarSeccion('mantenimientos')">🔧 Visitas</button>
   <button class="nav-tab"        id="tabAverias"        onclick="cambiarSeccion('averias')">⚠ Averías<span id="averiasBadgeTab" class="nav-tab-badge hidden">0</span></button>
-  <button class="nav-tab"        id="tabAgenda"         onclick="cambiarSeccion('agenda')">📅 Agenda<span id="agendaBadgeTab" class="nav-tab-badge hidden">0</span></button>
+  <button class="nav-tab"        id="tabAgenda"         onclick="cambiarSeccion('agenda')">📋 Órdenes de trabajo<span id="agendaBadgeTab" class="nav-tab-badge hidden">0</span></button>
   <button class="nav-tab"        id="tabStock"          onclick="cambiarSeccion('stock')">📦 Stock<span id="stockBadgeTab" class="nav-tab-badge hidden">0</span></button>
   <button class="nav-tab"        id="tabEstadisticas"   onclick="cambiarSeccion('estadisticas')">📈 Stats</button>
 </div>
@@ -1097,7 +1097,7 @@ header {
     <div style="font-size:12px;opacity:.8;margin-top:2px" id="inicioFecha"></div>
   </div>
   <div class="card" style="margin-bottom:10px">
-    <div class="card-title">📅 Agendado en los próximos 7 días</div>
+    <div class="card-title">📋 OT próximos 7 días</div>
     <div id="inicioAgendaHoy"><div class="empty-state">Cargando...</div></div>
   </div>
   <div class="card" style="margin-bottom:10px">
@@ -1190,7 +1190,7 @@ header {
 <!-- ═══════════════════════════════════════════════════════ -->
 <div id="seccionAgenda" class="container hidden">
   <div class="card">
-    <div class="card-title">📅 Agenda</div>
+    <div class="card-title">📋 Órdenes de trabajo</div>
     <!-- Selector vista -->
     <div style="display:flex;gap:8px;margin-bottom:12px">
       <button class="pill active" id="agendaVistaListaBtn"  onclick="setVistaAgendaPNT('lista')">Lista</button>
@@ -2486,30 +2486,38 @@ async function cargarYRenderizarAgenda() {
                     : (!t.asignadoA || t.asignadoA === '') ? '<span style="font-size:10px;font-weight:700;background:#e5e7eb;color:#6b7280;padding:2px 8px;border-radius:99px;margin-left:6px">Sin asignar</span>'
                     : '';
       const esCompletada = t.estado === 'completada';
-      const esMtto  = t.tipo === 'anual' || t.tipo === 'trimestral';
-      const esParte = t.tipo === 'averia-correctiva' || t.tipo === 'instalacion' || t.tipo === 'libre';
-      const numOT   = t.numeroOT ? `<span style="font-size:10px;color:var(--gris-medio);margin-left:6px">${t.numeroOT}</span>` : '';
-      html += `<div class="agenda-tarea${esCompletada?' completada':''}" style="${esJesus&&!esCompletada?'background:#eff6ff;border-left:4px solid #1e40af':''}">
-        <span class="agenda-tarea-tipo-tag">${LABEL_TIPO_TAREA[t.tipo] || t.tipo}</span>${asigTxt}${numOT}
-        <div class="agenda-inst-nombre">${t.nombreInstalacion || t.codigoInstalacion || 'OT sin instalación'}</div>
-        ${t.nota ? `<div class="agenda-nota">→ ${t.nota}</div>` : ''}
-        <div class="agenda-tarea-btns">
-          ${esCompletada
-            ? `<span style="font-size:11px;color:var(--gris-medio);font-style:italic">✓ Completada</span>`
-            : esMtto && t.codigoInstalacion
-              ? `<button class="btn-tarea-estado ${t.estado==='en_curso'?'active en_curso':''}" onclick="cambiarEstadoTarea('${id}','en_curso')">▶ En curso</button>
-                 <button class="btn-primary" style="padding:5px 14px;font-size:12px" onclick="irAInstalacionDesdeOT('${id}','${t.codigoInstalacion}','${t.tipo}')">🏁 En la instalación</button>`
-              : esParte
-              ? `<button class="btn-tarea-estado ${t.estado==='en_curso'?'active en_curso':''}" onclick="cambiarEstadoTarea('${id}','en_curso')">▶ En curso</button>
-                 <button class="btn-primary" style="padding:5px 14px;font-size:12px;background:var(--verde)" onclick="abrirParteOTPNT('${id}','${(t.numeroOT||'OT')+' — '+(t.nombreInstalacion||t.tipo||'')}')">✓ Completar OT</button>`
-              : `<button class="btn-tarea-estado ${t.estado==='en_curso'?'active en_curso':''}" onclick="cambiarEstadoTarea('${id}','en_curso')">▶ En curso</button>
-                 <button class="btn-tarea-estado" onclick="cambiarEstadoTarea('${id}','completada')">✓ Completada</button>`
-          }
-        </div>
-      </div>`;
+      const esParada  = t.estado === 'parada';
+      const esMtto    = t.tipo === 'anual' || t.tipo === 'trimestral';
+      const esParte   = t.tipo === 'averia-correctiva' || t.tipo === 'instalacion' || t.tipo === 'libre';
+      const numOT     = t.numeroOT ? '<span style="font-size:10px;color:var(--gris-medio);margin-left:6px">'+t.numeroOT+'</span>' : '';
+      const bordEstilo = esParada ? 'border-left:4px solid #f59e0b;background:#fffbeb' : (esJesus&&!esCompletada ? 'background:#eff6ff;border-left:4px solid #1e40af' : '');
+      let btns = '';
+      if (esCompletada) {
+        btns = '<span style="font-size:11px;color:var(--gris-medio);font-style:italic">\u2713 Completada</span>';
+      } else if (esParada) {
+        btns = '<button class="btn-tarea-estado" onclick="reanudarOTPNT(&quot;'+id+'&quot;)">\u25b6 Reanudar</button>';
+      } else if (esMtto && t.codigoInstalacion) {
+        btns = '<button class="btn-tarea-estado '+(t.estado==='en_curso'?'active en_curso':'')+'" onclick="cambiarEstadoTarea(&quot;'+id+'&quot;,&quot;en_curso&quot;)">\u25b6 En curso</button>'
+             + '<button class="btn-primary" style="padding:5px 14px;font-size:12px" onclick="irAInstalacionDesdeOT(&quot;'+id+'&quot;,&quot;'+t.codigoInstalacion+'&quot;,&quot;'+t.tipo+'&quot;)">\ud83c\udfc1 En la instalaci\u00f3n</button>';
+      } else if (esParte) {
+        const _tit = ((t.numeroOT||'OT')+' \u2014 '+(t.nombreInstalacion||t.tipo||'')).replace(/"/g,'&quot;');
+        btns = '<button class="btn-tarea-estado '+(t.estado==='en_curso'?'active en_curso':'')+'" onclick="cambiarEstadoTarea(&quot;'+id+'&quot;,&quot;en_curso&quot;)">\u25b6 En curso</button>'
+             + '<button class="btn-primary" style="padding:5px 14px;font-size:12px;background:var(--verde)" onclick="abrirParteOTPNT(&quot;'+id+'&quot;,&quot;'+_tit+'&quot;)">\u2713 Completar OT</button>';
+      } else {
+        btns = '<button class="btn-tarea-estado '+(t.estado==='en_curso'?'active en_curso':'')+'" onclick="cambiarEstadoTarea(&quot;'+id+'&quot;,&quot;en_curso&quot;)">\u25b6 En curso</button>'
+             + '<button class="btn-tarea-estado" onclick="cambiarEstadoTarea(&quot;'+id+'&quot;,&quot;completada&quot;)">\u2713 Completada</button>';
+      }
+      html += '<div class="agenda-tarea'+(esCompletada?' completada':'')+'" style="'+bordEstilo+'">'
+            + '<span class="agenda-tarea-tipo-tag">'+(LABEL_TIPO_TAREA[t.tipo]||t.tipo)+'</span>'+asigTxt+numOT
+            + (esParada ? '<span style="font-size:10px;font-weight:700;background:#fef3c7;color:#92400e;padding:1px 8px;border-radius:99px;margin-left:6px">⏸ PARADA</span>' : '')
+            + '<div class="agenda-inst-nombre">'+(t.nombreInstalacion||t.codigoInstalacion||'OT sin instalación')+'</div>'
+            + (t.nota ? '<div class="agenda-nota">→ '+t.nota+'</div>' : '')
+            + (esParada && t.motivoPausa ? '<div style="font-size:11px;color:#92400e;background:#fef3c7;border-radius:5px;padding:5px 8px;margin-top:4px">⏸ '+t.motivoPausa+'</div>' : '')
+            + '<div class="agenda-tarea-btns">'+btns+'</div>'
+            + '</div>';
+
     });
   });
-
   cont.innerHTML = html;
 }
 
@@ -2532,6 +2540,19 @@ async function irAInstalacionDesdeOT(otId, codigoInstalacion, tipoChecklist) {
   });
   document.getElementById('btnConfirmarTipo').disabled = false;
   document.getElementById('btnMarcarRealizada').style.display = 'block';
+}
+
+async function reanudarOTPNT(id) {
+  try {
+    var resp = await fetch(CORELINK_URL + '/api/agenda/estado', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CoreLink-Key': CORELINK_API_KEY },
+      body: JSON.stringify({ id: id, estado: 'en_curso' })
+    });
+    var data = await resp.json();
+    if (data.ok) { toast('OT reanudada'); cargarYRenderizarAgenda(); }
+    else { toast('Error al reanudar'); }
+  } catch(e) { toast('Sin conexion'); }
 }
 
 async function cambiarEstadoTarea(id, estado) {
