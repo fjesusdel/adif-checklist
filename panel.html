@@ -174,28 +174,19 @@ header { background: var(--azul); position: sticky; top: 0; z-index: 100; box-sh
 .cal-nav button { background: none; border: none; font-size: 20px; cursor: pointer; color: var(--azul); padding: 4px 8px; border-radius: 6px; }
 .cal-nav button:hover { background: var(--azul-claro); }
 .cal-titulo { font-size: 15px; font-weight: 800; color: var(--azul); }
-.cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; }
 .cal-dia-cab { text-align: center; font-size: 10px; font-weight: 800; color: var(--gris-medio); padding: 4px 0; text-transform: uppercase; }
-.cal-dia {
-  aspect-ratio: 1;
-  display: flex; align-items: center; justify-content: center;
-  border-radius: 8px;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  position: relative;
-  transition: background 0.15s;
-}
-.cal-dia:hover:not(.vacio) { background: var(--azul-claro); }
-.cal-dia.vacio { cursor: default; }
-.cal-dia.otro-mes { color: var(--gris-borde); cursor: default; }
-.cal-dia.hoy { background: var(--azul-claro); font-weight: 900; color: var(--azul); }
-.cal-dia.seleccionado { background: var(--azul); color: var(--blanco); }
-.cal-dia.con-tareas { background: #FFD100; color: #003087; font-weight: 800; }
-.cal-dia.con-tareas:hover { background: #f0c400; }
-.cal-dia.seleccionado.con-tareas { background: var(--azul); color: var(--blanco); }
-.cal-dia-agenda { margin-top: 16px; border-top: 2px solid var(--azul-claro); padding-top: 14px; }
-.cal-dia-agenda-titulo { font-size: 13px; font-weight: 800; color: var(--azul); margin-bottom: 10px; }
+.cal-dia { min-height: 80px; background: var(--blanco); border: 0.5px solid var(--gris-borde); border-radius: 6px; padding: 4px; vertical-align: top; }
+.cal-dia.vacio { background: var(--gris-fondo); border-color: transparent; }
+.cal-dia.hoy { border-color: var(--azul); border-width: 1.5px; }
+.cal-dia-num { font-size: 11px; font-weight: 700; color: var(--gris-medio); margin-bottom: 3px; }
+.cal-dia.hoy .cal-dia-num { color: var(--azul); }
+.cal-ot { border-radius: 3px; padding: 2px 5px; font-size: 10px; margin-bottom: 2px; color: #fff; cursor: pointer; line-height: 1.3; transition: opacity .1s; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cal-ot:hover { opacity: .82; }
+.cal-ot.anual { background: #003087; }
+.cal-ot.trimestral { background: #1e7bba; }
+.cal-ot.averia-correctiva { background: #c0392b; }
+.cal-ot.instalacion, .cal-ot.libre { background: #059669; }
+.cal-ot.sin-asignar { background: #6b7280; }
 
 /* ── NOTA ─────────────────────────────────────── */
 .nota-card.hecha { opacity: 0.5; }
@@ -262,6 +253,8 @@ header { background: var(--azul); position: sticky; top: 0; z-index: 100; box-sh
 .ausencia-card { display: flex; justify-content: space-between; align-items: center; padding: 11px 14px; background: var(--blanco); border-radius: 9px; border-left: 4px solid var(--gris-borde); box-shadow: var(--sombra); margin-bottom: 8px; }
 .ausencia-card.vacaciones { border-left-color: #2563eb; }
 .ausencia-card.libre      { border-left-color: var(--verde); }
+.ausencia-card.medica     { border-left-color: #7c3aed; }
+.ausencia-card.propios    { border-left-color: #0891b2; }
 .ausencia-card.baja       { border-left-color: var(--rojo); }
 .ausencia-card.festivo    { border-left-color: var(--amarillo); }
 .hora-mov { display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; background: var(--blanco); border-radius: 8px; border-left: 4px solid var(--gris-borde); box-shadow: var(--sombra); margin-bottom: 7px; }
@@ -568,17 +561,33 @@ body.dark .item-card { background:#1e2433;border-color:#2d3548; }
     </div>
     <!-- Vista calendario -->
     <div id="agendaVistaCalendario" class="hidden">
+      <!-- Pendientes de agendar -->
+      <div id="calPendientesBox" style="display:none;background:#fff7ed;border:1.5px solid #f59e0b;border-radius:var(--radio);padding:12px 14px;margin-bottom:14px">
+        <div style="font-size:12px;font-weight:800;color:#92400e;margin-bottom:8px">📌 Pendientes de agendar</div>
+        <div id="calPendientesLista"></div>
+      </div>
+      <!-- Filtros -->
+      <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;align-items:center">
+        <button class="pill active" id="calFiltroTodos"      onclick="setCalFiltro('todos',this)">Todos</button>
+        <button class="pill"        id="calFiltroJesus"      onclick="setCalFiltro('jesus',this)">👷 Jesús</button>
+        <button class="pill"        id="calFiltroFran"       onclick="setCalFiltro('fran',this)">🖥 Fran</button>
+        <button class="pill"        id="calFiltroSinAsignar" onclick="setCalFiltro('',this)">Sin asignar</button>
+      </div>
+      <!-- Leyenda -->
+      <div style="display:flex;gap:14px;margin-bottom:12px;flex-wrap:wrap">
+        <div style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--gris-medio)"><div style="width:10px;height:10px;border-radius:2px;background:#003087"></div>Anual</div>
+        <div style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--gris-medio)"><div style="width:10px;height:10px;border-radius:2px;background:#1e7bba"></div>Trimestral</div>
+        <div style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--gris-medio)"><div style="width:10px;height:10px;border-radius:2px;background:#c0392b"></div>Avería</div>
+        <div style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--gris-medio)"><div style="width:10px;height:10px;border-radius:2px;background:#6b7280"></div>Sin asignar</div>
+        <div style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--gris-medio)"><div style="width:10px;height:10px;border-radius:2px;background:#059669"></div>Instalación/Libre</div>
+      </div>
       <div class="cal-wrap">
         <div class="cal-nav">
           <button onclick="calMes(-1)">‹</button>
           <span class="cal-titulo" id="calTitulo"></span>
           <button onclick="calMes(+1)">›</button>
         </div>
-        <div class="cal-grid" id="calGrid"></div>
-        <div class="cal-dia-agenda hidden" id="calDiaAgenda">
-          <div class="cal-dia-agenda-titulo" id="calDiaAgendaTitulo"></div>
-          <div id="calDiaAgendaLista"></div>
-        </div>
+        <div id="calGrid" style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px"></div>
       </div>
     </div>
     <!-- Vista ausencias -->
@@ -598,7 +607,9 @@ body.dark .item-card { background:#1e2433;border-color:#2d3548; }
       <select id="ausenciaTipo" style="width:100%;border:1.5px solid var(--gris-borde);border-radius:7px;padding:9px 11px;font-size:14px;font-family:inherit">
         <option value="vacaciones">🏖 Vacaciones</option>
         <option value="libre">📅 Día libre</option>
-        <option value="baja">🏥 Baja</option>
+        <option value="medica">🏥 Visita médica</option>
+        <option value="propios">📋 Asuntos propios</option>
+        <option value="baja">🤒 Baja</option>
         <option value="festivo">🎉 Festivo</option>
       </select>
     </div>
@@ -606,7 +617,12 @@ body.dark .item-card { background:#1e2433;border-color:#2d3548; }
       <div class="ficha-field"><label>Fecha inicio</label><input type="date" id="ausenciaInicio"></div>
       <div class="ficha-field"><label>Fecha fin</label><input type="date" id="ausenciaFin"></div>
     </div>
-    <div class="ficha-field" style="margin-bottom:14px"><label>Nota (opcional)</label><input type="text" id="ausenciaNota" placeholder="Ej: Vacaciones de verano..."></div>
+    <div class="ficha-grid" style="margin-bottom:10px">
+      <div class="ficha-field"><label>Hora inicio (opcional)</label><input type="time" id="ausenciaHoraIn" placeholder="08:00"></div>
+      <div class="ficha-field"><label>Hora fin (opcional)</label><input type="time" id="ausenciaHoraFin" placeholder="14:00"></div>
+    </div>
+    <div style="font-size:11px;color:var(--gris-medio);margin-bottom:10px">Si no rellenas las horas se considera el día completo.</div>
+    <div class="ficha-field" style="margin-bottom:14px"><label>Nota (opcional)</label><input type="text" id="ausenciaNota" placeholder="Ej: Notaría, revisión médica..."></div>
     <div style="display:flex;gap:8px">
       <button class="btn-secondary" style="flex:1" onclick="cerrarModalAusencia()">Cancelar</button>
       <button class="btn-primary"   style="flex:1" onclick="guardarAusencia()">Guardar</button>
@@ -2671,68 +2687,84 @@ function calMes(delta) {
   document.getElementById('calDiaAgenda').classList.add('hidden');
   renderCalendario();
 }
+let calFiltroActual = 'todos';
+
+function setCalFiltro(f, btn) {
+  calFiltroActual = f;
+  document.querySelectorAll('#agendaVistaCalendario .pill').forEach(p => p.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  renderCalendario();
+}
 
 function renderCalendario() {
-  const hoy     = new Date();
+  const hoy = new Date();
   const primerDia = new Date(calAnio, calMesActual, 1);
   const ultimoDia = new Date(calAnio, calMesActual+1, 0);
-  const meses   = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
-  document.getElementById('calTitulo').textContent = meses[calMesActual] + ' ' + calAnio;
-
-  // Días con tareas este mes
-  const diasConTareas = new Set();
-  Object.values(cacheAgenda||{}).forEach(t => {
-    if (t.estado !== 'completada') {
-      const [y, m, d] = t.fecha.split('-').map(Number);
-      if (y === calAnio && m-1 === calMesActual) diasConTareas.add(d);
-    }
-  });
+  const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  document.getElementById('calTitulo').textContent = MESES[calMesActual] + ' ' + calAnio;
 
   const DIAS_CAB = ['L','M','X','J','V','S','D'];
   let html = DIAS_CAB.map(d => `<div class="cal-dia-cab">${d}</div>`).join('');
 
-  // Offset: lunes=0
   let offset = primerDia.getDay() - 1;
   if (offset < 0) offset = 6;
-  for (let i = 0; i < offset; i++) html += `<div class="cal-dia vacio"></div>`;
+  for (let i = 0; i < offset; i++) html += '<div class="cal-dia vacio"></div>';
 
+  const agenda = cacheAgenda || {};
   for (let d = 1; d <= ultimoDia.getDate(); d++) {
-    const esHoy = d === hoy.getDate() && calMesActual === hoy.getMonth() && calAnio === hoy.getFullYear();
-    const esSel = d === calDiaSeleccionado;
-    const conTareas = diasConTareas.has(d);
-    html += `<div class="cal-dia ${esHoy?'hoy':''} ${esSel?'seleccionado':''} ${conTareas?'con-tareas':''}" onclick="seleccionarDiaCal(${d})">${d}</div>`;
+    const fechaStr = calAnio+'-'+String(calMesActual+1).padStart(2,'0')+'-'+String(d).padStart(2,'0');
+    const esHoy = d===hoy.getDate() && calMesActual===hoy.getMonth() && calAnio===hoy.getFullYear();
+
+    const ots = Object.entries(agenda).filter(([,t]) => {
+      if (!t.fecha || t.fecha !== fechaStr) return false;
+      if (t.estado === 'completada') return false;
+      if (calFiltroActual === 'jesus') return t.asignadoA === 'jesus';
+      if (calFiltroActual === 'fran')  return t.asignadoA === 'fran';
+      if (calFiltroActual === '')      return !t.asignadoA;
+      return true;
+    });
+
+    let inner = `<div class="cal-dia-num">${d}</div>`;
+    ots.forEach(([id, t]) => {
+      const clase = !t.asignadoA ? 'sin-asignar' : t.tipo;
+      const nombre = t.nombreInstalacion || t.codigoInstalacion || 'OT';
+      inner += `<div class="cal-ot ${clase}" onclick="abrirEditarOTCal('${id}')" title="${nombre}">${nombre}</div>`;
+    });
+
+    html += `<div class="cal-dia${esHoy?' hoy':''}">${inner}</div>`;
   }
 
   document.getElementById('calGrid').innerHTML = html;
+
+  // Pendientes de agendar
+  const pendientes = Object.entries(agenda).filter(([,t]) =>
+    !t.fecha && t.estado !== 'completada' &&
+    (calFiltroActual === 'todos' || calFiltroActual === t.asignadoA || (calFiltroActual === '' && !t.asignadoA))
+  );
+  const box = document.getElementById('calPendientesBox');
+  const lista = document.getElementById('calPendientesLista');
+  if (pendientes.length === 0) { box.style.display='none'; return; }
+  box.style.display = 'block';
+  lista.innerHTML = pendientes.map(([id,t]) => {
+    const clase = !t.asignadoA ? 'sin-asignar' : t.tipo;
+    return `<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:0.5px solid #fde68a">
+      <div>
+        <span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:${clase==='sin-asignar'?'#6b7280':clase==='anual'?'#003087':clase==='trimestral'?'#1e7bba':clase==='averia-correctiva'?'#c0392b':'#059669'};margin-right:6px"></span>
+        <span style="font-size:13px;font-weight:600;color:#92400e">${t.nombreInstalacion||t.codigoInstalacion||'Sin instalación'}</span>
+        <span style="font-size:11px;color:#b45309;margin-left:6px">${LABEL_TIPO_TAREA[t.tipo]||t.tipo}</span>
+      </div>
+      <button onclick="abrirEditarOTCal('${id}')" style="background:#fff;border:1px solid #f59e0b;color:#92400e;border-radius:7px;padding:4px 10px;font-size:11px;font-weight:600;cursor:pointer">Asignar fecha</button>
+    </div>`;
+  }).join('');
 }
 
-function seleccionarDiaCal(dia) {
-  calDiaSeleccionado = dia;
-  renderCalendario();
-
-  const fechaStr = `${calAnio}-${String(calMesActual+1).padStart(2,'0')}-${String(dia).padStart(2,'0')}`;
-  const tareas   = Object.entries(cacheAgenda||{}).filter(([id,t]) => t.fecha === fechaStr && t.estado !== 'completada');
-
-  const diaAgendaEl = document.getElementById('calDiaAgenda');
-  const fecha = new Date(fechaStr+'T00:00:00');
-  document.getElementById('calDiaAgendaTitulo').textContent = fecha.toLocaleDateString('es-ES',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
-
-  if (tareas.length === 0) {
-    document.getElementById('calDiaAgendaLista').innerHTML = '<div class="empty-state" style="padding:14px">Sin tareas este día</div>';
-  } else {
-    document.getElementById('calDiaAgendaLista').innerHTML = tareas.map(([id,t]) => `
-      <div class="item-card" style="margin-bottom:8px">
-        <span class="item-tag" style="background:var(--gris-fondo);color:var(--gris-medio)">${LABEL_TIPO_TAREA[t.tipo]||t.tipo}</span>
-        <div class="item-card-titulo">${t.nombreInstalacion||t.codigoInstalacion||'OT sin instalación'}</div>
-        ${t.nota ? `<div class="item-card-desc">→ ${t.nota}</div>` : ''}
-        <div class="item-card-btns">
-          <button class="btn-mini verde" onclick="cambiarEstadoTareaPanel('${id}','completada')">✓ Completada</button>
-          <button class="btn-mini rojo" onclick="eliminarTarea('${id}')">🗑 Eliminar</button>
-        </div>
-      </div>
-    `).join('');
-  }
-  diaAgendaEl.classList.remove('hidden');
+function abrirEditarOTCal(id) {
+  _editarOTId = id;
+  const t = cacheAgenda[id];
+  if (!t) return;
+  document.getElementById('editarOTFecha').value = t.fecha || '';
+  document.getElementById('editarOTAsignado').value = t.asignadoA || '';
+  document.getElementById('modalEditarOT').style.display = 'flex';
 }
 
 async function cambiarEstadoTareaPanel(id, estado) {
@@ -2793,13 +2825,14 @@ async function guardarNuevaTareaPanel() {
   const nombre       = instalacionTareaSeleccionada ? instalacionTareaSeleccionada.nombre    : (descripcion || 'OT sin instalación');
   const provincia    = instalacionTareaSeleccionada ? instalacionTareaSeleccionada.provincia : '';
   const recurrente   = document.getElementById('tareaRecurrente').value;
-  const asignadoA    = document.getElementById('tareaAsignadoA').value;
+  const tipoOT       = document.getElementById('tareaTipo').value;
+  const asignadoA    = tipoOT === 'trimestral' ? 'fran' : document.getElementById('tareaAsignadoA').value;
   const resp = await corelinkPost('/api/agenda', {
     codigoInstalacion: codigo,
     nombreInstalacion: nombre,
     provincia,
     fecha,
-    tipo: document.getElementById('tareaTipo').value,
+    tipo: tipoOT,
     nota: notaFinal,
     recurrente,
     asignadoA
@@ -3649,17 +3682,27 @@ async function cargarAusencias() {
 function renderAusencias() {
   const cont = document.getElementById('ausenciasListContainer');
   if (!cont) return;
+  const LABEL_AUSENCIA = {
+    vacaciones: '🏖 Vacaciones', libre: '📅 Día libre',
+    medica: '🏥 Visita médica', propios: '📋 Asuntos propios',
+    baja: '🤒 Baja', festivo: '🎉 Festivo'
+  };
+  const COLOR_AUSENCIA = {
+    vacaciones: '#2563eb', libre: 'var(--verde)', medica: '#7c3aed',
+    propios: '#0891b2', baja: 'var(--rojo)', festivo: '#92400e'
+  };
   const lista = (cacheAusencias || []).sort((a,b) => a.fechaInicio < b.fechaInicio ? 1 : -1);
   if (lista.length === 0) { cont.innerHTML = '<div class="empty-state">Sin ausencias registradas</div>'; return; }
   cont.innerHTML = lista.map(a => {
-    const mismaFecha = a.fechaInicio === a.fechaFin;
+    const mismaFecha = !a.fechaFin || a.fechaInicio === a.fechaFin;
     const fechaTxt = mismaFecha
       ? new Date(a.fechaInicio+'T12:00:00').toLocaleDateString('es-ES')
       : new Date(a.fechaInicio+'T12:00:00').toLocaleDateString('es-ES') + ' — ' + new Date(a.fechaFin+'T12:00:00').toLocaleDateString('es-ES');
+    const horaTxt = a.horaIn ? `${a.horaIn}${a.horaFin?' → '+a.horaFin:''}` : '';
     return `<div class="ausencia-card ${a.tipo}">
       <div>
-        <div class="ausencia-tipo" style="color:${a.tipo==='vacaciones'?'#2563eb':a.tipo==='libre'?'var(--verde)':a.tipo==='baja'?'var(--rojo)':'#92400e'}">${LABEL_AUSENCIA[a.tipo]||a.tipo}</div>
-        <div class="ausencia-fechas">${fechaTxt}</div>
+        <div class="ausencia-tipo" style="color:${COLOR_AUSENCIA[a.tipo]||'#92400e'}">${LABEL_AUSENCIA[a.tipo]||a.tipo}</div>
+        <div class="ausencia-fechas">${fechaTxt}${horaTxt?` · <strong>${horaTxt}</strong>`:' · Día completo'}</div>
         ${a.nota?`<div class="ausencia-nota">${a.nota}</div>`:''}
       </div>
       <button class="btn-mini rojo" onclick="borrarAusencia('${a.id}')">🗑</button>
@@ -3670,19 +3713,23 @@ function renderAusencias() {
 function abrirModalNuevaAusencia() {
   document.getElementById('ausenciaInicio').value = new Date().toISOString().split('T')[0];
   document.getElementById('ausenciaFin').value    = new Date().toISOString().split('T')[0];
+  document.getElementById('ausenciaHoraIn').value  = '';
+  document.getElementById('ausenciaHoraFin').value = '';
   document.getElementById('ausenciaNota').value   = '';
   document.getElementById('modalAusencia').classList.remove('hidden');
 }
 function cerrarModalAusencia() { document.getElementById('modalAusencia').classList.add('hidden'); }
 
 async function guardarAusencia() {
-  const tipo       = document.getElementById('ausenciaTipo').value;
-  const fechaInicio= document.getElementById('ausenciaInicio').value;
-  const fechaFin   = document.getElementById('ausenciaFin').value;
-  const nota       = document.getElementById('ausenciaNota').value.trim();
+  const tipo        = document.getElementById('ausenciaTipo').value;
+  const fechaInicio = document.getElementById('ausenciaInicio').value;
+  const fechaFin    = document.getElementById('ausenciaFin').value;
+  const horaIn      = document.getElementById('ausenciaHoraIn').value;
+  const horaFin     = document.getElementById('ausenciaHoraFin').value;
+  const nota        = document.getElementById('ausenciaNota').value.trim();
   if (!fechaInicio) { toast('Indica una fecha de inicio'); return; }
   toast('Guardando...');
-  const resp = await corelinkPost('/api/ausencias', { tipo, fechaInicio, fechaFin, nota });
+  const resp = await corelinkPost('/api/ausencias', { tipo, fechaInicio, fechaFin, horaIn, horaFin, nota });
   if (resp.ok) { toast('Ausencia guardada ✓'); cerrarModalAusencia(); cacheAusencias = null; cargarAusencias(); }
   else { toast('Sin conexión'); }
 }
