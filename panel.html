@@ -2724,7 +2724,7 @@ function renderCalendario() {
       return true;
     });
 
-    let inner = `<div class="cal-dia-num">${d}</div>`;
+    let inner = `<div class="cal-dia-num" onclick="abrirMoverDiaCal('${fechaStr}')" style="cursor:pointer;padding:2px 4px;border-radius:3px;margin-bottom:3px" title="Mover OT de este día">${d}</div>`;
     ots.forEach(([id, t]) => {
       const clase = !t.asignadoA ? 'sin-asignar' : t.tipo;
       const nombre = t.nombreInstalacion || t.codigoInstalacion || 'OT';
@@ -5770,6 +5770,66 @@ async function confirmarCrearOTAveria() {
 
 
 // ═══════════════════════════════════════════════════════════════════════
+// MOVER OT DE UN DÍA (selección múltiple desde calendario)
+// ═══════════════════════════════════════════════════════════════════════
+let _moverDiaFechaOrigen = null;
+
+function abrirMoverDiaCal(fechaStr) {
+  _moverDiaFechaOrigen = fechaStr;
+  const agenda = cacheAgenda || {};
+  const ots = Object.entries(agenda).filter(([,t]) =>
+    t.fecha === fechaStr && t.estado !== 'completada'
+  );
+  if (ots.length === 0) return; // no hay nada que mover
+  const fechaLabel = new Date(fechaStr+'T12:00:00').toLocaleDateString('es-ES',{weekday:'long',day:'numeric',month:'long'});
+  document.getElementById('moverDiaTitulo').textContent = 'Mover OT del ' + fechaLabel;
+  // Fecha sugerida = día siguiente
+  const sig = new Date(fechaStr+'T12:00:00'); sig.setDate(sig.getDate()+1);
+  document.getElementById('moverDiaFechaNueva').value = sig.toISOString().split('T')[0];
+  // Renderizar lista con checkboxes (todas marcadas por defecto)
+  document.getElementById('moverDiaLista').innerHTML = ots.map(([id,t]) => {
+    const clase = !t.asignadoA?'sin-asignar':t.tipo;
+    const colores = {anual:'#003087',trimestral:'#1e7bba','averia-correctiva':'#c0392b',instalacion:'#059669',libre:'#059669','sin-asignar':'#6b7280'};
+    const color = colores[clase]||'#6b7280';
+    return `<label style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:0.5px solid var(--gris-borde);cursor:pointer">
+      <input type="checkbox" value="${id}" checked style="width:16px;height:16px;flex-shrink:0">
+      <div style="display:flex;align-items:center;gap:6px;flex:1">
+        <div style="width:8px;height:8px;border-radius:2px;background:${color};flex-shrink:0"></div>
+        <div>
+          <div style="font-size:13px;font-weight:600">${t.nombreInstalacion||t.codigoInstalacion||'Sin instalación'}</div>
+          <div style="font-size:11px;color:var(--gris-medio)">${LABEL_TIPO_TAREA[t.tipo]||t.tipo}${t.asignadoA?' · '+t.asignadoA:' · Sin asignar'}</div>
+        </div>
+      </div>
+    </label>`;
+  }).join('');
+  document.getElementById('modalMoverDia').style.display = 'flex';
+}
+
+function cerrarMoverDia() {
+  document.getElementById('modalMoverDia').style.display = 'none';
+  _moverDiaFechaOrigen = null;
+}
+
+async function confirmarMoverDia() {
+  const fechaNueva = document.getElementById('moverDiaFechaNueva').value;
+  // fechaNueva puede estar vacío → dejar sin fecha
+  const checkboxes = document.getElementById('moverDiaLista').querySelectorAll('input[type=checkbox]:checked');
+  const ids = Array.from(checkboxes).map(c => c.value);
+  if (ids.length === 0) { toast('No hay OT seleccionadas'); return; }
+  const resp = await corelinkPost('/api/agenda/mover-dia', { ids, fechaNueva });
+  if (resp.ok) {
+    const destino = fechaNueva
+      ? new Date(fechaNueva+'T12:00:00').toLocaleDateString('es-ES',{day:'numeric',month:'long'})
+      : 'pendientes de agendar';
+    toast(`${resp.movidas} OT movida${resp.movidas!==1?'s':''} a ${destino} ✓`);
+    cerrarMoverDia();
+    await cargarAgenda();
+    renderCalendario();
+  } else { toast('Sin conexión'); }
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════
 // IMPORTAR AGENDA DESDE EXCEL
 // ═══════════════════════════════════════════════════════════════════════
 
@@ -6117,13 +6177,14 @@ async function confirmarImportacion() {
 <div id="modalEditarOT" style="display:none;position:fixed;inset:0;z-index:9000;background:rgba(0,0,0,0.65);align-items:center;justify-content:center;padding:20px">
   <div style="background:#fff;border-radius:12px;max-width:400px;width:100%;overflow:hidden">
     <div style="background:var(--azul);padding:14px 20px;display:flex;justify-content:space-between;align-items:center">
-      <div style="color:#fff;font-size:15px;font-weight:800">✏ Cambiar fecha de OT</div>
+      <div style="color:#fff;font-size:15px;font-weight:800">✏ Editar OT</div>
       <button onclick="cerrarModalEditarOT()" style="background:rgba(255,255,255,0.15);color:#fff;border:none;border-radius:7px;padding:5px 12px;font-size:13px;cursor:pointer">✕</button>
     </div>
     <div style="padding:20px">
       <div style="margin-bottom:12px">
-        <label style="font-size:12px;font-weight:700;color:var(--gris-oscuro);display:block;margin-bottom:6px">Nueva fecha</label>
+        <label style="font-size:12px;font-weight:700;color:var(--gris-oscuro);display:block;margin-bottom:6px">Fecha <span style="font-size:11px;color:var(--gris-medio);font-weight:400">(dejar vacío = pendiente de agendar)</span></label>
         <input type="date" id="editarOTFecha" style="width:100%;border:1.5px solid var(--gris-borde);border-radius:8px;padding:9px;font-size:14px;font-family:inherit;box-sizing:border-box">
+        <button onclick="document.getElementById('editarOTFecha').value=''" style="margin-top:4px;background:none;border:none;color:var(--gris-medio);font-size:11px;cursor:pointer;text-decoration:underline">✕ Quitar fecha (dejar pendiente)</button>
       </div>
       <div style="margin-bottom:20px">
         <label style="font-size:12px;font-weight:700;color:var(--gris-oscuro);display:block;margin-bottom:6px">Asignado a</label>
@@ -6135,7 +6196,30 @@ async function confirmarImportacion() {
       </div>
       <div style="display:flex;gap:10px">
         <button onclick="cerrarModalEditarOT()" style="flex:1;padding:10px;background:#f3f4f6;color:var(--gris-oscuro);border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer">Cancelar</button>
-        <button onclick="confirmarEditarOT()" style="flex:2;padding:10px;background:var(--azul);color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer">✓ Guardar cambios</button>
+        <button onclick="confirmarEditarOT()" style="flex:2;padding:10px;background:var(--azul);color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer">✓ Guardar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── MODAL MOVER DÍA ─────────────────────────────────────────────────── -->
+<div id="modalMoverDia" style="display:none;position:fixed;inset:0;z-index:9000;background:rgba(0,0,0,0.65);align-items:center;justify-content:center;padding:20px">
+  <div style="background:#fff;border-radius:12px;max-width:420px;width:100%;overflow:hidden">
+    <div style="background:var(--azul);padding:14px 20px;display:flex;justify-content:space-between;align-items:center">
+      <div id="moverDiaTitulo" style="color:#fff;font-size:14px;font-weight:800"></div>
+      <button onclick="cerrarMoverDia()" style="background:rgba(255,255,255,0.15);color:#fff;border:none;border-radius:7px;padding:5px 12px;font-size:13px;cursor:pointer">✕</button>
+    </div>
+    <div style="padding:20px">
+      <div style="margin-bottom:14px">
+        <label style="font-size:12px;font-weight:700;color:var(--gris-oscuro);display:block;margin-bottom:6px">Nueva fecha <span style="font-size:11px;color:var(--gris-medio);font-weight:400">(vacío = pendientes de agendar)</span></label>
+        <input type="date" id="moverDiaFechaNueva" style="width:100%;border:1.5px solid var(--gris-borde);border-radius:8px;padding:9px;font-size:14px;font-family:inherit;box-sizing:border-box">
+        <button onclick="document.getElementById('moverDiaFechaNueva').value=''" style="margin-top:4px;background:none;border:none;color:var(--gris-medio);font-size:11px;cursor:pointer;text-decoration:underline">✕ Dejar sin fecha</button>
+      </div>
+      <div style="font-size:12px;font-weight:700;color:var(--gris-oscuro);margin-bottom:8px">OT a mover <span style="font-size:11px;color:var(--gris-medio);font-weight:400">(desmarca las que no quieras mover)</span></div>
+      <div id="moverDiaLista" style="max-height:280px;overflow-y:auto;margin-bottom:16px"></div>
+      <div style="display:flex;gap:10px">
+        <button onclick="cerrarMoverDia()" style="flex:1;padding:10px;background:#f3f4f6;color:var(--gris-oscuro);border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer">Cancelar</button>
+        <button onclick="confirmarMoverDia()" style="flex:2;padding:10px;background:var(--azul);color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer">✓ Mover seleccionadas</button>
       </div>
     </div>
   </div>
