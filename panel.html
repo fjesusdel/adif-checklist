@@ -601,7 +601,14 @@ body.dark .item-card { background:#1e2433;border-color:#2d3548; }
 <!-- Modal nueva ausencia -->
 <div id="modalAusencia" class="modal-overlay hidden">
   <div class="modal-box-mini">
-    <div class="modal-titulo" style="margin-bottom:14px">Nueva ausencia</div>
+    <div class="modal-titulo" style="margin-bottom:14px" id="ausenciaModalTitulo">Nueva ausencia</div>
+    <div class="ficha-field" style="margin-bottom:10px">
+      <label>Técnico</label>
+      <select id="ausenciaTecnico" style="width:100%;border:1.5px solid var(--gris-borde);border-radius:7px;padding:9px 11px;font-size:14px;font-family:inherit">
+        <option value="jesus">Jesús</option>
+        <option value="fran">Fran</option>
+      </select>
+    </div>
     <div class="ficha-field" style="margin-bottom:10px">
       <label>Tipo</label>
       <select id="ausenciaTipo" style="width:100%;border:1.5px solid var(--gris-borde);border-radius:7px;padding:9px 11px;font-size:14px;font-family:inherit">
@@ -618,10 +625,10 @@ body.dark .item-card { background:#1e2433;border-color:#2d3548; }
       <div class="ficha-field"><label>Fecha fin</label><input type="date" id="ausenciaFin"></div>
     </div>
     <div class="ficha-grid" style="margin-bottom:10px">
-      <div class="ficha-field"><label>Hora inicio (opcional)</label><input type="time" id="ausenciaHoraIn" placeholder="08:00"></div>
-      <div class="ficha-field"><label>Hora fin (opcional)</label><input type="time" id="ausenciaHoraFin" placeholder="14:00"></div>
+      <div class="ficha-field"><label>Hora inicio (opcional)</label><input type="time" id="ausenciaHoraIn"></div>
+      <div class="ficha-field"><label>Hora fin (opcional)</label><input type="time" id="ausenciaHoraFin"></div>
     </div>
-    <div style="font-size:11px;color:var(--gris-medio);margin-bottom:10px">Si no rellenas las horas se considera el día completo.</div>
+    <div style="font-size:11px;color:var(--gris-medio);margin-bottom:10px">Sin horas = día completo. Con horas = parcial.</div>
     <div class="ficha-field" style="margin-bottom:14px"><label>Nota (opcional)</label><input type="text" id="ausenciaNota" placeholder="Ej: Notaría, revisión médica..."></div>
     <div style="display:flex;gap:8px">
       <button class="btn-secondary" style="flex:1" onclick="cerrarModalAusencia()">Cancelar</button>
@@ -2565,7 +2572,10 @@ function setVistaAgenda(v) {
   document.querySelectorAll('#seccionAgenda .pill').forEach(p => p.classList.remove('active'));
   const activeId = v === 'lista' ? 'vistaAgendaLista' : v === 'calendario' ? 'vistaAgendaCalendario' : 'vistaAgendaAusencias';
   document.getElementById(activeId).classList.add('active');
-  if (v === 'calendario') renderCalendario();
+  if (v === 'calendario') {
+    if (!cacheAusencias) cargarAusencias().then(() => renderCalendario());
+    else renderCalendario();
+  }
   if (v === 'ausencias')  cargarAusencias();
 }
 
@@ -2724,14 +2734,31 @@ function renderCalendario() {
       return true;
     });
 
-    let inner = `<div class="cal-dia-num" onclick="abrirMoverDiaCal('${fechaStr}')" style="cursor:pointer;padding:2px 4px;border-radius:3px;margin-bottom:3px" title="Mover OT de este día">${d}</div>`;
+    // Ausencias del día
+    const ausencias = (cacheAusencias||[]).filter(a => {
+      if (!a.fechaInicio) return false;
+      return fechaStr >= a.fechaInicio && fechaStr <= (a.fechaFin||a.fechaInicio);
+    });
+    const ausenciaDiaCompleto = ausencias.some(a => !a.horaIn);
+    const ausenciasHorario    = ausencias.filter(a => a.horaIn);
+
+    let estiloExtra = '';
+    if (ausenciaDiaCompleto) estiloExtra = 'background:#fee2e2;';
+
+    let inner = `<div class="cal-dia-num" onclick="abrirMoverDiaCal('${fechaStr}')" style="cursor:pointer;padding:2px 4px;border-radius:3px;margin-bottom:3px${ausenciaDiaCompleto?';color:#c0392b;text-decoration:line-through':''}" title="Mover OT de este día">${d}</div>`;
+
+    // Mostrar franjas horarias de ausencias parciales
+    ausenciasHorario.forEach(a => {
+      inner += `<div style="background:#fee2e2;border-radius:3px;padding:1px 4px;font-size:9px;color:#c0392b;margin-bottom:2px;border-left:2px solid #c0392b">${a.horaIn}${a.horaFin?'→'+a.horaFin:''} ${a.tecnico||''}</div>`;
+    });
+
     ots.forEach(([id, t]) => {
       const clase = !t.asignadoA ? 'sin-asignar' : t.tipo;
       const nombre = t.nombreInstalacion || t.codigoInstalacion || 'OT';
       inner += `<div class="cal-ot ${clase}" onclick="abrirEditarOTCal('${id}')" title="${nombre}">${nombre}</div>`;
     });
 
-    html += `<div class="cal-dia${esHoy?' hoy':''}">${inner}</div>`;
+    html += `<div class="cal-dia${esHoy?' hoy':''}" style="${ausenciaDiaCompleto?'background:#fff0f0;border-color:#fca5a5;':''}">${inner}</div>`;
   }
 
   document.getElementById('calGrid').innerHTML = html;
@@ -3699,29 +3726,76 @@ function renderAusencias() {
       ? new Date(a.fechaInicio+'T12:00:00').toLocaleDateString('es-ES')
       : new Date(a.fechaInicio+'T12:00:00').toLocaleDateString('es-ES') + ' — ' + new Date(a.fechaFin+'T12:00:00').toLocaleDateString('es-ES');
     const horaTxt = a.horaIn ? `${a.horaIn}${a.horaFin?' → '+a.horaFin:''}` : '';
+    const tecnicoTxt = a.tecnico ? `👤 ${a.tecnico}` : '';
     return `<div class="ausencia-card ${a.tipo}">
-      <div>
-        <div class="ausencia-tipo" style="color:${COLOR_AUSENCIA[a.tipo]||'#92400e'}">${LABEL_AUSENCIA[a.tipo]||a.tipo}</div>
-        <div class="ausencia-fechas">${fechaTxt}${horaTxt?` · <strong>${horaTxt}</strong>`:' · Día completo'}</div>
+      <div style="flex:1">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:2px">
+          <div class="ausencia-tipo" style="color:${COLOR_AUSENCIA[a.tipo]||'#92400e'}">${LABEL_AUSENCIA[a.tipo]||a.tipo}</div>
+          ${tecnicoTxt?`<span style="font-size:11px;color:var(--gris-medio)">${tecnicoTxt}</span>`:''}
+        </div>
+        <div class="ausencia-fechas">${fechaTxt}${horaTxt?' · <strong>'+horaTxt+'</strong>':' · Día completo'}</div>
         ${a.nota?`<div class="ausencia-nota">${a.nota}</div>`:''}
       </div>
-      <button class="btn-mini rojo" onclick="borrarAusencia('${a.id}')">🗑</button>
+      <div style="display:flex;gap:6px">
+        <button class="btn-mini" onclick="editarAusencia('${a.id}')">✏</button>
+        <button class="btn-mini rojo" onclick="borrarAusencia('${a.id}')">🗑</button>
+      </div>
     </div>`;
   }).join('');
 }
 
-function abrirModalNuevaAusencia() {
+let _ausenciaEditandoId = null;
+
+async function abrirModalNuevaAusencia() {
+  _ausenciaEditandoId = null;
+  document.getElementById('ausenciaModalTitulo').textContent = 'Nueva ausencia';
   document.getElementById('ausenciaInicio').value = new Date().toISOString().split('T')[0];
   document.getElementById('ausenciaFin').value    = new Date().toISOString().split('T')[0];
   document.getElementById('ausenciaHoraIn').value  = '';
   document.getElementById('ausenciaHoraFin').value = '';
   document.getElementById('ausenciaNota').value   = '';
+  document.getElementById('ausenciaTipo').value   = 'libre';
+  await _cargarTecnicosEnSelect('ausenciaTecnico');
   document.getElementById('modalAusencia').classList.remove('hidden');
 }
-function cerrarModalAusencia() { document.getElementById('modalAusencia').classList.add('hidden'); }
+
+async function editarAusencia(id) {
+  const a = (cacheAusencias||[]).find(x => x.id === id);
+  if (!a) return;
+  _ausenciaEditandoId = id;
+  document.getElementById('ausenciaModalTitulo').textContent = 'Editar ausencia';
+  document.getElementById('ausenciaInicio').value  = a.fechaInicio || '';
+  document.getElementById('ausenciaFin').value     = a.fechaFin   || '';
+  document.getElementById('ausenciaHoraIn').value  = a.horaIn     || '';
+  document.getElementById('ausenciaHoraFin').value = a.horaFin    || '';
+  document.getElementById('ausenciaNota').value    = a.nota       || '';
+  document.getElementById('ausenciaTipo').value    = a.tipo       || 'libre';
+  await _cargarTecnicosEnSelect('ausenciaTecnico');
+  document.getElementById('ausenciaTecnico').value = a.tecnico    || '';
+  document.getElementById('modalAusencia').classList.remove('hidden');
+}
+
+async function _cargarTecnicosEnSelect(selId) {
+  const sel = document.getElementById(selId);
+  if (!sel) return;
+  // Siempre reconstruir para reflejar cambios
+  const data = await corelinkGet('/api/ajustes');
+  const tecnicos = data && data.ajustes && data.ajustes.tecnicosPNT ? data.ajustes.tecnicosPNT : [];
+  // Opciones fijas + técnicos PNT del sistema
+  const nombres = ['Fran', ...tecnicos.map(t => t.nombre)];
+  sel.innerHTML = nombres.map(n =>
+    `<option value="${n.toLowerCase()}">${n}</option>`
+  ).join('');
+}
+
+function cerrarModalAusencia() {
+  document.getElementById('modalAusencia').classList.add('hidden');
+  _ausenciaEditandoId = null;
+}
 
 async function guardarAusencia() {
   const tipo        = document.getElementById('ausenciaTipo').value;
+  const tecnico     = document.getElementById('ausenciaTecnico').value;
   const fechaInicio = document.getElementById('ausenciaInicio').value;
   const fechaFin    = document.getElementById('ausenciaFin').value;
   const horaIn      = document.getElementById('ausenciaHoraIn').value;
@@ -3729,9 +3803,16 @@ async function guardarAusencia() {
   const nota        = document.getElementById('ausenciaNota').value.trim();
   if (!fechaInicio) { toast('Indica una fecha de inicio'); return; }
   toast('Guardando...');
-  const resp = await corelinkPost('/api/ausencias', { tipo, fechaInicio, fechaFin, horaIn, horaFin, nota });
-  if (resp.ok) { toast('Ausencia guardada ✓'); cerrarModalAusencia(); cacheAusencias = null; cargarAusencias(); }
-  else { toast('Sin conexión'); }
+  const payload = { tipo, tecnico, fechaInicio, fechaFin, horaIn, horaFin, nota };
+  if (_ausenciaEditandoId) payload.id = _ausenciaEditandoId;
+  const resp = await corelinkPost('/api/ausencias', payload);
+  if (resp.ok) {
+    toast('Ausencia guardada ✓');
+    cerrarModalAusencia();
+    cacheAusencias = null;
+    await cargarAusencias();
+    renderCalendario();
+  } else { toast('Sin conexión'); }
 }
 
 async function borrarAusencia(id) {
