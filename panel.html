@@ -2597,8 +2597,12 @@ function setVistaAgenda(v) {
   const activeId = v === 'lista' ? 'vistaAgendaLista' : v === 'calendario' ? 'vistaAgendaCalendario' : 'vistaAgendaAusencias';
   document.getElementById(activeId).classList.add('active');
   if (v === 'calendario') {
-    if (!cacheAusencias) cargarAusencias().then(() => renderCalendario());
-    else renderCalendario();
+    if (!cacheAusencias) cargarAusencias().then(() => {});
+    if (!cacheAgenda || Object.keys(cacheAgenda).length === 0) {
+      cargarAgenda().then(() => renderCalendario());
+    } else {
+      renderCalendario();
+    }
   }
   if (v === 'ausencias')  cargarAusencias();
 }
@@ -2734,8 +2738,14 @@ function calMes(delta) {
   if (calMesActual > 11) { calMesActual = 0; calAnio++; }
   if (calMesActual < 0)  { calMesActual = 11; calAnio--; }
   calDiaSeleccionado = null;
-  document.getElementById('calDiaAgenda').classList.add('hidden');
-  renderCalendario();
+  const diaAgenda = document.getElementById('calDiaAgenda');
+  if (diaAgenda) diaAgenda.classList.add('hidden');
+  // Si hay agenda en cache renderizar directo, si no recargar primero
+  if (cacheAgenda && Object.keys(cacheAgenda).length > 0) {
+    renderCalendario();
+  } else {
+    cargarAgenda().then(() => renderCalendario());
+  }
 }
 let calFiltroActual = 'todos';
 
