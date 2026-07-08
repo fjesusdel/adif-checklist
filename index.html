@@ -2331,7 +2331,7 @@ function filtrarInstalacionesAveria() {
   const listEl = document.getElementById('averiaInstList');
   if (!q) { listEl.innerHTML = ''; return; }
   const resultados = INSTALACIONES.filter(i =>
-    i.nombre.toLowerCase().includes(q) || i.codigo.toLowerCase().includes(q)
+    i.nombre.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().includes(q) || i.codigo.toLowerCase().includes(q)
   ).slice(0, 8);
   listEl.innerHTML = resultados.map(i => `
     <div class="inst-item" style="padding:9px 12px" onclick="seleccionarInstalacionAveria('${i.codigo}')">
@@ -2601,7 +2601,7 @@ function filtrarInstalacionesTarea() {
   const listEl = document.getElementById('tareaInstList');
   if (!q) { listEl.innerHTML = ''; return; }
   const resultados = INSTALACIONES.filter(i =>
-    i.nombre.toLowerCase().includes(q) || i.codigo.toLowerCase().includes(q)
+    i.nombre.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().includes(q) || i.codigo.toLowerCase().includes(q)
   ).slice(0, 8);
   listEl.innerHTML = resultados.map(i => `
     <div class="inst-item" style="padding:9px 12px" onclick="seleccionarInstalacionTarea('${i.codigo}')">
@@ -2748,7 +2748,7 @@ function filtrarInstalacionesUso() {
   const listEl = document.getElementById('usoInstList');
   if (!q) { listEl.innerHTML = ''; return; }
   const resultados = INSTALACIONES.filter(i =>
-    i.nombre.toLowerCase().includes(q) || i.codigo.toLowerCase().includes(q)
+    i.nombre.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().includes(q) || i.codigo.toLowerCase().includes(q)
   ).slice(0, 8);
   listEl.innerHTML = resultados.map(i => `
     <div class="inst-item" style="padding:9px 12px" onclick="seleccionarInstalacionUso('${i.codigo}')">
@@ -2913,7 +2913,7 @@ function renderInstList() {
   const q = document.getElementById('searchInput').value.toLowerCase();
   const lista = INSTALACIONES.filter(i => {
     const matchProv = provinciaActiva === 'Todas' || i.provincia === provinciaActiva;
-    const matchQ = !q || i.nombre.toLowerCase().includes(q) || i.codigo.toLowerCase().includes(q);
+    const matchQ = !q || i.nombre.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().includes(q) || i.codigo.toLowerCase().includes(q);
     return matchProv && matchQ;
   });
   const el = document.getElementById('instList');
@@ -5866,7 +5866,7 @@ async function guardarGuardiaPNT() {
   // Buscar instalación
   var codigoInst = null, nombreInst = inst, provinciaInst = '';
   if (inst) {
-    var found = INSTALACIONES.find(function(i){ return i.nombre.toLowerCase().includes(inst.toLowerCase()) || i.codigo.toLowerCase()===inst.toLowerCase(); });
+    var found = INSTALACIONES.find(function(i){ return i.nombre.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().includes(inst.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase()) || i.codigo.toLowerCase()===inst.toLowerCase(); });
     if (found) { codigoInst=found.codigo; nombreInst=found.nombre; provinciaInst=found.provincia; }
   }
 

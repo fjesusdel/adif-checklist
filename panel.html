@@ -1601,10 +1601,6 @@ async function cargarResumen() {
       <div class="stat-num">${tareasPendientesHoy.length}</div>
       <div class="stat-label">Tareas pendientes hoy</div>
     </div>
-    <div class="stat-box ${pendientesAnual>0?'warn':'ok'}">
-      <div class="stat-num">${pendientesAnual}</div>
-      <div class="stat-label">Sin anual este año</div>
-    </div>
     <div class="stat-box ${bajoMinimo>0?'critical':'ok'}">
       <div class="stat-num">${bajoMinimo}</div>
       <div class="stat-label">Materiales bajo mínimo</div>
@@ -1722,7 +1718,7 @@ function renderPillsInstalaciones() {
     }
     return `<button class="pill ${p===instProvinciaActiva?'active':''}" onclick="setInstProvincia('${p}')">${p}${badge}</button>`;
   }).join('');
-  const estados = [{id:'todas',label:'Todas'},{id:'visitada',label:'🟢 Con datos'},{id:'pendiente',label:'⚪ Sin datos'},{id:'con-averia',label:'🔴 Con avería'}];
+  const estados = [{id:'todas',label:'Todas'},{id:'visitada',label:'🟢 Con datos'},{id:'pendiente',label:'⚪ Sin datos'},{id:'con-averia',label:'🔴 Con avería'},{id:'no-disponible',label:'⚠ No disponibles'}];
   document.getElementById('instEstadoPills').innerHTML = estados.map(e =>
     `<button class="pill ${e.id===instEstadoActivo?'active':''}" onclick="setInstEstado('${e.id}')">${e.label}</button>`
   ).join('');
@@ -1732,16 +1728,20 @@ function setInstProvincia(p) { instProvinciaActiva = p; renderPillsInstalaciones
 function setInstEstado(e)    { instEstadoActivo    = e; renderPillsInstalaciones(); renderListaInstalaciones(); }
 
 function estadoDeInstalacion(codigo) {
+  const ficha = cacheFichas && cacheFichas[codigo];
+  if (ficha && ficha.noDisponible) return 'no-disponible';
   const tieneAveria = cacheIncidencias && Object.values(cacheIncidencias).some(i => i.codigoInstalacion === codigo && i.estado === 'abierta');
   if (tieneAveria) return 'con-averia';
-  return (cacheFichas && cacheFichas[codigo]) ? 'visitada' : 'pendiente';
+  return ficha ? 'visitada' : 'pendiente';
 }
 
 function renderListaInstalaciones() {
-  const q = (document.getElementById('instSearch').value || '').toLowerCase();
+  const raw = (document.getElementById('instSearch').value || '');
+  const q   = raw.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
   const lista = INSTALACIONES.filter(i => {
     const matchProv   = instProvinciaActiva === 'Todas' || i.provincia === instProvinciaActiva;
-    const matchQ      = !q || i.nombre.toLowerCase().includes(q) || i.codigo.toLowerCase().includes(q);
+    const haystack    = (i.nombre + ' ' + i.codigo).normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+    const matchQ      = !q || haystack.includes(q);
     const estado      = estadoDeInstalacion(i.codigo);
     const matchEstado = instEstadoActivo === 'todas' || estado === instEstadoActivo;
     return matchProv && matchQ && matchEstado;
@@ -2533,7 +2533,7 @@ function filtrarInstalacionesAveria() {
   const q = document.getElementById('averiaInstSearch').value.toLowerCase();
   const listEl = document.getElementById('averiaInstList');
   if (!q) { listEl.innerHTML = ''; return; }
-  const res = INSTALACIONES.filter(i => i.nombre.toLowerCase().includes(q) || i.codigo.toLowerCase().includes(q)).slice(0,8);
+  const res = INSTALACIONES.filter(i => i.nombre.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().includes(q) || i.codigo.toLowerCase().includes(q)).slice(0,8);
   listEl.innerHTML = res.map(i => `<div class="inst-item-mini" onclick="seleccionarInstalacionAveria('${i.codigo}')"><div>${i.nombre}</div><div class="meta">${i.provincia} · ${i.codigo}</div></div>`).join('');
 }
 function seleccionarInstalacionAveria(codigo) {
@@ -2904,7 +2904,7 @@ function filtrarInstalacionesTarea() {
   const q = document.getElementById('tareaInstSearch').value.toLowerCase();
   const listEl = document.getElementById('tareaInstList');
   if (!q) { listEl.innerHTML=''; return; }
-  const res = INSTALACIONES.filter(i=>i.nombre.toLowerCase().includes(q)||i.codigo.toLowerCase().includes(q)).slice(0,8);
+  const res = INSTALACIONES.filter(i=>i.nombre.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().includes(q)||i.codigo.toLowerCase().includes(q)).slice(0,8);
   listEl.innerHTML = res.map(i=>`<div class="inst-item-mini" onclick="seleccionarInstalacionTarea('${i.codigo}')"><div>${i.nombre}</div><div class="meta">${i.provincia} · ${i.codigo}</div></div>`).join('');
 }
 function seleccionarInstalacionTarea(codigo) {
@@ -3781,7 +3781,7 @@ async function guardarTiemposPorTamano() {
 function renderAjusteInstalaciones() {
   const q    = (document.getElementById('ajusteInstSearch').value||'').toLowerCase();
   const cont = document.getElementById('ajusteInstListContainer');
-  const lista = INSTALACIONES.filter(i => !q || i.nombre.toLowerCase().includes(q) || i.codigo.toLowerCase().includes(q));
+  const lista = INSTALACIONES.filter(i => !q || i.nombre.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().includes(q) || i.codigo.toLowerCase().includes(q));
   const tpi   = (cacheAjustes && cacheAjustes.tiemposPorInstalacion) || {};
   const tpt   = (cacheAjustes && cacheAjustes.tiemposPorTamano)      || {pequena:120,mediana:180,grande:240};
   const mapTam= { 'Pequeña':'pequena','Mediana':'mediana','Grande':'grande' };
@@ -4030,7 +4030,7 @@ function filtrarInstalacionesHoras() {
   const q = document.getElementById('horasInstSearch').value.toLowerCase();
   const listEl = document.getElementById('horasInstList');
   if (!q) { listEl.innerHTML = ''; return; }
-  const res = INSTALACIONES.filter(i => i.nombre.toLowerCase().includes(q) || i.codigo.toLowerCase().includes(q)).slice(0,6);
+  const res = INSTALACIONES.filter(i => i.nombre.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().includes(q) || i.codigo.toLowerCase().includes(q)).slice(0,6);
   listEl.innerHTML = res.map(i => `<div class="inst-item-mini" onclick="seleccionarInstHoras('${i.codigo}')"><div>${i.nombre}</div><div class="meta">${i.provincia}</div></div>`).join('');
 }
 function seleccionarInstHoras(codigo) {
@@ -6079,7 +6079,7 @@ async function guardarGuardiaPNC() {
   // Buscar datos de instalación si se puso nombre
   let codigoInst = null, nombreInst = inst, provinciaInst = '';
   if (inst) {
-    const found = INSTALACIONES.find(i => i.nombre.toLowerCase().includes(inst.toLowerCase()) || i.codigo.toLowerCase() === inst.toLowerCase());
+    const found = INSTALACIONES.find(i => i.nombre.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().includes(inst.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase()) || i.codigo.toLowerCase() === inst.toLowerCase());
     if (found) { codigoInst = found.codigo; nombreInst = found.nombre; provinciaInst = found.provincia; }
   }
 
@@ -6168,7 +6168,7 @@ let _calOTResaltada = null;
 
 function calBuscar(query) {
   const res = document.getElementById('calBuscadorResultados');
-  query = (query || '').trim().toLowerCase();
+  query = (query || '').trim().normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
   if (query.length < 2) { res.style.display = 'none'; return; }
 
   const agenda = cacheAgenda || {};
@@ -6178,8 +6178,8 @@ function calBuscar(query) {
   // Buscar OT que coincidan con el nombre o código
   const coincidencias = Object.entries(agenda)
     .filter(([,t]) => t.estado !== 'completada' && t.fecha && (
-      (t.nombreInstalacion||'').toLowerCase().includes(query) ||
-      (t.codigoInstalacion||'').toLowerCase().includes(query)
+      (t.nombreInstalacion||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().includes(query) ||
+      (t.codigoInstalacion||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().includes(query)
     ))
     .sort((a,b) => (a[1].fecha||'') < (b[1].fecha||'') ? -1 : 1);
 
