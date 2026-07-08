@@ -2717,7 +2717,6 @@ function renderAgendaLista() {
               + (t.nota ? '<div class="item-card-desc">→ '+t.nota+'</div>' : '')
               + (esParada && t.motivoPausa ? '<div style="font-size:12px;color:#92400e;background:#fef3c7;border-radius:6px;padding:6px 10px;margin-top:4px">⏸ '+t.motivoPausa+'</div>' : '')
               + (t.contactoAvisar ? '<div style="font-size:12px;color:#065f46;background:#d1fae5;border-radius:6px;padding:5px 10px;margin-top:4px">📞 Avisar a: <strong>'+t.contactoAvisar.nombre+'</strong>'+(t.contactoAvisar.telefono?' · '+t.contactoAvisar.telefono:'')+'</div>' : '')
-              + (t.contactoAvisar ? '<div style="font-size:12px;color:#065f46;background:#d1fae5;border-radius:6px;padding:5px 10px;margin-top:4px">📞 Avisar a: <strong>'+t.contactoAvisar.nombre+'</strong>'+(t.contactoAvisar.telefono?' · '+t.contactoAvisar.telefono:'')+'</div>' : '')
               + '<div class="item-card-btns">'+btns+'</div>'
               + '</div>';
       });
