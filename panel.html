@@ -6314,40 +6314,56 @@ function importAsignarTodas(asignadoA) {
   renderImportListaTareas();
 }
 
-async function confirmarImportacion() {
-  const aImportar = importTareasLeidas.filter(t => t.incluir);
+async function confirmarImportacion(reemplazar) {
+  const aImportar = importTareasLeidas.filter(function(t){ return t.incluir; });
   if (aImportar.length === 0) { toast('No hay tareas seleccionadas'); return; }
-
-  // Obtener nombres de instalaciones desde el caché de fichas
   const fichas = await corelinkGet('/api/fichas');
-
-  let ok = 0, errores = 0;
-  for (const t of aImportar) {
-    const ficha = fichas && fichas.fichas ? fichas.fichas[t.codigo] : null;
-    const nombreInstalacion = (ficha && ficha.nombre) ? ficha.nombre : t.nombre;
-    const provincia = (ficha && ficha.provincia) ? ficha.provincia : '';
+  const tareas = aImportar.map(function(t) {
+    var ficha = fichas && fichas.fichas ? fichas.fichas[t.codigo] : null;
+    return {
+      codigoInstalacion: t.codigo,
+      nombreInstalacion: (ficha && ficha.nombre) ? ficha.nombre : (t.nombre||''),
+      provincia:         (ficha && ficha.provincia) ? ficha.provincia : '',
+      fecha:             t.fecha || null,
+      tipo:              t.tipo || 'anual',
+      nota:              t.nota || '',
+      recurrente:        'no',
+      asignadoA:         t.asignadoA || '',
+      estado:            t.estado || 'pendiente',
+      parte:             t.parte || null,
+      fechaCompletada:   t.fechaCompletada || null,
+    };
+  });
+  if (reemplazar) {
+    toast('Reemplazando agenda...');
     try {
-      const resp = await fetch(CORELINK_URL + '/api/agenda', {
+      var resp = await fetch(CORELINK_URL + '/api/agenda/reemplazar', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-CoreLink-Key': CORELINK_API_KEY },
-        body: JSON.stringify({
-          codigoInstalacion:  t.codigo,
-          nombreInstalacion:  nombreInstalacion,
-          provincia,
-          fecha:              t.fecha,
-          tipo:               t.tipo,
-          nota:               t.nota,
-          recurrente:         'no',
-          asignadoA:          t.asignadoA
-        })
+        body: JSON.stringify({ tareas: tareas })
       });
-      const data = await resp.json();
-      if (data.ok) ok++; else errores++;
+      var data = await resp.json();
+      cerrarImportarAgenda();
+      if (data.ok) { toast('Agenda reemplazada: ' + data.total + ' OT ✓'); cacheAgenda = null; cargarAgenda(); }
+      else { toast('Error: ' + (data.error||'?')); }
+    } catch(e) { toast('Sin conexión'); }
+    return;
+  }
+  var ok = 0, errores = 0;
+  for (var i = 0; i < tareas.length; i++) {
+    try {
+      var r = await fetch(CORELINK_URL + '/api/agenda', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CoreLink-Key': CORELINK_API_KEY },
+        body: JSON.stringify(tareas[i])
+      });
+      var d = await r.json();
+      if (d.ok) ok++; else errores++;
     } catch(e) { errores++; }
   }
-
   cerrarImportarAgenda();
-  toast(`Importación completada: ${ok} tarea${ok!==1?'s':''} añadida${ok!==1?'s':''}${errores?` · ${errores} error${errores!==1?'es':''}`:''}`);
+  toast('Importación: ' + ok + ' OT añadidas' + (errores ? ' · ' + errores + ' errores' : ''));
+  cacheAgenda = null;
   cargarAgenda();
 }
 
@@ -6453,7 +6469,8 @@ async function confirmarImportacion() {
       <div id="importListaTareas" style="max-height:420px;overflow-y:auto"></div>
       <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--gris-borde);display:flex;justify-content:flex-end;gap:10px">
         <button onclick="cerrarImportarAgenda()" style="padding:10px 20px;background:#f3f4f6;color:var(--gris-oscuro);border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer">Cancelar</button>
-        <button onclick="confirmarImportacion()" style="padding:10px 24px;background:var(--azul);color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer">✓ Importar tareas seleccionadas</button>
+        <button onclick="confirmarImportacion(false)" style="padding:10px 24px;background:var(--azul);color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer">✓ Importar tareas seleccionadas</button>
+        <button onclick="if(confirm('⚠ Esto BORRARÁ toda la agenda actual y la reemplazará con las tareas del archivo. ¿Continuar?')) confirmarImportacion(true)" style="padding:10px 24px;background:#c05621;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer">🔄 Reemplazar agenda completa</button>
       </div>
     </div>
   </div>
