@@ -562,6 +562,12 @@ body.dark .item-card { background:#1e2433;border-color:#2d3548; }
     </div>
     <!-- Vista calendario -->
     <div id="agendaVistaCalendario" class="hidden">
+      <!-- Buscador de instalación -->
+      <div style="position:relative;margin-bottom:12px">
+        <input type="text" id="calBuscador" placeholder="🔍 Buscar instalación..." oninput="calBuscar(this.value)" autocomplete="off"
+          style="width:100%;border:1.5px solid var(--gris-borde);border-radius:8px;padding:9px 14px;font-size:14px;font-family:inherit;box-sizing:border-box">
+        <div id="calBuscadorResultados" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1.5px solid var(--azul);border-radius:0 0 8px 8px;z-index:200;max-height:280px;overflow-y:auto;box-shadow:0 4px 12px rgba(0,0,0,0.12)"></div>
+      </div>
       <!-- Pendientes de agendar -->
       <div id="calPendientesBox" style="display:none;background:#fff7ed;border:1.5px solid #f59e0b;border-radius:var(--radio);padding:12px 14px;margin-bottom:14px">
         <div style="font-size:12px;font-weight:800;color:#92400e;margin-bottom:8px">📌 Pendientes de agendar</div>
@@ -2598,10 +2604,13 @@ function setVistaAgenda(v) {
   document.getElementById(activeId).classList.add('active');
   if (v === 'calendario') {
     if (!cacheAusencias) cargarAusencias().then(() => {});
+    const renderCal = () => renderCalendario();
     if (!cacheAgenda || Object.keys(cacheAgenda).length === 0) {
-      cargarAgenda().then(() => renderCalendario());
+      cargarAgenda().then(renderCal);
+    } else if (!cacheFichas) {
+      corelinkGet('/api/fichas').then(d => { if (d) cacheFichas = d.fichas || {}; renderCal(); });
     } else {
-      renderCalendario();
+      renderCal();
     }
   }
   if (v === 'ausencias')  cargarAusencias();
@@ -2822,9 +2831,14 @@ function renderCalendario() {
     });
 
     ots.forEach(([id, t]) => {
-      const clase = !t.asignadoA ? 'sin-asignar' : t.tipo;
+      const esResaltada = id === _calOTResaltada;
+      const ficha = cacheFichas && t.codigoInstalacion ? (cacheFichas[t.codigoInstalacion] || null) : null;
+      const enBaja = ficha && ficha.noDisponible;
+      const clase = enBaja ? 'sin-asignar' : (!t.asignadoA ? 'sin-asignar' : t.tipo);
       const nombre = t.nombreInstalacion || t.codigoInstalacion || 'OT';
-      inner += '<div class="cal-ot ' + clase + '" onclick="abrirEditarOTCal(\'' + id + '\')" title="' + nombre + '">' + nombre + '</div>';
+      const estiloExtra = esResaltada ? 'outline:3px solid #FFD100;outline-offset:1px;' : enBaja ? 'opacity:0.5;text-decoration:line-through;' : '';
+      const prefijo = enBaja ? '⚠ ' : '';
+      inner += '<div class="cal-ot ' + clase + '" onclick="abrirEditarOTCal(\'' + id + '\')" title="' + (enBaja ? '⚠ Instalación en baja — ' : '') + nombre + '" style="' + estiloExtra + '">' + prefijo + nombre + '</div>';
     });
 
     html += `<div class="cal-dia${esHoy?' hoy':''}" style="${ausenciaDiaCompleto?'background:#fff0f0;border-color:#fca5a5;':''}">${inner}</div>`;
@@ -6115,6 +6129,84 @@ async function reanudarOT(id) {
   if (resp && resp.ok) { toast('OT reanudada ✓'); cargarAgenda(); }
   else { toast('Error al reanudar'); }
 }
+
+
+// ═══════════════════════════════════════════════════════════════════════
+// BUSCADOR DE INSTALACIÓN EN CALENDARIO
+// ═══════════════════════════════════════════════════════════════════════
+
+let _calOTResaltada = null;
+
+function calBuscar(query) {
+  const res = document.getElementById('calBuscadorResultados');
+  query = (query || '').trim().toLowerCase();
+  if (query.length < 2) { res.style.display = 'none'; return; }
+
+  const agenda = cacheAgenda || {};
+  const MESES_LABEL = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+  const TIPO_ICON = { anual:'🔧', trimestral:'💻', 'averia-correctiva':'⚠️', instalacion:'🏗️', libre:'📋', guardia:'🚨' };
+
+  // Buscar OT que coincidan con el nombre o código
+  const coincidencias = Object.entries(agenda)
+    .filter(([,t]) => t.estado !== 'completada' && t.fecha && (
+      (t.nombreInstalacion||'').toLowerCase().includes(query) ||
+      (t.codigoInstalacion||'').toLowerCase().includes(query)
+    ))
+    .sort((a,b) => (a[1].fecha||'') < (b[1].fecha||'') ? -1 : 1);
+
+  if (coincidencias.length === 0) {
+    res.innerHTML = '<div style="padding:12px 16px;font-size:13px;color:var(--gris-medio)">Sin resultados</div>';
+    res.style.display = 'block';
+    return;
+  }
+
+  res.innerHTML = coincidencias.slice(0, 20).map(([id, t]) => {
+    const fecha  = new Date(t.fecha + 'T12:00:00');
+    const mesStr = MESES_LABEL[fecha.getMonth()] + ' ' + fecha.getFullYear();
+    const icon   = TIPO_ICON[t.tipo] || '📋';
+    const tipo   = LABEL_TIPO_TAREA[t.tipo] || t.tipo;
+    const asig   = t.asignadoA === 'jesus' ? ' · 👷 Jesús' : t.asignadoA === 'fran' ? ' · 🖥 Fran' : '';
+    return '<div onclick="calIrA(&quot;' + id + '&quot;)" style="padding:10px 16px;cursor:pointer;border-bottom:0.5px solid var(--gris-borde);display:flex;justify-content:space-between;align-items:center" onmouseover="this.style.background=\'#eff6ff\'" onmouseout="this.style.background=\'\'">'
+      + '<div><div style="font-size:13px;font-weight:600;color:var(--azul)">' + (t.nombreInstalacion||t.codigoInstalacion) + '</div>'
+      + '<div style="font-size:11px;color:var(--gris-medio)">' + icon + ' ' + tipo + asig + '</div></div>'
+      + '<div style="font-size:12px;font-weight:700;color:var(--azul);white-space:nowrap;margin-left:12px">' + mesStr + '</div>'
+      + '</div>';
+  }).join('');
+
+  if (coincidencias.length > 20) {
+    res.innerHTML += '<div style="padding:8px 16px;font-size:11px;color:var(--gris-medio);text-align:center">' + (coincidencias.length - 20) + ' resultados más — afina la búsqueda</div>';
+  }
+
+  res.style.display = 'block';
+}
+
+function calIrA(id) {
+  const t = (cacheAgenda || {})[id];
+  if (!t || !t.fecha) return;
+  const fecha = new Date(t.fecha + 'T12:00:00');
+  calMesActual  = fecha.getMonth();
+  calAnio       = fecha.getFullYear();
+  _calOTResaltada = id;
+  renderCalendario();
+  // Cerrar buscador
+  document.getElementById('calBuscadorResultados').style.display = 'none';
+  document.getElementById('calBuscador').value = t.nombreInstalacion || '';
+  // Scroll al calendario
+  setTimeout(() => {
+    const grid = document.getElementById('calGrid');
+    if (grid) grid.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    // Limpiar resaltado después de 3 segundos
+    setTimeout(() => { _calOTResaltada = null; renderCalendario(); }, 3000);
+  }, 100);
+}
+
+// Cerrar buscador al clicar fuera
+document.addEventListener('click', function(e) {
+  if (!e.target.closest('#calBuscador') && !e.target.closest('#calBuscadorResultados')) {
+    const res = document.getElementById('calBuscadorResultados');
+    if (res) res.style.display = 'none';
+  }
+});
 
 
 // ═══════════════════════════════════════════════════════════════════════
