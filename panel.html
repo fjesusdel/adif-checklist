@@ -2899,6 +2899,7 @@ async function cambiarEstadoTareaPanel(id, estado) {
 
 function abrirFormNuevaTarea() {
   document.getElementById('formNuevaTarea').classList.remove('hidden');
+  if (!cacheContactos) cargarContactos();
   document.getElementById('tareaInstSearch').value = '';
   document.getElementById('tareaDescripcion').value = '';
   document.getElementById('tareaNota').value = '';
@@ -5904,6 +5905,7 @@ function abrirModalEditarOT(id) {
   _editarOTId = id;
   const t = cacheAgenda[id];
   if (!t) return;
+  if (!cacheContactos) cargarContactos();
   document.getElementById('editarOTFecha').value      = t.fecha || '';
   document.getElementById('editarOTAsignado').value   = t.asignadoA || '';
   document.getElementById('editarOTTipo').value       = t.tipo || 'anual';
@@ -6572,7 +6574,7 @@ function buscarContactoOT(q, dropId) {
   if (!drop) return;
   var norm = q.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
   if (norm.length < 2) { drop.style.display = 'none'; return; }
-  if (!cacheContactos) { drop.style.display = 'none'; return; }
+  if (!cacheContactos) { cargarContactos().then(function(){ buscarContactoOT(q, dropId); }); return; }
   var todos = [];
   Object.entries(cacheContactos).forEach(function(e2) {
     var prov = e2[0], lista = e2[1];
