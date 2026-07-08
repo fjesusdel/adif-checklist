@@ -814,6 +814,10 @@ body.dark .item-card { background:#1e2433;border-color:#2d3548; }
       <button class="btn-secondary" onclick="exportarContactosXLSX()">📤 Exportar .xlsx</button>
       <button class="btn-secondary" onclick="abrirImportarXLSX('contactos')">📥 Importar .xlsx</button>
     </div>
+    <div style="margin-bottom:10px">
+      <input type="text" id="contactoBuscador" placeholder="🔍 Buscar por nombre, teléfono, provincia o notas..." oninput="renderContactosFiltrados()"
+        style="width:100%;border:1.5px solid var(--gris-borde);border-radius:8px;padding:9px 14px;font-size:14px;font-family:inherit;box-sizing:border-box">
+    </div>
     <div style="margin-bottom:14px">
       <select id="contactoFiltroProvincia" onchange="renderContactosFiltrados()" style="border:1.5px solid var(--gris-borde);border-radius:8px;padding:8px 12px;font-size:14px;font-family:inherit;width:100%">
         <option value="">Todas las provincias</option>
@@ -3575,23 +3579,47 @@ async function cargarContactos() {
 function renderContactosFiltrados() {
   const cont = document.getElementById('contactosListContainer');
   if (!cacheContactos) return;
-  const filtroProv = document.getElementById('contactoFiltroProvincia')?.value || '';
+  const filtroProv  = document.getElementById('contactoFiltroProvincia')?.value || '';
+  const query       = (document.getElementById('contactoBuscador')?.value || '').trim().toLowerCase().replace(/\s*\/\s*/g, ' ');
 
   if (Object.keys(cacheContactos).length === 0) {
     cont.innerHTML = '<div class="empty-state">Sin contactos todavía.</div>';
     return;
   }
 
-  const provinciasOrdenadas = Object.keys(cacheContactos).sort()
-    .filter(p => !filtroProv || p === filtroProv);
+  // Aplanar todos los contactos para poder buscar en notas entre provincias
+  let todos = [];
+  Object.entries(cacheContactos).forEach(([prov, lista]) => {
+    lista.forEach(c => todos.push({ ...c, _prov: prov }));
+  });
 
-  if (provinciasOrdenadas.length === 0) {
-    cont.innerHTML = '<div class="empty-state">Sin contactos en esta provincia.</div>';
+  // Aplicar filtro de provincia
+  if (filtroProv) todos = todos.filter(c => c._prov === filtroProv);
+
+  // Aplicar búsqueda en todos los campos
+  if (query) {
+    todos = todos.filter(c => {
+      const haystack = [
+        c.nombre, c._prov, c.telefono, c.email, c.horarios, c.notas
+      ].join(' ').toLowerCase().replace(/\s*\/\s*/g, ' ');
+      return haystack.includes(query);
+    });
+  }
+
+  if (todos.length === 0) {
+    cont.innerHTML = '<div class="empty-state">Sin resultados para esa búsqueda.</div>';
     return;
   }
 
-  cont.innerHTML = provinciasOrdenadas.map(prov => {
-    const contactos = cacheContactos[prov];
+  // Agrupar por provincia para mostrar
+  const porProv = {};
+  todos.forEach(c => {
+    if (!porProv[c._prov]) porProv[c._prov] = [];
+    porProv[c._prov].push(c);
+  });
+
+  cont.innerHTML = Object.keys(porProv).sort().map(prov => {
+    const contactos = porProv[prov];
     return `<div class="provincia-grupo">
       <div class="provincia-grupo-titulo">📍 ${prov}</div>
       ${contactos.map(c => `
