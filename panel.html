@@ -2564,7 +2564,7 @@ async function guardarNuevaAveriaPanel() {
 // ═══════════════════════════════════════════════════════════════════════
 // AGENDA (lista + calendario M24)
 // ═══════════════════════════════════════════════════════════════════════
-const LABEL_TIPO_TAREA = { anual:'🔧 Mant. Anual', trimestral:'💻 Mant. Trimestral', 'averia-correctiva':'⚠ Avería Correctiva', 'instalacion':'🏗️ Instalación', libre:'📋 Trabajo libre', guardia:'🚨 Guardia', 'pci-trim':'🔥 Trim. PCI', 'trim-coord':'🖥 Revisión trimestral' };
+const LABEL_TIPO_TAREA = { anual:'🔧 Mant. Anual', trimestral:'💻 Mant. Trimestral', 'averia-correctiva':'⚠ Avería Correctiva', 'instalacion':'🏗️ Instalación', libre:'📋 Tarea', guardia:'🚨 Guardia', 'pci-trim':'🔥 Trim. PCI', 'trim-coord':'🖥 Revisión trimestral' };
 let instalacionTareaSeleccionada = null;
 let cacheAgenda   = null;
 let vistaAgenda   = 'lista';
@@ -4576,7 +4576,7 @@ async function generarInformePeriodo() {
   const fechaGen   = new Date().toLocaleDateString('es-ES');
   const desdeLabel = new Date(desde+'T12:00:00').toLocaleDateString('es-ES',{day:'2-digit',month:'long',year:'numeric'});
   const hastaLabel = new Date(hasta+'T12:00:00').toLocaleDateString('es-ES',{day:'2-digit',month:'long',year:'numeric'});
-  const LABEL_TIPO = { anual:'Anual', trimestral:'Trimestral', 'pci-trim':'PCI Trim.', 'averia-correctiva':'Avería Correctiva', instalacion:'Instalación', libre:'Trabajo libre', guardia:'Guardia' };
+  const LABEL_TIPO = { anual:'Anual', trimestral:'Trimestral', 'pci-trim':'PCI Trim.', 'averia-correctiva':'Avería Correctiva', instalacion:'Instalación', libre:'Tarea', guardia:'Guardia' };
 
   const htmlInforme = '<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">'
     + '<title>'+titulo+'</title>'
@@ -5883,8 +5883,9 @@ function abrirModalEditarOT(id) {
   _editarOTId = id;
   const t = cacheAgenda[id];
   if (!t) return;
-  document.getElementById('editarOTFecha').value = t.fecha || '';
+  document.getElementById('editarOTFecha').value    = t.fecha || '';
   document.getElementById('editarOTAsignado').value = t.asignadoA || '';
+  document.getElementById('editarOTTipo').value     = t.tipo || 'anual';
   document.getElementById('modalEditarOT').style.display = 'flex';
 }
 
@@ -5907,13 +5908,14 @@ async function eliminarOTDesdeCalendario() {
 
 async function confirmarEditarOT() {
   if (!_editarOTId) return;
-  const fecha = document.getElementById('editarOTFecha').value;
+  const fecha     = document.getElementById('editarOTFecha').value;
   const asignadoA = document.getElementById('editarOTAsignado').value;
-  // fecha puede estar vacía → queda como pendiente de agendar
-  const resp = await corelinkPost('/api/agenda/editar', { id: _editarOTId, fecha, asignadoA });
+  const tipo      = document.getElementById('editarOTTipo').value;
+  const resp = await corelinkPost('/api/agenda/editar', { id: _editarOTId, fecha, asignadoA, tipo });
   if (resp.ok) {
     toast(fecha ? 'OT actualizada ✓' : 'OT movida a pendientes ✓');
     cerrarModalEditarOT();
+    cacheAgenda = null;
     await cargarAgenda();
     renderCalendario();
   } else { toast('Error al actualizar'); }
@@ -6618,6 +6620,17 @@ async function confirmarImportacion(reemplazar) {
       <button onclick="cerrarModalEditarOT()" style="background:rgba(255,255,255,0.15);color:#fff;border:none;border-radius:7px;padding:5px 12px;font-size:13px;cursor:pointer">✕</button>
     </div>
     <div style="padding:20px">
+      <div style="margin-bottom:12px">
+        <label style="font-size:12px;font-weight:700;color:var(--gris-oscuro);display:block;margin-bottom:6px">Tipo de OT</label>
+        <select id="editarOTTipo" style="width:100%;border:1.5px solid var(--gris-borde);border-radius:8px;padding:9px;font-size:14px;font-family:inherit">
+          <option value="anual">🔧 Mant. Anual</option>
+          <option value="trimestral">💻 Mant. Trimestral</option>
+          <option value="averia-correctiva">⚠ Avería Correctiva</option>
+          <option value="instalacion">🏗️ Instalación</option>
+          <option value="libre">📋 Tarea</option>
+          <option value="guardia">🚨 Guardia</option>
+        </select>
+      </div>
       <div style="margin-bottom:12px">
         <label style="font-size:12px;font-weight:700;color:var(--gris-oscuro);display:block;margin-bottom:6px">Fecha <span style="font-size:11px;color:var(--gris-medio);font-weight:400">(dejar vacío = pendiente de agendar)</span></label>
         <input type="date" id="editarOTFecha" style="width:100%;border:1.5px solid var(--gris-borde);border-radius:8px;padding:9px;font-size:14px;font-family:inherit;box-sizing:border-box">
