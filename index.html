@@ -1069,7 +1069,6 @@ header {
 <div id="navTabs" class="nav-tabs">
   <button class="nav-tab active" id="tabInicio"         onclick="cambiarSeccion('inicio')">🏠 Inicio</button>
   <button class="nav-tab"        id="tabMantenimientos" onclick="cambiarSeccion('mantenimientos')">🔧 Visitas</button>
-  <button class="nav-tab"        id="tabAverias"        onclick="cambiarSeccion('averias')">⚠ Averías<span id="averiasBadgeTab" class="nav-tab-badge hidden">0</span></button>
   <button class="nav-tab"        id="tabAgenda"         onclick="cambiarSeccion('agenda')">📋 Órdenes de trabajo<span id="agendaBadgeTab" class="nav-tab-badge hidden">0</span></button>
   <button class="nav-tab"        id="tabStock"          onclick="cambiarSeccion('stock')">📦 Stock<span id="stockBadgeTab" class="nav-tab-badge hidden">0</span></button>
   <button class="nav-tab"        id="tabEstadisticas"   onclick="cambiarSeccion('estadisticas')">📈 Stats</button>
@@ -1152,40 +1151,6 @@ header {
   <div style="display:flex;gap:8px;padding:12px 14px;border-top:1.5px solid var(--gris-borde);background:var(--blanco);flex-shrink:0">
     <input type="text" id="indexMensajeTexto" placeholder="Escribe un mensaje..." style="flex:1;border:1.5px solid var(--gris-borde);border-radius:8px;padding:10px 13px;font-size:14px;font-family:inherit;outline:none" onkeydown="if(event.key==='Enter')indexEnviarMensaje()">
     <button class="btn-primary" onclick="indexEnviarMensaje()" style="white-space:nowrap;flex-shrink:0">Enviar</button>
-  </div>
-</div>
-<div id="seccionAverias" class="container hidden">
-  <div class="card">
-    <div class="card-title">⚠ Averías abiertas</div>
-    <button class="btn-primary" onclick="abrirFormNuevaAveria()" style="margin-bottom:10px">+ Nueva avería</button>
-    <div id="formNuevaAveria" class="form-nueva-averia hidden">
-      <div class="ficha-field" style="margin-bottom:10px">
-        <label>Instalación</label>
-        <div class="search-wrap">
-          <span class="search-icon">🔍</span>
-          <input type="text" id="averiaInstSearch" placeholder="Buscar instalación..." oninput="filtrarInstalacionesAveria()">
-        </div>
-        <div class="inst-list" id="averiaInstList" style="max-height:180px;overflow-y:auto;margin-top:6px"></div>
-        <div id="averiaInstSeleccionada" class="averia-inst-chip hidden"></div>
-      </div>
-      <div class="ficha-field" style="margin-bottom:10px">
-        <label>Descripción</label>
-        <textarea id="averiaDesc" rows="3" placeholder="¿Qué ha pasado?"></textarea>
-      </div>
-      <div class="ficha-field" style="margin-bottom:10px">
-        <label>Prioridad</label>
-        <div class="prioridad-selector">
-          <button class="prio-btn prio-critica" onclick="seleccionarPrioridad('critica', this)">🔴 Crítica</button>
-          <button class="prio-btn prio-normal active" onclick="seleccionarPrioridad('normal', this)">🟠 Normal</button>
-          <button class="prio-btn prio-leve" onclick="seleccionarPrioridad('leve', this)">🟡 Leve</button>
-        </div>
-      </div>
-      <div style="display:flex;gap:8px">
-        <button class="btn-secondary" style="margin:0" onclick="cerrarFormNuevaAveria()">Cancelar</button>
-        <button class="btn-primary" style="margin:0" onclick="guardarNuevaAveria()">Guardar avería</button>
-      </div>
-    </div>
-    <div id="averiasListContainer"></div>
   </div>
 </div>
 
@@ -2195,13 +2160,11 @@ function cambiarSeccion(seccion) {
   seccionActual = seccion;
   document.getElementById('tabInicio').classList.toggle('active', seccion === 'inicio');
   document.getElementById('tabMantenimientos').classList.toggle('active', seccion === 'mantenimientos');
-  document.getElementById('tabAverias').classList.toggle('active', seccion === 'averias');
   document.getElementById('tabAgenda').classList.toggle('active', seccion === 'agenda');
   document.getElementById('tabStock').classList.toggle('active', seccion === 'stock');
   document.getElementById('tabEstadisticas').classList.toggle('active', seccion === 'estadisticas');
   document.getElementById('seccionInicio').classList.toggle('hidden', seccion !== 'inicio');
   document.getElementById('paso1').classList.toggle('hidden', seccion !== 'mantenimientos');
-  document.getElementById('seccionAverias').classList.toggle('hidden', seccion !== 'averias');
   document.getElementById('seccionAgenda').classList.toggle('hidden', seccion !== 'agenda');
   document.getElementById('seccionStock').classList.toggle('hidden', seccion !== 'stock');
   document.getElementById('seccionEstadisticas').classList.toggle('hidden', seccion !== 'estadisticas');
@@ -3581,7 +3544,7 @@ async function mostrarSeccionDT() {
   if (!inst) return;
 
   // Ocultar todo lo demás
-  ['paso1','paso2','paso3','paso4','paso5','seccionAverias','seccionAgenda','seccionStock'].forEach(id => {
+  ['paso1','paso2','paso3','paso4','paso5','seccionAgenda','seccionStock'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.classList.add('hidden');
   });
