@@ -2420,6 +2420,24 @@ function renderAverias() {
           <button class="btn-mini rojo" onclick="eliminarAveria('${id}')">🗑 Eliminar</button>
         </div>
       </div>`;
+    } else if (a.estado === 'pendiente-aceptacion') {
+      const instEsc2 = (a.nombreInstalacion+'').replace(/'/g,"\\'");
+      return `<div class="item-card" style="border-left:4px solid #f59e0b;background:#fffbeb">
+        <span class="item-tag" style="background:#f59e0b;color:#fff">⏳ Pte. aceptación</span>
+        ${a.numeroAveria?`<span style="font-size:11px;font-weight:800;color:var(--gris-medio);margin-left:4px">${a.numeroAveria}</span>`:''}
+        <div class="item-card-titulo">${a.nombreInstalacion}</div>
+        <div style="display:flex;align-items:center;gap:5px;margin-bottom:4px">
+          <span style="font-size:10px;font-weight:800;background:#fef3c7;color:#92400e;padding:1px 6px;border-radius:3px">Manual</span>
+          <span style="font-size:12px;font-weight:600">${a.descripcion||'Avería pendiente de aceptación'}</span>
+        </div>
+        ${a.quienAviso ? `<div class="item-card-meta">📞 Avisó: ${a.quienAviso}</div>` : ''}
+        <div class="item-card-meta">Registrada: ${new Date(a.fechaApertura+'T12:00:00').toLocaleDateString('es-ES')}</div>
+        <div class="item-card-btns">
+          <button class="btn-mini verde" onclick="aceptarAveria('${id}')">✓ Aceptar (Abrir)</button>
+          <button class="btn-mini" onclick="editarAveria('${id}')">✏ Editar</button>
+          <button class="btn-mini rojo" onclick="eliminarAveria('${id}')">🗑 Eliminar</button>
+        </div>
+      </div>`;
     } else {
       const fCierre = a.cierreTimestamp ? new Date(a.cierreTimestamp).toLocaleString('es-ES') : (a.fechaResolucion||'');
       const esDescartada = a.estado === 'descartada';
@@ -2448,6 +2466,12 @@ function renderAverias() {
       </div>`;
     }
   }).join('');
+}
+
+async function aceptarAveria(id) {
+  const resp = await corelinkPost('/api/incidencias/editar', { id, estado: 'abierta' });
+  if (resp && resp.ok) { toast('Avería abierta ✓'); cargarAverias(); }
+  else { toast('Error al aceptar'); }
 }
 
 // ── Descartar avería ──────────────────────────────────────────────────
