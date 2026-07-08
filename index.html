@@ -2487,24 +2487,28 @@ async function cargarYRenderizarAgenda() {
       const esCompletada = t.estado === 'completada';
       const esParada  = t.estado === 'parada';
       const esMtto    = t.tipo === 'anual' || t.tipo === 'trimestral';
-      const esParte   = t.tipo === 'averia-correctiva' || t.tipo === 'instalacion' || t.tipo === 'libre';
+      const esParte   = t.tipo === 'averia-correctiva' || t.tipo === 'instalacion' || t.tipo === 'libre' || t.tipo === 'guardia';
       const numOT     = t.numeroOT ? '<span style="font-size:10px;color:var(--gris-medio);margin-left:6px">'+t.numeroOT+'</span>' : '';
       const bordEstilo = esParada ? 'border-left:4px solid #f59e0b;background:#fffbeb' : (esJesus&&!esCompletada ? 'background:#eff6ff;border-left:4px solid #1e40af' : '');
+      const _id = id.replace(/"/g,'&quot;');
       let btns = '';
       if (esCompletada) {
         btns = '<span style="font-size:11px;color:var(--gris-medio);font-style:italic">\u2713 Completada</span>';
       } else if (esParada) {
-        btns = '<button class="btn-tarea-estado" onclick="reanudarOTPNT(&quot;'+id+'&quot;)">\u25b6 Reanudar</button>';
+        btns = '<button class="btn-tarea-estado" onclick="reanudarOTPNT(&quot;'+_id+'&quot;)">\u25b6 Reanudar</button>';
       } else if (esMtto && t.codigoInstalacion) {
-        btns = '<button class="btn-tarea-estado '+(t.estado==='en_curso'?'active en_curso':'')+'" onclick="cambiarEstadoTarea(&quot;'+id+'&quot;,&quot;en_curso&quot;)">\u25b6 En curso</button>'
-             + '<button class="btn-primary" style="padding:5px 14px;font-size:12px" onclick="irAInstalacionDesdeOT(&quot;'+id+'&quot;,&quot;'+t.codigoInstalacion+'&quot;,&quot;'+t.tipo+'&quot;)">\ud83c\udfc1 En la instalaci\u00f3n</button>';
+        btns = '<button class="btn-tarea-estado '+(t.estado==='en_curso'?'active en_curso':'')+'" onclick="cambiarEstadoTarea(&quot;'+_id+'&quot;,&quot;en_curso&quot;)">\u25b6 En curso</button>'
+             + '<button class="btn-mini" style="background:#fff7ed;color:#92400e;border-color:#f59e0b" onclick="abrirPausaPNT(&quot;'+_id+'&quot;)">\u23f8 Pausar</button>'
+             + '<button class="btn-primary" style="padding:5px 14px;font-size:12px" onclick="irAInstalacionDesdeOT(&quot;'+_id+'&quot;,&quot;'+t.codigoInstalacion+'&quot;,&quot;'+t.tipo+'&quot;)">\ud83c\udfc1 En la instalaci\u00f3n</button>';
       } else if (esParte) {
         const _tit = ((t.numeroOT||'OT')+' \u2014 '+(t.nombreInstalacion||t.tipo||'')).replace(/"/g,'&quot;');
-        btns = '<button class="btn-tarea-estado '+(t.estado==='en_curso'?'active en_curso':'')+'" onclick="cambiarEstadoTarea(&quot;'+id+'&quot;,&quot;en_curso&quot;)">\u25b6 En curso</button>'
-             + '<button class="btn-primary" style="padding:5px 14px;font-size:12px;background:var(--verde)" onclick="abrirParteOTPNT(&quot;'+id+'&quot;,&quot;'+_tit+'&quot;)">\u2713 Completar OT</button>';
+        btns = '<button class="btn-tarea-estado '+(t.estado==='en_curso'?'active en_curso':'')+'" onclick="cambiarEstadoTarea(&quot;'+_id+'&quot;,&quot;en_curso&quot;)">\u25b6 En curso</button>'
+             + '<button class="btn-mini" style="background:#fff7ed;color:#92400e;border-color:#f59e0b" onclick="abrirPausaPNT(&quot;'+_id+'&quot;)">\u23f8 Pausar</button>'
+             + '<button class="btn-primary" style="padding:5px 14px;font-size:12px;background:var(--verde)" onclick="abrirParteOTPNT(&quot;'+_id+'&quot;,&quot;'+_tit+'&quot;)">\u2713 Completar OT</button>';
       } else {
-        btns = '<button class="btn-tarea-estado '+(t.estado==='en_curso'?'active en_curso':'')+'" onclick="cambiarEstadoTarea(&quot;'+id+'&quot;,&quot;en_curso&quot;)">\u25b6 En curso</button>'
-             + '<button class="btn-tarea-estado" onclick="cambiarEstadoTarea(&quot;'+id+'&quot;,&quot;completada&quot;)">\u2713 Completada</button>';
+        btns = '<button class="btn-tarea-estado '+(t.estado==='en_curso'?'active en_curso':'')+'" onclick="cambiarEstadoTarea(&quot;'+_id+'&quot;,&quot;en_curso&quot;)">\u25b6 En curso</button>'
+             + '<button class="btn-mini" style="background:#fff7ed;color:#92400e;border-color:#f59e0b" onclick="abrirPausaPNT(&quot;'+_id+'&quot;)">\u23f8 Pausar</button>'
+             + '<button class="btn-tarea-estado" onclick="cambiarEstadoTarea(&quot;'+_id+'&quot;,&quot;completada&quot;)">\u2713 Completada</button>';
       }
       html += '<div class="agenda-tarea'+(esCompletada?' completada':'')+'" style="'+bordEstilo+'">'
             + '<span class="agenda-tarea-tipo-tag">'+(LABEL_TIPO_TAREA[t.tipo]||t.tipo)+'</span>'+asigTxt+numOT
@@ -5399,35 +5403,43 @@ function pntSelDia(dia) {
   if (tareas.length === 0) {
     document.getElementById('pntCalDiaLista').innerHTML = '<div style="color:var(--gris-medio);font-size:13px;padding:8px 0">Sin tareas este día</div>';
   } else {
-    document.getElementById('pntCalDiaLista').innerHTML = tareas.map(([id,t]) => {
-      const esJesus = t.asignadoA === 'jesus';
-      const esMtto  = t.tipo === 'anual' || t.tipo === 'trimestral';
-      const esParte = t.tipo === 'averia-correctiva' || t.tipo === 'instalacion' || t.tipo === 'libre';
-      const numOT   = t.numeroOT ? '<span style="font-size:10px;color:var(--gris-medio);margin-left:6px">'+t.numeroOT+'</span>' : '';
-      const asigTxt = esJesus ? '<span style="font-size:10px;font-weight:800;background:#1e40af;color:#fff;padding:2px 8px;border-radius:99px;margin-left:6px">👷 Asignada a ti</span>'
-                    : (!t.asignadoA || t.asignadoA === '') ? '<span style="font-size:10px;font-weight:700;background:#e5e7eb;color:#6b7280;padding:2px 8px;border-radius:99px;margin-left:6px">Sin asignar</span>'
-                    : '';
-      let btns = '';
-      if (esMtto && t.codigoInstalacion) {
-        btns = '<button class="btn-tarea-estado '+(t.estado==="en_curso"?"active en_curso":"")+'" onclick="cambiarEstadoTarea(\''+id+'\',\'en_curso\')">▶ En curso</button>'
-             + '<button class="btn-primary" style="padding:5px 14px;font-size:12px" onclick="irAInstalacionDesdeOT(\''+id+'\',\''+t.codigoInstalacion+'\',\''+t.tipo+'\')">🏁 En la instalación</button>';
+    document.getElementById('pntCalDiaLista').innerHTML = tareas.map(function(entry) {
+      var tid = entry[0], t = entry[1];
+      var esJesus = t.asignadoA === 'jesus';
+      var esParada = t.estado === 'parada';
+      var esMtto   = t.tipo === 'anual' || t.tipo === 'trimestral';
+      var esParte  = t.tipo === 'averia-correctiva' || t.tipo === 'instalacion' || t.tipo === 'libre' || t.tipo === 'guardia';
+      var numOT    = t.numeroOT ? '<span style="font-size:10px;color:var(--gris-medio);margin-left:6px">'+t.numeroOT+'</span>' : '';
+      var asigTxt  = esJesus ? '<span style="font-size:10px;font-weight:800;background:#1e40af;color:#fff;padding:2px 8px;border-radius:99px;margin-left:6px">\u00d0 Asignada a ti</span>' : '';
+      var _id = tid.replace(/"/g,'&quot;');
+      var btns = '';
+      if (esParada) {
+        btns = '<button class="btn-tarea-estado" onclick="reanudarOTPNT(&quot;'+_id+'&quot;)">\u25b6 Reanudar</button>';
+      } else if (esMtto && t.codigoInstalacion) {
+        btns = '<button class="btn-tarea-estado '+(t.estado==='en_curso'?'active en_curso':'')+'" onclick="cambiarEstadoTarea(&quot;'+_id+'&quot;,&quot;en_curso&quot;)">\u25b6 En curso</button>'
+             + '<button class="btn-mini" style="background:#fff7ed;color:#92400e;border-color:#f59e0b" onclick="abrirPausaPNT(&quot;'+_id+'&quot;)">\u23f8 Pausar</button>'
+             + '<button class="btn-primary" style="padding:5px 14px;font-size:12px" onclick="irAInstalacionDesdeOT(&quot;'+_id+'&quot;,&quot;'+t.codigoInstalacion+'&quot;,&quot;'+t.tipo+'&quot;)">\ud83c\udfc1 En la instalaci\u00f3n</button>';
       } else if (esParte) {
-        btns = '<button class="btn-tarea-estado '+(t.estado==="en_curso"?"active en_curso":"")+'" onclick="cambiarEstadoTarea(\''+id+'\',\'en_curso\')">▶ En curso</button>'
-             + '<button class="btn-primary" style="padding:5px 14px;font-size:12px;background:var(--verde)" onclick="abrirParteOTPNT(\''+id+'\',\'OT\')">✓ Completar OT</button>';
+        var _tit = ((t.numeroOT||'OT')+' \u2014 '+(t.nombreInstalacion||t.tipo||'')).replace(/"/g,'&quot;');
+        btns = '<button class="btn-tarea-estado '+(t.estado==='en_curso'?'active en_curso':'')+'" onclick="cambiarEstadoTarea(&quot;'+_id+'&quot;,&quot;en_curso&quot;)">\u25b6 En curso</button>'
+             + '<button class="btn-mini" style="background:#fff7ed;color:#92400e;border-color:#f59e0b" onclick="abrirPausaPNT(&quot;'+_id+'&quot;)">\u23f8 Pausar</button>'
+             + '<button class="btn-primary" style="padding:5px 14px;font-size:12px;background:var(--verde)" onclick="abrirParteOTPNT(&quot;'+_id+'&quot;,&quot;'+_tit+'&quot;)">\u2713 Completar OT</button>';
       } else {
-        btns = '<button class="btn-tarea-estado '+(t.estado==="en_curso"?"active en_curso":"")+'" onclick="cambiarEstadoTarea(\''+id+'\',\'en_curso\')">▶ En curso</button>'
-             + '<button class="btn-tarea-estado" onclick="cambiarEstadoTarea(\''+id+'\',\'completada\')">✓ Completada</button>';
+        btns = '<button class="btn-tarea-estado '+(t.estado==='en_curso'?'active en_curso':'')+'" onclick="cambiarEstadoTarea(&quot;'+_id+'&quot;,&quot;en_curso&quot;)">\u25b6 En curso</button>'
+             + '<button class="btn-mini" style="background:#fff7ed;color:#92400e;border-color:#f59e0b" onclick="abrirPausaPNT(&quot;'+_id+'&quot;)">\u23f8 Pausar</button>'
+             + '<button class="btn-tarea-estado" onclick="cambiarEstadoTarea(&quot;'+_id+'&quot;,&quot;completada&quot;)">\u2713 Completada</button>';
       }
-      return '<div class="agenda-tarea" style="margin-bottom:8px;'+(esJesus?'background:#eff6ff;border-left:4px solid #1e40af':'')+'">'
+      return '<div class="agenda-tarea" style="margin-bottom:8px;'+(esParada?'background:#fffbeb;border-left:4px solid #f59e0b':(esJesus?'background:#eff6ff;border-left:4px solid #1e40af':''))+'">'
         + '<span class="agenda-tarea-tipo-tag">'+(LABEL_TIPO_TAREA[t.tipo]||t.tipo)+'</span>'+asigTxt+numOT
-        + '<div class="agenda-inst-nombre">'+(t.nombreInstalacion||t.codigoInstalacion||'Sin instalación')+'</div>'
-        + (t.nota?'<div class="agenda-nota">→ '+t.nota+'</div>':'')
+        + (esParada?'<span style="font-size:10px;font-weight:700;background:#fef3c7;color:#92400e;padding:1px 8px;border-radius:99px;margin-left:6px">\u23f8 PARADA</span>':'')
+        + '<div class="agenda-inst-nombre">'+(t.nombreInstalacion||t.codigoInstalacion||'Sin instalaci\u00f3n')+'</div>'
+        + (t.nota?'<div class="agenda-nota">\u2192 '+t.nota+'</div>':'')
+        + (esParada&&t.motivoPausa?'<div style="font-size:11px;color:#92400e;background:#fef3c7;border-radius:5px;padding:5px 8px;margin-top:4px">\u23f8 '+t.motivoPausa+'</div>':'')
         + '<div class="agenda-tarea-btns">'+btns+'</div>'
         + '</div>';
     }).join('');
   }
   diaAgenda.classList.remove('hidden');
-
 }
 
 // ═══════════════════════════════════════════════════════════════════════
@@ -5920,6 +5932,36 @@ function _generarHTMLGuardiaPNT(opts) {
     + '</body></html>';
 }
 
+
+// ═══════════════════════════════════════════════════════════════════════
+// PAUSAR / REANUDAR OT — PNT
+// ═══════════════════════════════════════════════════════════════════════
+function abrirPausaPNT(id) {
+  document.getElementById('pausaPNTId').value = id;
+  document.getElementById('pausaPNTMotivo').value = '';
+  document.getElementById('modalPausaPNT').style.display = 'flex';
+}
+
+function cerrarPausaPNT() {
+  document.getElementById('modalPausaPNT').style.display = 'none';
+}
+
+async function confirmarPausaPNT() {
+  var id     = document.getElementById('pausaPNTId').value;
+  var motivo = document.getElementById('pausaPNTMotivo').value.trim();
+  if (!motivo) { toast('El motivo es obligatorio'); return; }
+  try {
+    var resp = await fetch(CORELINK_URL + '/api/agenda/estado', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CoreLink-Key': CORELINK_API_KEY },
+      body: JSON.stringify({ id: id, estado: 'parada', motivoPausa: motivo })
+    });
+    var data = await resp.json();
+    if (data.ok) { toast('OT pausada'); cerrarPausaPNT(); cargarYRenderizarAgenda(); }
+    else { toast('Error al pausar'); }
+  } catch(e) { toast('Sin conexion'); }
+}
+
 </script>
 
 <div id="pdfVisor" style="display:none;position:fixed;inset:0;z-index:9999;background:#fff;overflow-y:auto;">
@@ -6020,6 +6062,28 @@ function _generarHTMLGuardiaPNT(opts) {
       <div style="display:flex;gap:10px">
         <button onclick="cerrarGuardiaPNT()" style="flex:1;padding:11px;background:#f3f4f6;color:var(--gris-oscuro);border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer">Cancelar</button>
         <button onclick="guardarGuardiaPNT()" style="flex:2;padding:11px;background:#c05621;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer">🚨 Registrar guardia</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ── MODAL PAUSAR OT PNT ────────────────────────────────────────── -->
+<div id="modalPausaPNT" style="display:none;position:fixed;inset:0;z-index:9000;background:rgba(0,0,0,0.7);align-items:center;justify-content:center;padding:16px">
+  <div style="background:#fff;border-radius:12px;max-width:420px;width:100%;overflow:hidden">
+    <div style="background:#f59e0b;padding:14px 18px;display:flex;justify-content:space-between;align-items:center">
+      <div style="color:#fff;font-size:14px;font-weight:800">⏸ Pausar OT</div>
+      <button onclick="cerrarPausaPNT()" style="background:rgba(255,255,255,0.2);color:#fff;border:none;border-radius:7px;padding:5px 12px;font-size:13px;cursor:pointer">✕</button>
+    </div>
+    <div style="padding:16px">
+      <input type="hidden" id="pausaPNTId">
+      <div style="margin-bottom:16px">
+        <label style="font-size:12px;font-weight:700;color:var(--gris-oscuro);display:block;margin-bottom:6px">Motivo de la pausa <span style="color:var(--rojo)">*</span></label>
+        <textarea id="pausaPNTMotivo" rows="3" placeholder="Explica por qué se para esta OT..." style="width:100%;border:1.5px solid var(--gris-borde);border-radius:8px;padding:9px;font-size:14px;font-family:inherit;box-sizing:border-box;resize:vertical"></textarea>
+      </div>
+      <div style="display:flex;gap:10px">
+        <button onclick="cerrarPausaPNT()" style="flex:1;padding:10px;background:#f3f4f6;color:var(--gris-oscuro);border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer">Cancelar</button>
+        <button onclick="confirmarPausaPNT()" style="flex:2;padding:10px;background:#f59e0b;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer">⏸ Poner en pausa</button>
       </div>
     </div>
   </div>

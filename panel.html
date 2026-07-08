@@ -2388,7 +2388,6 @@ function renderAverias() {
           <button class="btn-mini verde" onclick="abrirModalCierreAveria('${id}','${instEsc}')">✓ Resuelta</button>
           <button class="btn-mini" style="background:#eff6ff;color:var(--azul);border-color:var(--azul)" onclick="abrirModalCrearOTdesdeAveria('${id}')">📋 Crear OT</button>
           <button class="btn-mini" onclick="editarAveria('${id}')">✏ Editar</button>
-          <button class="btn-mini" onclick="abrirModalAgendaAveria('${id}','${instEsc}','${a.codigoInstalacion}','${descEsc}')">📅 Agenda</button>
           <button class="btn-mini" onclick="abrirModalDescartarAveria('${id}','${instEsc}')">🚫 Descartar</button>
           <button class="btn-mini rojo" onclick="eliminarAveria('${id}')">🗑 Eliminar</button>
         </div>
@@ -5894,6 +5893,18 @@ function cerrarModalEditarOT() {
   _editarOTId = null;
 }
 
+async function eliminarOTDesdeCalendario() {
+  if (!_editarOTId) return;
+  const resp = await corelinkPost('/api/agenda/borrar', { id: _editarOTId });
+  if (resp && resp.ok) {
+    toast('OT eliminada ✓');
+    cerrarModalEditarOT();
+    cacheAgenda = null;
+    await cargarAgenda();
+    renderCalendario();
+  } else { toast('Error al eliminar'); }
+}
+
 async function confirmarEditarOT() {
   if (!_editarOTId) return;
   const fecha = document.getElementById('editarOTFecha').value;
@@ -6622,6 +6633,7 @@ async function confirmarImportacion(reemplazar) {
       </div>
       <div style="display:flex;gap:10px">
         <button onclick="cerrarModalEditarOT()" style="flex:1;padding:10px;background:#f3f4f6;color:var(--gris-oscuro);border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer">Cancelar</button>
+        <button onclick="if(confirm('¿Eliminar esta OT?')) eliminarOTDesdeCalendario()" style="padding:10px 16px;background:#fee2e2;color:var(--rojo);border:1px solid #fca5a5;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer">🗑 Eliminar</button>
         <button onclick="confirmarEditarOT()" style="flex:2;padding:10px;background:var(--azul);color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer">✓ Guardar</button>
       </div>
     </div>
