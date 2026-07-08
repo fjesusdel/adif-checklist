@@ -538,6 +538,14 @@ body.dark .item-card { background:#1e2433;border-color:#2d3548; }
         </div>
         <div class="ficha-field" style="margin-bottom:10px"><label>Nota adicional</label><textarea id="tareaNota" rows="2"></textarea></div>
         <div class="ficha-field" style="margin-bottom:10px">
+          <label>📞 Contacto a avisar (opcional)</label>
+          <input type="text" id="tareaContactoNombre" placeholder="Buscar o escribir nombre..." oninput="buscarContactoOT(this.value,'tareaContactoDrop')" autocomplete="off"
+            style="width:100%;border:1.5px solid var(--gris-borde);border-radius:7px;padding:9px 11px;font-size:14px;font-family:inherit;margin-bottom:4px">
+          <div id="tareaContactoDrop" style="display:none;background:#fff;border:1.5px solid var(--azul);border-radius:0 0 8px 8px;max-height:160px;overflow-y:auto;box-shadow:0 4px 8px rgba(0,0,0,0.1);margin-top:-4px"></div>
+          <input type="text" id="tareaContactoTel" placeholder="Teléfono (opcional)"
+            style="width:100%;border:1.5px solid var(--gris-borde);border-radius:7px;padding:9px 11px;font-size:14px;font-family:inherit;margin-top:4px">
+        </div>
+        <div class="ficha-field" style="margin-bottom:10px">
           <label>Asignado a</label>
           <select id="tareaAsignadoA" style="width:100%;border:1.5px solid var(--gris-borde);border-radius:7px;padding:9px 11px;font-size:14px;font-family:inherit">
             <option value="">Sin asignar</option>
@@ -2708,6 +2716,8 @@ function renderAgendaLista() {
               + '<div class="item-card-titulo">'+(t.nombreInstalacion||t.codigoInstalacion||'OT sin instalación')+'</div>'
               + (t.nota ? '<div class="item-card-desc">→ '+t.nota+'</div>' : '')
               + (esParada && t.motivoPausa ? '<div style="font-size:12px;color:#92400e;background:#fef3c7;border-radius:6px;padding:6px 10px;margin-top:4px">⏸ '+t.motivoPausa+'</div>' : '')
+              + (t.contactoAvisar ? '<div style="font-size:12px;color:#065f46;background:#d1fae5;border-radius:6px;padding:5px 10px;margin-top:4px">📞 Avisar a: <strong>'+t.contactoAvisar.nombre+'</strong>'+(t.contactoAvisar.telefono?' · '+t.contactoAvisar.telefono:'')+'</div>' : '')
+              + (t.contactoAvisar ? '<div style="font-size:12px;color:#065f46;background:#d1fae5;border-radius:6px;padding:5px 10px;margin-top:4px">📞 Avisar a: <strong>'+t.contactoAvisar.nombre+'</strong>'+(t.contactoAvisar.telefono?' · '+t.contactoAvisar.telefono:'')+'</div>' : '')
               + '<div class="item-card-btns">'+btns+'</div>'
               + '</div>';
       });
@@ -2940,6 +2950,9 @@ async function guardarNuevaTareaPanel() {
   const recurrente   = document.getElementById('tareaRecurrente').value;
   const tipoOT       = document.getElementById('tareaTipo').value;
   const asignadoA    = tipoOT === 'trimestral' ? 'fran' : document.getElementById('tareaAsignadoA').value;
+  const ctcNombre    = document.getElementById('tareaContactoNombre').value.trim();
+  const ctcTel       = document.getElementById('tareaContactoTel').value.trim();
+  const contactoAvisar = ctcNombre ? { nombre: ctcNombre, telefono: ctcTel } : null;
   const resp = await corelinkPost('/api/agenda', {
     codigoInstalacion: codigo,
     nombreInstalacion: nombre,
@@ -2948,7 +2961,8 @@ async function guardarNuevaTareaPanel() {
     tipo: tipoOT,
     nota: notaFinal,
     recurrente,
-    asignadoA
+    asignadoA,
+    contactoAvisar
   });
   if (resp.ok) {
     const msg = recurrente === 'trimestral' ? '4 tareas trimestrales creadas ✓' :
@@ -5894,11 +5908,15 @@ function abrirModalEditarOT(id) {
   document.getElementById('editarOTAsignado').value   = t.asignadoA || '';
   document.getElementById('editarOTTipo').value       = t.tipo || 'anual';
   document.getElementById('editarOTNota').value       = t.nota || '';
+  document.getElementById('editarOTContactoNombre').value = (t.contactoAvisar && t.contactoAvisar.nombre) ? t.contactoAvisar.nombre : '';
+  document.getElementById('editarOTContactoTel').value    = (t.contactoAvisar && t.contactoAvisar.telefono) ? t.contactoAvisar.telefono : '';
   document.getElementById('editarOTCodigo').value     = t.codigoInstalacion || '';
   document.getElementById('editarOTNombreInst').value = t.nombreInstalacion || '';
   document.getElementById('editarOTProvincia').value  = t.provincia || '';
   document.getElementById('editarOTInstInput').value  = t.nombreInstalacion || '';
   document.getElementById('editarOTInstDrop').style.display = 'none';
+  document.getElementById('editarOTContactoNombre').value = (t.contactoAvisar && t.contactoAvisar.nombre) ? t.contactoAvisar.nombre : '';
+  document.getElementById('editarOTContactoTel').value    = (t.contactoAvisar && t.contactoAvisar.telefono) ? t.contactoAvisar.telefono : '';
   document.getElementById('modalEditarOT').style.display = 'flex';
 }
 
@@ -5936,9 +5954,12 @@ async function confirmarEditarOT() {
   const codigoInstalacion = document.getElementById('editarOTCodigo').value;
   const nombreInstalacion = document.getElementById('editarOTNombreInst').value || document.getElementById('editarOTInstInput').value;
   const provincia         = document.getElementById('editarOTProvincia').value;
+  const ctcNombre         = document.getElementById('editarOTContactoNombre').value.trim();
+  const ctcTel            = document.getElementById('editarOTContactoTel').value.trim();
+  const contactoAvisar    = ctcNombre ? { nombre: ctcNombre, telefono: ctcTel } : null;
   const resp = await corelinkPost('/api/agenda/editar', {
     id: _editarOTId, fecha, asignadoA, tipo, nota,
-    codigoInstalacion, nombreInstalacion, provincia
+    codigoInstalacion, nombreInstalacion, provincia, contactoAvisar
   });
   if (resp.ok) {
     toast(fecha ? 'OT actualizada ✓' : 'OT movida a pendientes ✓');
@@ -6281,6 +6302,17 @@ document.addEventListener('click', function(e) {
 
 
 // ═══════════════════════════════════════════════════════════════════════
+// BUSCADOR DE CONTACTO EN MODALES DE OT
+// ═══════════════════════════════════════════════════════════════════════
+
+function selContactoOT(nombre, tel, idNombre, idTel, dropId) {
+  document.getElementById(idNombre).value = nombre;
+  document.getElementById(idTel).value    = tel;
+  document.getElementById(dropId).style.display = 'none';
+}
+
+
+// ═══════════════════════════════════════════════════════════════════════
 // IMPORTAR AGENDA DESDE EXCEL
 // ═══════════════════════════════════════════════════════════════════════
 
@@ -6531,6 +6563,51 @@ async function confirmarImportacion(reemplazar) {
 }
 
 
+
+// ═══════════════════════════════════════════════════════════════════════
+// BUSCADOR CONTACTO EN OT
+// ═══════════════════════════════════════════════════════════════════════
+function buscarContactoOT(q, dropId) {
+  var drop = document.getElementById(dropId);
+  if (!drop) return;
+  var norm = q.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+  if (norm.length < 2) { drop.style.display = 'none'; return; }
+  if (!cacheContactos) { drop.style.display = 'none'; return; }
+  var todos = [];
+  Object.entries(cacheContactos).forEach(function(e2) {
+    var prov = e2[0], lista = e2[1];
+    lista.forEach(function(c) { todos.push(Object.assign({}, c, { _prov: prov })); });
+  });
+  var res = todos.filter(function(c) {
+    var hay = ((c.nombre||'') + ' ' + (c.telefono||'') + ' ' + (c._prov||'') + ' ' + (c.notas||''))
+      .normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+    return hay.includes(norm);
+  }).slice(0, 8);
+  if (!res.length) { drop.style.display = 'none'; return; }
+  var esEditar = dropId === 'editarOTContactoDrop';
+  var idNombre = esEditar ? 'editarOTContactoNombre' : 'tareaContactoNombre';
+  var idTel    = esEditar ? 'editarOTContactoTel'    : 'tareaContactoTel';
+  drop.innerHTML = res.map(function(c) {
+    var tel = c.telefono || '';
+    var n   = c.nombre.replace(/"/g,'&quot;');
+    var t2  = tel.replace(/"/g,'&quot;');
+    return '<div onclick="selContactoOT(&quot;'+n+'&quot;,&quot;'+t2+'&quot;,&quot;'+idNombre+'&quot;,&quot;'+idTel+'&quot;,&quot;'+dropId+'&quot;)" '
+      + 'style="padding:8px 12px;cursor:pointer;font-size:13px;border-bottom:0.5px solid #e5e7eb;display:flex;justify-content:space-between;align-items:center" '
+      + 'onmouseover="this.style.background=\'#eff6ff\'" onmouseout="this.style.background=\'\'"> '
+      + '<div><div style="font-weight:700;color:var(--azul)">' + c.nombre + '</div>'
+      + '<div style="font-size:11px;color:var(--gris-medio)">' + c._prov + (c.notas ? ' &middot; ' + c.notas.slice(0,40) : '') + '</div></div>'
+      + (tel ? '<div style="font-size:12px;font-weight:700;color:#065f46">Tel: ' + tel + '</div>' : '')
+      + '</div>';
+  }).join('');
+  drop.style.display = 'block';
+}
+
+function selContactoOT(nombre, tel, idNombre, idTel, dropId) {
+  document.getElementById(idNombre).value = nombre;
+  document.getElementById(idTel).value    = tel;
+  document.getElementById(dropId).style.display = 'none';
+}
+
 </script>
 <!-- ── MODAL PARTE OT ──────────────────────────────────────────────── -->
 <div id="modalParteOT" style="display:none;position:fixed;inset:0;z-index:9000;background:rgba(0,0,0,0.65);overflow-y:auto;padding:20px">
@@ -6685,6 +6762,14 @@ async function confirmarImportacion(reemplazar) {
       <div style="margin-bottom:20px">
         <label style="font-size:12px;font-weight:700;color:var(--gris-oscuro);display:block;margin-bottom:6px">Nota / Descripción</label>
         <textarea id="editarOTNota" rows="3" style="width:100%;border:1.5px solid var(--gris-borde);border-radius:8px;padding:9px;font-size:14px;font-family:inherit;box-sizing:border-box;resize:vertical"></textarea>
+      </div>
+      <div style="margin-bottom:20px">
+        <label style="font-size:12px;font-weight:700;color:var(--gris-oscuro);display:block;margin-bottom:6px">📞 Contacto a avisar (opcional)</label>
+        <input type="text" id="editarOTContactoNombre" placeholder="Buscar o escribir nombre..." oninput="buscarContactoOT(this.value,'editarOTContactoDrop')" autocomplete="off"
+          style="width:100%;border:1.5px solid var(--gris-borde);border-radius:8px;padding:9px;font-size:14px;font-family:inherit;box-sizing:border-box;margin-bottom:4px">
+        <div id="editarOTContactoDrop" style="display:none;background:#fff;border:1.5px solid var(--azul);border-radius:0 0 8px 8px;max-height:160px;overflow-y:auto;box-shadow:0 4px 8px rgba(0,0,0,0.1);margin-top:-4px"></div>
+        <input type="text" id="editarOTContactoTel" placeholder="Teléfono (opcional)"
+          style="width:100%;border:1.5px solid var(--gris-borde);border-radius:8px;padding:9px;font-size:14px;font-family:inherit;box-sizing:border-box;margin-top:4px">
       </div>
       <div style="display:flex;gap:10px">
         <button onclick="cerrarModalEditarOT()" style="flex:1;padding:10px;background:#f3f4f6;color:var(--gris-oscuro);border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer">Cancelar</button>
