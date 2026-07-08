@@ -5879,6 +5879,13 @@ async function confirmarImportXLSX() {
 let _editarOTId = null;
 let _duplicarOTId = null;
 
+function cerrarModalEditarOT() {
+  document.getElementById('modalEditarOT').style.display = 'none';
+  const drop = document.getElementById('editarOTInstDrop');
+  if (drop) drop.style.display = 'none';
+  _editarOTId = null;
+}
+
 function abrirModalEditarOT(id) {
   _editarOTId = id;
   const t = cacheAgenda[id];
@@ -6635,14 +6642,13 @@ async function confirmarImportacion(reemplazar) {
 <div id="toast" style="position:fixed;bottom:20px;left:50%;transform:translateX(-50%) translateY(80px);background:#1e293b;color:#fff;padding:11px 20px;border-radius:8px;font-size:14px;font-weight:500;z-index:9999;transition:transform 0.3s ease;white-space:nowrap;pointer-events:none"></div>
 
 <!-- ── MODAL EDITAR FECHA OT ──────────────────────────────────────────── -->
-<div id="modalEditarOT" style="display:none;position:fixed;inset:0;z-index:9000;background:rgba(0,0,0,0.65);align-items:center;justify-content:center;padding:20px;overflow-y:auto">
-  <div style="background:#fff;border-radius:12px;max-width:480px;width:100%;overflow:hidden;margin:auto">
-    <div style="background:var(--azul);padding:14px 20px;display:flex;justify-content:space-between;align-items:center">
+<div id="modalEditarOT" style="display:none;position:fixed;inset:0;z-index:9000;background:rgba(0,0,0,0.65);align-items:flex-start;justify-content:center;padding:20px;overflow-y:auto">
+  <div style="background:#fff;border-radius:12px;max-width:480px;width:100%;margin:20px auto">
+    <div style="background:var(--azul);padding:14px 20px;display:flex;justify-content:space-between;align-items:center;border-radius:12px 12px 0 0">
       <div style="color:#fff;font-size:15px;font-weight:800">✏ Editar OT</div>
       <button onclick="cerrarModalEditarOT()" style="background:rgba(255,255,255,0.15);color:#fff;border:none;border-radius:7px;padding:5px 12px;font-size:13px;cursor:pointer">✕</button>
     </div>
     <div style="padding:20px">
-      <!-- Tipo -->
       <div style="margin-bottom:12px">
         <label style="font-size:12px;font-weight:700;color:var(--gris-oscuro);display:block;margin-bottom:6px">Tipo de OT</label>
         <select id="editarOTTipo" style="width:100%;border:1.5px solid var(--gris-borde);border-radius:8px;padding:9px;font-size:14px;font-family:inherit">
@@ -6654,23 +6660,20 @@ async function confirmarImportacion(reemplazar) {
           <option value="guardia">🚨 Guardia</option>
         </select>
       </div>
-      <!-- Instalación -->
-      <div style="margin-bottom:12px;position:relative">
+      <div style="margin-bottom:12px">
         <label style="font-size:12px;font-weight:700;color:var(--gris-oscuro);display:block;margin-bottom:6px">Instalación</label>
         <input type="text" id="editarOTInstInput" placeholder="Buscar instalación..." oninput="editarOTBuscarInst(this.value)" autocomplete="off"
           style="width:100%;border:1.5px solid var(--gris-borde);border-radius:8px;padding:9px;font-size:14px;font-family:inherit;box-sizing:border-box">
         <input type="hidden" id="editarOTCodigo">
         <input type="hidden" id="editarOTNombreInst">
         <input type="hidden" id="editarOTProvincia">
-        <div id="editarOTInstDrop" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1.5px solid var(--azul);border-radius:0 0 8px 8px;z-index:300;max-height:180px;overflow-y:auto;box-shadow:0 4px 12px rgba(0,0,0,0.12)"></div>
+        <div id="editarOTInstDrop" style="display:none;background:#fff;border:1.5px solid var(--azul);border-radius:0 0 8px 8px;max-height:180px;overflow-y:auto;box-shadow:0 4px 12px rgba(0,0,0,0.12);margin-top:-2px"></div>
       </div>
-      <!-- Fecha -->
       <div style="margin-bottom:12px">
         <label style="font-size:12px;font-weight:700;color:var(--gris-oscuro);display:block;margin-bottom:6px">Fecha <span style="font-size:11px;color:var(--gris-medio);font-weight:400">(vacío = pendiente de agendar)</span></label>
         <input type="date" id="editarOTFecha" style="width:100%;border:1.5px solid var(--gris-borde);border-radius:8px;padding:9px;font-size:14px;font-family:inherit;box-sizing:border-box">
         <button onclick="document.getElementById('editarOTFecha').value=''" style="margin-top:4px;background:none;border:none;color:var(--gris-medio);font-size:11px;cursor:pointer;text-decoration:underline">✕ Quitar fecha</button>
       </div>
-      <!-- Asignado -->
       <div style="margin-bottom:12px">
         <label style="font-size:12px;font-weight:700;color:var(--gris-oscuro);display:block;margin-bottom:6px">Asignado a</label>
         <select id="editarOTAsignado" style="width:100%;border:1.5px solid var(--gris-borde);border-radius:8px;padding:9px;font-size:14px;font-family:inherit">
@@ -6679,7 +6682,6 @@ async function confirmarImportacion(reemplazar) {
           <option value="">Sin asignar</option>
         </select>
       </div>
-      <!-- Nota -->
       <div style="margin-bottom:20px">
         <label style="font-size:12px;font-weight:700;color:var(--gris-oscuro);display:block;margin-bottom:6px">Nota / Descripción</label>
         <textarea id="editarOTNota" rows="3" style="width:100%;border:1.5px solid var(--gris-borde);border-radius:8px;padding:9px;font-size:14px;font-family:inherit;box-sizing:border-box;resize:vertical"></textarea>
