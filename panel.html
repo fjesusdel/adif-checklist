@@ -5518,6 +5518,15 @@ function _generarHTMLParteOT({ ot, resumen, tecnico, fecha, horaIn, horaOut, fir
       </table></div>`
     : '';
 
+  const pausaHTML = (ot && ot.motivoPausa)
+    ? `<div style="margin-bottom:16px;background:#fffbeb;border:1.5px solid #f59e0b;border-radius:6px;padding:12px 14px">
+        <div style="font-size:12px;font-weight:800;color:#92400e;margin-bottom:6px">⏸ OT pausada durante la intervención</div>
+        <div style="font-size:12px;color:#92400e"><strong>Motivo:</strong> ${ot.motivoPausa}</div>
+        ${ot.fechaPausa ? `<div style="font-size:11px;color:#b45309;margin-top:3px">Fecha de pausa: ${new Date(ot.fechaPausa).toLocaleDateString('es-ES',{day:'2-digit',month:'2-digit',year:'numeric'})}</div>` : ''}
+        <div style="font-size:12px;color:#065f46;margin-top:6px;font-weight:700">✓ Reanudada y completada en visita posterior · ${fechaFmt}</div>
+      </div>`
+    : '';
+
   const firmaHTML = firma && firma !== 'data:,' && firma.length > 100
     ? `<div style="margin-top:20px;display:flex;justify-content:flex-end"><div style="text-align:center"><img src="${firma}" style="height:60px;border:1px dashed #ccc;border-radius:4px;padding:4px"><div style="font-size:9px;color:#6b7280;border-top:1px solid #9ca3af;padding-top:3px;margin-top:4px">Firma del técnico</div></div></div>`
     : '';
@@ -5545,6 +5554,7 @@ function _generarHTMLParteOT({ ot, resumen, tecnico, fecha, horaIn, horaOut, fir
       <div style="font-size:12px;font-weight:800;color:#003087;background:#e8eef8;padding:6px 12px;border-radius:4px;margin-bottom:8px">Trabajo realizado</div>
       <div style="font-size:13px;line-height:1.6;white-space:pre-wrap">${resumen}</div>
     </div>
+    ${pausaHTML}
     ${materialHTML}
     ${firmaHTML}
     <div style="margin-top:20px;padding-top:10px;border-top:1px solid #e5e7eb;display:flex;justify-content:space-between;font-size:10px;color:#9ca3af">
