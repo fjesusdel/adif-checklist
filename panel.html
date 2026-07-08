@@ -473,8 +473,9 @@ body.dark .item-card { background:#1e2433;border-color:#2d3548; }
     </div>
     <!-- Filtro abiertas/cerradas -->
     <div style="display:flex;gap:8px;margin-bottom:14px">
-      <button class="pill active" id="filtroAveriaAbiertas"   onclick="setFiltroAveria('abiertas')">Abiertas</button>
-      <button class="pill"        id="filtroAveriaCerradas"   onclick="setFiltroAveria('cerradas')">Cerradas</button>
+      <button class="pill active" id="filtroAveriaAbiertas"    onclick="setFiltroAveria('abiertas')">Abiertas</button>
+      <button class="pill"        id="filtroAveriaPendientes"  onclick="setFiltroAveria('pendientes')">⏳ Pte. aceptación</button>
+      <button class="pill"        id="filtroAveriaCerradas"    onclick="setFiltroAveria('cerradas')">Cerradas</button>
       <button class="pill"        id="filtroAveriaDescartadas" onclick="setFiltroAveria('descartadas')">Descartadas</button>
     </div>
     <div id="averiasListContainer"></div>
@@ -2346,6 +2347,7 @@ let averiaACerrarId             = null;
 function setFiltroAveria(f) {
   filtroAveriaActual = f;
   document.getElementById('filtroAveriaAbiertas').classList.toggle('active', f === 'abiertas');
+  document.getElementById('filtroAveriaPendientes').classList.toggle('active', f === 'pendientes');
   document.getElementById('filtroAveriaCerradas').classList.toggle('active', f === 'cerradas');
   document.getElementById('filtroAveriaDescartadas').classList.toggle('active', f === 'descartadas');
   renderAverias();
@@ -2356,7 +2358,7 @@ async function cargarAverias() {
   const data = await corelinkGet('/api/incidencias');
   if (!data) { document.getElementById('averiasListContainer').innerHTML = '<div class="empty-state">⚠ Sin conexión</div>'; return; }
   cacheIncidencias = data.incidencias;
-  actualizarBadge('averiasBadgeTab', Object.values(cacheIncidencias).filter(a => a.estado === 'abierta').length);
+  actualizarBadge('averiasBadgeTab', Object.values(cacheIncidencias).filter(a => a.estado === 'abierta' || a.estado === 'pendiente-aceptacion').length);
   renderAverias();
 }
 
@@ -2366,7 +2368,8 @@ function renderAverias() {
   const lista = Object.entries(cacheIncidencias || {})
     .filter(([id,a]) => {
       if (filtroAveriaActual === 'abiertas')    return a.estado === 'abierta';
-      if (filtroAveriaActual === 'cerradas')    return a.estado === 'resuelta';
+      if (filtroAveriaActual === 'pendientes')  return a.estado === 'pendiente-aceptacion';
+      if (filtroAveriaActual === 'cerradas')    return a.estado === 'resuelta' || a.estado === 'cerrada';
       if (filtroAveriaActual === 'descartadas') return a.estado === 'descartada';
       return false;
     })
