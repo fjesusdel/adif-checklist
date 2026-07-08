@@ -3580,7 +3580,8 @@ function renderContactosFiltrados() {
   const cont = document.getElementById('contactosListContainer');
   if (!cacheContactos) return;
   const filtroProv  = document.getElementById('contactoFiltroProvincia')?.value || '';
-  const query       = (document.getElementById('contactoBuscador')?.value || '').trim().toLowerCase().replace(/\s*\/\s*/g, ' ');
+  const query = (document.getElementById('contactoBuscador')?.value || '').trim()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/\s*\/\s*/g, ' ');
 
   if (Object.keys(cacheContactos).length === 0) {
     cont.innerHTML = '<div class="empty-state">Sin contactos todavía.</div>';
@@ -3601,7 +3602,7 @@ function renderContactosFiltrados() {
     todos = todos.filter(c => {
       const haystack = [
         c.nombre, c._prov, c.telefono, c.email, c.horarios, c.notas
-      ].join(' ').toLowerCase().replace(/\s*\/\s*/g, ' ');
+      ].join(' ').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/\s*\/\s*/g, ' ');
       return haystack.includes(query);
     });
   }
