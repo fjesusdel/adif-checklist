@@ -1105,6 +1105,10 @@ header {
     <div id="inicioAverias"><div class="empty-state">Cargando...</div></div>
   </div>
   <div class="card" style="margin-bottom:10px">
+    <div class="card-title">📋 Estado de OT</div>
+    <div id="inicioEstadoOT"><div class="empty-state">Cargando...</div></div>
+  </div>
+  <div class="card" style="margin-bottom:10px">
     <div class="card-title">📦 Stock bajo en furgón</div>
     <div id="inicioStockBajo"><div class="empty-state">Cargando...</div></div>
   </div>
@@ -4783,7 +4787,36 @@ async function cargarInicio() {
       actualizarBadge('stockBadgeTab', bajos.length);
     }
 
-    // Contador mes
+    // Estado de OT (solo las de Jesús)
+    const miNombre = sesionPNT ? sesionPNT.nombre : '';
+    const todasOT  = Object.values(agendaData.tareas || {}).filter(t => t.asignadoA === 'jesus');
+    const otAbiertas = todasOT.filter(t => t.estado === 'pendiente' || t.estado === 'en_curso');
+    const otPausadas = todasOT.filter(t => t.estado === 'parada');
+    const otCompHoy  = todasOT.filter(t => t.estado === 'completada' && (t.fechaCompletada||'').startsWith(hoy));
+    const otEl = document.getElementById('inicioEstadoOT');
+    if (otEl) {
+      otEl.innerHTML = `
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;text-align:center">
+          <div style="background:#eff6ff;border-radius:8px;padding:10px;border-top:3px solid var(--azul)">
+            <div style="font-size:24px;font-weight:900;color:var(--azul)">${otAbiertas.length}</div>
+            <div style="font-size:11px;color:var(--gris-medio);font-weight:600;text-transform:uppercase;margin-top:2px">Abiertas</div>
+          </div>
+          <div style="background:${otPausadas.length>0?'#fffbeb':'#f9fafb'};border-radius:8px;padding:10px;border-top:3px solid ${otPausadas.length>0?'#f59e0b':'#e5e7eb'}">
+            <div style="font-size:24px;font-weight:900;color:${otPausadas.length>0?'#92400e':'var(--gris-medio)'}">${otPausadas.length}</div>
+            <div style="font-size:11px;color:var(--gris-medio);font-weight:600;text-transform:uppercase;margin-top:2px">Pausadas</div>
+          </div>
+          <div style="background:#f0fdf4;border-radius:8px;padding:10px;border-top:3px solid var(--verde)">
+            <div style="font-size:24px;font-weight:900;color:var(--verde)">${otCompHoy.length}</div>
+            <div style="font-size:11px;color:var(--gris-medio);font-weight:600;text-transform:uppercase;margin-top:2px">Completadas hoy</div>
+          </div>
+        </div>
+        ${otPausadas.length>0 ? `<div style="margin-top:8px">${otPausadas.slice(0,2).map(t =>
+          `<div style="font-size:12px;padding:5px 0;border-bottom:0.5px solid var(--gris-borde)">
+            <span style="font-weight:700;color:#92400e">⏸</span>
+            <span style="font-weight:600;margin-left:4px">${t.nombreInstalacion||'OT'}</span>
+            ${t.motivoPausa?`<span style="color:var(--gris-medio);font-size:11px"> · ${t.motivoPausa.slice(0,40)}</span>`:''}
+          </div>`).join('')}</div>` : ''}`;
+    }
     const mesActual = hoy.slice(0,7);
     const visitasMes = Object.values(checkData.checklists || {}).filter(c => c.fecha && c.fecha.startsWith(mesActual) && c.tecnico === sesionPNT?.nombre);
     const mesEl = document.getElementById('inicioContadorMes');
@@ -4800,7 +4833,7 @@ async function cargarInicio() {
       </div>`;
 
   } catch(e) {
-    ['inicioAgendaHoy','inicioAverias','inicioStockBajo','inicioContadorMes'].forEach(id => {
+    ['inicioAgendaHoy','inicioAverias','inicioEstadoOT','inicioStockBajo','inicioContadorMes'].forEach(id => {
       const el = document.getElementById(id);
       if (el) el.innerHTML = '<div class="empty-state">Sin conexión</div>';
     });
@@ -5435,6 +5468,7 @@ function pntSelDia(dia) {
         + '<div class="agenda-inst-nombre">'+(t.nombreInstalacion||t.codigoInstalacion||'Sin instalaci\u00f3n')+'</div>'
         + (t.nota?'<div class="agenda-nota">\u2192 '+t.nota+'</div>':'')
         + (esParada&&t.motivoPausa?'<div style="font-size:11px;color:#92400e;background:#fef3c7;border-radius:5px;padding:5px 8px;margin-top:4px">\u23f8 '+t.motivoPausa+'</div>':'')
+        + (t.contactoAvisar?'<div style="font-size:11px;color:#065f46;background:#d1fae5;border-radius:5px;padding:5px 8px;margin-top:4px">\ud83d\udcde Avisar a: <strong>'+t.contactoAvisar.nombre+'</strong>'+(t.contactoAvisar.telefono?' \u00b7 <a href="tel:'+t.contactoAvisar.telefono+'" style="color:#065f46;font-weight:700">'+t.contactoAvisar.telefono+'</a>':'')+'</div>':'')
         + '<div class="agenda-tarea-btns">'+btns+'</div>'
         + '</div>';
     }).join('');

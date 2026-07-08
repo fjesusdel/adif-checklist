@@ -1600,18 +1600,35 @@ async function cargarResumen() {
   const materiales = Object.values(stock.materiales || {});
   const bajoMinimo = materiales.filter(m => m.furgon <= m.minimoFurgon).length;
 
+  // OT por estado
+  const otAbiertas   = Object.values(agenda).filter(t => t.estado === 'pendiente' || t.estado === 'en_curso');
+  const otPausadas   = Object.values(agenda).filter(t => t.estado === 'parada');
+  const otHoy        = Object.values(agenda).filter(t => t.fecha === hoyStr && t.estado === 'completada');
+
   statGrid.innerHTML = `
-    <div class="stat-box ${abiertas.length>0?'warn':'ok'}">
+    <div class="stat-box ${abiertas.length>0?'warn':'ok'}" style="cursor:pointer" onclick="cambiarSeccion('averias')">
       <div class="stat-num">${abiertas.length}${criticas.length>0?` <span style="font-size:16px;color:var(--rojo)">(${criticas.length}🔴)</span>`:''}</div>
       <div class="stat-label">Averías abiertas</div>
     </div>
-    <div class="stat-box ${tareasPendientesHoy.length>0?'warn':'ok'}">
+    <div class="stat-box ${tareasPendientesHoy.length>0?'warn':'ok'}" style="cursor:pointer" onclick="cambiarSeccion('agenda')">
       <div class="stat-num">${tareasPendientesHoy.length}</div>
       <div class="stat-label">Tareas pendientes hoy</div>
     </div>
-    <div class="stat-box ${bajoMinimo>0?'critical':'ok'}">
+    <div class="stat-box ${bajoMinimo>0?'critical':'ok'}" style="cursor:pointer" onclick="cambiarSeccion('stock')">
       <div class="stat-num">${bajoMinimo}</div>
       <div class="stat-label">Materiales bajo mínimo</div>
+    </div>
+    <div class="stat-box info" style="cursor:pointer;border-top:3px solid var(--azul)" onclick="cambiarSeccion('agenda')">
+      <div class="stat-num">${otAbiertas.length}</div>
+      <div class="stat-label">OT abiertas</div>
+    </div>
+    <div class="stat-box ${otPausadas.length>0?'warn':'ok'}" style="cursor:pointer;${otPausadas.length>0?'border-top:3px solid #f59e0b':''}" onclick="cambiarSeccion('agenda')">
+      <div class="stat-num">${otPausadas.length}</div>
+      <div class="stat-label">OT pausadas</div>
+    </div>
+    <div class="stat-box ok" style="cursor:pointer;border-top:3px solid var(--verde)" onclick="cambiarSeccion('agenda')">
+      <div class="stat-num">${otHoy.length}</div>
+      <div class="stat-label">OT completadas hoy</div>
     </div>
   `;
 
