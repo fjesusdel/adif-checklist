@@ -323,7 +323,7 @@ body.dark .item-card { background:#1e2433;border-color:#2d3548; }
   <button class="nav-tab"        id="tabAverias"       onclick="cambiarSeccion('averias')">⚠ Averías<span id="averiasBadgeTab" class="nav-tab-badge hidden">0</span></button>
   <button class="nav-tab"        id="tabAgenda"        onclick="cambiarSeccion('agenda')">📅 Planificación<span id="agendaBadgeTab" class="nav-tab-badge hidden">0</span></button>
   <button class="nav-tab"        id="tabStock"         onclick="cambiarSeccion('stock')">📦 Stock<span id="stockBadgeTab" class="nav-tab-badge hidden">0</span></button>
-  <button class="nav-tab"        id="tabNotas"         onclick="cambiarSeccion('notas')">📝 Notas<span id="notasBadgeTab" class="nav-tab-badge hidden">0</span></button>
+  <button class="nav-tab"        id="tabNotas"         onclick="cambiarSeccion('notas')">📅 Agenda Personal<span id="notasBadgeTab" class="nav-tab-badge hidden">0</span></button>
   <button class="nav-tab"        id="tabContactos"     onclick="cambiarSeccion('contactos')">📞 Contactos</button>
   <button class="nav-tab"        id="tabMensajes"      onclick="cambiarSeccion('mensajes')">💬 Mensajes LIVE<span id="mensajesBadgeTab" class="nav-tab-badge hidden">0</span></button>
   <button class="nav-tab"        id="tabHoras"         onclick="cambiarSeccion('horas')">⏱ Horas</button>
@@ -663,15 +663,121 @@ body.dark .item-card { background:#1e2433;border-color:#2d3548; }
 <!-- ════════════════════════════════════════════════ -->
 <div id="seccionNotas" class="container hidden">
   <div class="card">
-    <div class="card-title">📝 Notas y recordatorios</div>
-    <div class="form-flotante" style="margin-bottom:14px">
-      <div class="ficha-field" style="margin-bottom:10px"><label>Nota</label><textarea id="notaTexto" rows="2" placeholder="Ej: Llamar para confirmar protocolo..."></textarea></div>
-      <div class="ficha-field" style="margin-bottom:10px"><label>Fecha (opcional)</label><input type="date" id="notaFecha"></div>
-      <button class="btn-primary" onclick="guardarNuevaNota()">+ Añadir nota</button>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px">
+      <div class="card-title" style="margin-bottom:0">📅 Agenda Personal</div>
+      <div style="display:flex;gap:8px">
+        <button class="pill active" id="notasTabPendientes"  onclick="setTabNotas('pendientes')">Pendientes</button>
+        <button class="pill"        id="notasTabRealizadas"  onclick="setTabNotas('realizadas')">Realizadas</button>
+        <button class="pill"        id="notasTabCalendario"  onclick="setTabNotas('calendario')">📅 Calendario</button>
+      </div>
     </div>
-    <div id="notasListContainer"></div>
+
+    <!-- Formulario nueva nota -->
+    <div id="notasFormNueva" class="form-flotante" style="margin-bottom:14px">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;font-weight:700;color:#c0392b">
+          <input type="checkbox" id="notaUrgente" style="width:16px;height:16px;accent-color:#c0392b"> 🚨 Urgente
+        </label>
+      </div>
+      <div class="ficha-field" style="margin-bottom:10px"><label>Tarea / Recordatorio</label><textarea id="notaTexto" rows="2" placeholder="Ej: Llamar a Antonio Jesús para confirmar la visita..."></textarea></div>
+      <div class="ficha-field" style="margin-bottom:10px"><label>Fecha (opcional)</label><input type="date" id="notaFecha"></div>
+      <div class="ficha-field" style="margin-bottom:10px">
+        <label>📞 Contacto (opcional)</label>
+        <input type="text" id="notaContactoNombre" placeholder="Buscar o escribir nombre..." oninput="buscarContactoOT(this.value,'notaContactoDrop')" autocomplete="off"
+          style="width:100%;border:1.5px solid var(--gris-borde);border-radius:7px;padding:9px 11px;font-size:13px;font-family:inherit;margin-bottom:4px">
+        <div id="notaContactoDrop" style="display:none;background:#fff;border:1.5px solid var(--azul);border-radius:0 0 8px 8px;max-height:160px;overflow-y:auto;box-shadow:0 4px 8px rgba(0,0,0,0.1)"></div>
+        <input type="text" id="notaContactoTel" placeholder="Teléfono (opcional)"
+          style="width:100%;border:1.5px solid var(--gris-borde);border-radius:7px;padding:9px 11px;font-size:13px;font-family:inherit;margin-top:4px">
+      </div>
+      <div class="ficha-field" style="margin-bottom:10px">
+        <label>📍 Instalación (opcional)</label>
+        <input type="text" id="notaInstInput" placeholder="Buscar instalación..." oninput="notaBuscarInst(this.value)" autocomplete="off"
+          style="width:100%;border:1.5px solid var(--gris-borde);border-radius:7px;padding:9px 11px;font-size:13px;font-family:inherit">
+        <input type="hidden" id="notaInstCodigo">
+        <input type="hidden" id="notaInstNombre">
+        <div id="notaInstDrop" style="display:none;background:#fff;border:1.5px solid var(--azul);border-radius:0 0 8px 8px;max-height:160px;overflow-y:auto;box-shadow:0 4px 8px rgba(0,0,0,0.1)"></div>
+      </div>
+      <button class="btn-primary" onclick="guardarNuevaNota()">+ Añadir tarea</button>
+    </div>
+
+    <!-- Lista pendientes -->
+    <div id="notasVistaPendientes">
+      <div id="notasListContainer"></div>
+    </div>
+
+    <!-- Lista realizadas -->
+    <div id="notasVistaRealizadas" class="hidden">
+      <div id="notasListRealizadas"></div>
+    </div>
+
+    <!-- Calendario -->
+    <div id="notasVistaCalendario" class="hidden">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <button onclick="notasCalMes(-1)" style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--azul);padding:4px 8px">‹</button>
+        <span id="notasCalTitulo" style="font-size:15px;font-weight:800;color:var(--azul)"></span>
+        <button onclick="notasCalMes(+1)" style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--azul);padding:4px 8px">›</button>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:8px;text-align:center">
+        <div style="font-size:10px;font-weight:700;color:var(--gris-medio)">L</div>
+        <div style="font-size:10px;font-weight:700;color:var(--gris-medio)">M</div>
+        <div style="font-size:10px;font-weight:700;color:var(--gris-medio)">X</div>
+        <div style="font-size:10px;font-weight:700;color:var(--gris-medio)">J</div>
+        <div style="font-size:10px;font-weight:700;color:var(--gris-medio)">V</div>
+        <div style="font-size:10px;font-weight:700;color:var(--gris-medio)">S</div>
+        <div style="font-size:10px;font-weight:700;color:var(--gris-medio)">D</div>
+      </div>
+      <div id="notasCalGrid" style="display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:12px"></div>
+      <div id="notasCalDia" class="hidden" style="border-top:2px solid var(--azul);padding-top:12px"></div>
+    </div>
   </div>
 </div>
+
+<!-- MODAL EDITAR NOTA -->
+<div id="modalEditarNota" style="display:none;position:fixed;inset:0;z-index:9000;background:rgba(0,0,0,0.65);align-items:flex-start;justify-content:center;padding:20px;overflow-y:auto">
+  <div style="background:#fff;border-radius:12px;max-width:480px;width:100%;margin:20px auto">
+    <div style="background:var(--azul);padding:14px 20px;display:flex;justify-content:space-between;align-items:center;border-radius:12px 12px 0 0">
+      <div style="color:#fff;font-size:15px;font-weight:800">✏ Editar tarea</div>
+      <button onclick="cerrarModalEditarNota()" style="background:rgba(255,255,255,0.15);color:#fff;border:none;border-radius:7px;padding:5px 12px;font-size:13px;cursor:pointer">✕</button>
+    </div>
+    <div style="padding:20px">
+      <input type="hidden" id="editNotaId">
+      <div style="margin-bottom:12px">
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;font-weight:700;color:#c0392b">
+          <input type="checkbox" id="editNotaUrgente" style="width:16px;height:16px;accent-color:#c0392b"> 🚨 Urgente
+        </label>
+      </div>
+      <div style="margin-bottom:12px">
+        <label style="font-size:12px;font-weight:700;color:var(--gris-oscuro);display:block;margin-bottom:6px">Tarea / Recordatorio</label>
+        <textarea id="editNotaTexto" rows="3" style="width:100%;border:1.5px solid var(--gris-borde);border-radius:8px;padding:9px;font-size:14px;font-family:inherit;box-sizing:border-box;resize:vertical"></textarea>
+      </div>
+      <div style="margin-bottom:12px">
+        <label style="font-size:12px;font-weight:700;color:var(--gris-oscuro);display:block;margin-bottom:6px">Fecha (opcional)</label>
+        <input type="date" id="editNotaFecha" style="width:100%;border:1.5px solid var(--gris-borde);border-radius:8px;padding:9px;font-size:14px;font-family:inherit;box-sizing:border-box">
+      </div>
+      <div style="margin-bottom:12px">
+        <label style="font-size:12px;font-weight:700;color:var(--gris-oscuro);display:block;margin-bottom:6px">📞 Contacto (opcional)</label>
+        <input type="text" id="editNotaContactoNombre" placeholder="Buscar o escribir nombre..." oninput="buscarContactoOT(this.value,'editNotaContactoDrop')" autocomplete="off"
+          style="width:100%;border:1.5px solid var(--gris-borde);border-radius:8px;padding:9px;font-size:14px;font-family:inherit;box-sizing:border-box;margin-bottom:4px">
+        <div id="editNotaContactoDrop" style="display:none;background:#fff;border:1.5px solid var(--azul);border-radius:0 0 8px 8px;max-height:160px;overflow-y:auto;box-shadow:0 4px 8px rgba(0,0,0,0.1)"></div>
+        <input type="text" id="editNotaContactoTel" placeholder="Teléfono (opcional)"
+          style="width:100%;border:1.5px solid var(--gris-borde);border-radius:8px;padding:9px;font-size:14px;font-family:inherit;box-sizing:border-box;margin-top:4px">
+      </div>
+      <div style="margin-bottom:20px">
+        <label style="font-size:12px;font-weight:700;color:var(--gris-oscuro);display:block;margin-bottom:6px">📍 Instalación (opcional)</label>
+        <input type="text" id="editNotaInstInput" placeholder="Buscar instalación..." oninput="editNotaBuscarInst(this.value)" autocomplete="off"
+          style="width:100%;border:1.5px solid var(--gris-borde);border-radius:8px;padding:9px;font-size:14px;font-family:inherit;box-sizing:border-box">
+        <input type="hidden" id="editNotaInstCodigo">
+        <input type="hidden" id="editNotaInstNombre">
+        <div id="editNotaInstDrop" style="display:none;background:#fff;border:1.5px solid var(--azul);border-radius:0 0 8px 8px;max-height:160px;overflow-y:auto;box-shadow:0 4px 8px rgba(0,0,0,0.1)"></div>
+      </div>
+      <div style="display:flex;gap:10px">
+        <button onclick="cerrarModalEditarNota()" style="flex:1;padding:10px;background:#f3f4f6;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer">Cancelar</button>
+        <button onclick="confirmarEditarNota()" style="flex:2;padding:10px;background:var(--azul);color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer">✓ Guardar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 
 <!-- ════════════════════════════════════════════════ -->
 <!-- STOCK                                            -->
@@ -3057,43 +3163,248 @@ async function guardarEdicionAveria() {
 // NOTAS
 // ═══════════════════════════════════════════════════════════════════════
 async function cargarNotas() {
-  const cont = document.getElementById('notasListContainer');
-  cont.innerHTML = '<div class="empty-state">Cargando...</div>';
+  if (!cacheContactos) cargarContactos();
   const data = await corelinkGet('/api/notas');
-  if (!data) { cont.innerHTML = '<div class="empty-state">⚠ Sin conexión</div>'; return; }
-  const notas = data.notas;
-  actualizarBadge('notasBadgeTab', Object.values(notas).filter(n=>!n.hecha).length);
-  const entradas = Object.entries(notas).sort((a,b) => { if(a[1].hecha!==b[1].hecha)return a[1].hecha?1:-1; return new Date(b[1].creada)-new Date(a[1].creada); });
-  if (entradas.length===0) { cont.innerHTML='<div class="empty-state">Sin notas todavía</div>'; return; }
-  cont.innerHTML = entradas.map(([id,n]) => `
-    <div class="item-card nota-card ${n.hecha?'hecha':''}">
-      <div class="item-card-titulo" style="${n.hecha?'text-decoration:line-through':''}">${n.texto}</div>
-      ${n.fecha?`<div class="item-card-meta">📅 ${new Date(n.fecha+'T12:00:00').toLocaleDateString('es-ES')}</div>`:''}
-      <div class="item-card-btns">
-        <button class="btn-mini ${n.hecha?'activo':''}" onclick="toggleNota('${id}',${!n.hecha})">${n.hecha?'↺ Reabrir':'✓ Hecha'}</button>
-        <button class="btn-mini rojo" onclick="borrarNota('${id}')">🗑 Borrar</button>
-      </div>
-    </div>
-  `).join('');
+  if (!data) return;
+  cacheNotas = data.notas || {};
+  actualizarBadge('notasBadgeTab', Object.values(cacheNotas).filter(n => !n.hecha).length);
+  renderNotas();
 }
+
+function setTabNotas(tab) {
+  notasTabActual = tab;
+  document.getElementById('notasTabPendientes').classList.toggle('active', tab === 'pendientes');
+  document.getElementById('notasTabRealizadas').classList.toggle('active', tab === 'realizadas');
+  document.getElementById('notasTabCalendario').classList.toggle('active', tab === 'calendario');
+  document.getElementById('notasVistaPendientes').classList.toggle('hidden', tab !== 'pendientes');
+  document.getElementById('notasVistaRealizadas').classList.toggle('hidden', tab !== 'realizadas');
+  document.getElementById('notasVistaCalendario').classList.toggle('hidden', tab !== 'calendario');
+  document.getElementById('notasFormNueva').classList.toggle('hidden', tab === 'calendario');
+  if (tab === 'calendario') renderNotasCalendario();
+  else renderNotas();
+}
+
+function renderNotaTarjeta(id, n) {
+  const esUrgente = !!n.urgente;
+  const fechaStr = n.fecha ? new Date(n.fecha+'T12:00:00').toLocaleDateString('es-ES') : '';
+  return '<div class="item-card" style="'+(esUrgente?'border-left:4px solid #c0392b;background:#fff5f5':'')+'">'+
+    '<div style="display:flex;justify-content:space-between;align-items:flex-start">'+
+    '<div style="flex:1">'+
+    (esUrgente?'<span style="font-size:11px;font-weight:800;background:#fee2e2;color:#c0392b;padding:2px 8px;border-radius:99px;margin-bottom:6px;display:inline-block">🚨 URGENTE</span><br>':'')+
+    '<div class="item-card-titulo" style="'+(n.hecha?'text-decoration:line-through;color:var(--gris-medio)':'')+'">'+n.texto+'</div>'+
+    (fechaStr?'<div class="item-card-meta">📅 '+fechaStr+'</div>':'')+
+    (n.contacto?'<div class="item-card-meta" style="color:#065f46;background:#d1fae5;border-radius:5px;padding:4px 8px;margin-top:4px">📞 '+n.contacto.nombre+(n.contacto.telefono?' · <a href="tel:'+n.contacto.telefono+'" style="color:#065f46;font-weight:700">'+n.contacto.telefono+'</a>':'')+'</div>':'')+
+    (n.instalacion?'<div class="item-card-meta" style="color:#003087;background:#eff6ff;border-radius:5px;padding:4px 8px;margin-top:4px">📍 '+n.instalacion.nombre+(n.instalacion.codigo?' <span style=\"font-size:11px;color:var(--gris-medio)\">('+n.instalacion.codigo+')</span>':'')+'</div>':'')+
+    '</div></div>'+
+    '<div class="item-card-btns">'+
+    (n.hecha
+      ? '<button class="btn-mini" onclick="toggleNota(\''+id+'\',false)">↺ Reabrir</button>'
+      : '<button class="btn-mini verde" onclick="toggleNota(\''+id+'\',true)">✓ Hecha</button>'+
+        '<button class="btn-mini" onclick="abrirEditarNota(\''+id+'\')">✏ Editar</button>'
+    )+
+    '<button class="btn-mini rojo" onclick="borrarNota(\''+id+'\')">🗑 Borrar</button>'+
+    '</div></div>';
+}
+
+function renderNotas() {
+  if (!cacheNotas) return;
+  const pendientes = [];
+  const realizadas = [];
+  Object.entries(cacheNotas).forEach(function([id, n]) {
+    if (n.hecha) realizadas.push([id, n]);
+    else pendientes.push([id, n]);
+  });
+  // Orden pendientes: urgentes sin fecha → urgentes con fecha → sin fecha → con fecha
+  pendientes.sort(function(a, b) {
+    const [,na] = a; const [,nb] = b;
+    if (nb.urgente && !na.urgente) return 1;
+    if (na.urgente && !nb.urgente) return -1;
+    if (!na.fecha && nb.fecha) return -1;
+    if (na.fecha && !nb.fecha) return 1;
+    if (na.fecha && nb.fecha) return na.fecha < nb.fecha ? -1 : 1;
+    return 0;
+  });
+  realizadas.sort(function(a, b) { return new Date(b[1].creada) - new Date(a[1].creada); });
+
+  const contP = document.getElementById('notasListContainer');
+  if (contP) {
+    contP.innerHTML = pendientes.length === 0
+      ? '<div class="empty-state">✓ No hay tareas pendientes</div>'
+      : pendientes.map(function([id,n]){ return renderNotaTarjeta(id, n); }).join('');
+  }
+  const contR = document.getElementById('notasListRealizadas');
+  if (contR) {
+    contR.innerHTML = realizadas.length === 0
+      ? '<div class="empty-state">Sin tareas realizadas todavía</div>'
+      : realizadas.map(function([id,n]){ return renderNotaTarjeta(id, n); }).join('');
+  }
+  if (notasTabActual === 'calendario') renderNotasCalendario();
+}
+
 async function guardarNuevaNota() {
   const texto = document.getElementById('notaTexto').value.trim();
-  if (!texto) { toast('Escribe el texto de la nota'); return; }
-  const fecha = document.getElementById('notaFecha').value||null;
-  toast('Guardando nota...');
-  const resp = await corelinkPost('/api/notas',{texto,fecha});
-  if (resp.ok) { toast('Nota añadida ✓'); document.getElementById('notaTexto').value=''; document.getElementById('notaFecha').value=''; cargarNotas(); }
-  else { toast('Sin conexión'); }
+  if (!texto) { toast('Escribe el texto de la tarea'); return; }
+  const fecha      = document.getElementById('notaFecha').value || null;
+  const urgente    = document.getElementById('notaUrgente').checked;
+  const ctcNombre  = (document.getElementById('notaContactoNombre')||{value:''}).value.trim();
+  const ctcTel     = (document.getElementById('notaContactoTel')||{value:''}).value.trim();
+  const instCodigo = (document.getElementById('notaInstCodigo')||{value:''}).value.trim();
+  const instNombre = (document.getElementById('notaInstNombre')||{value:''}).value.trim() || (document.getElementById('notaInstInput')||{value:''}).value.trim();
+  const contacto   = ctcNombre ? { nombre: ctcNombre, telefono: ctcTel } : null;
+  const instalacion = instCodigo ? { codigo: instCodigo, nombre: instNombre } : null;
+  const resp = await corelinkPost('/api/notas', { texto, fecha, urgente, contacto, instalacion });
+  if (resp && resp.ok) {
+    toast('Tarea añadida ✓');
+    document.getElementById('notaTexto').value = '';
+    document.getElementById('notaFecha').value = '';
+    document.getElementById('notaUrgente').checked = false;
+    ['notaContactoNombre','notaContactoTel','notaInstInput','notaInstCodigo','notaInstNombre'].forEach(function(id) {
+      var el = document.getElementById(id); if (el) el.value = '';
+    });
+    cargarNotas();
+  } else { toast('Sin conexión'); }
 }
+
 async function toggleNota(id, nuevoHecha) {
-  const resp = await corelinkPost('/api/notas/estado',{id,accion:nuevoHecha?'marcar':'desmarcar'});
-  if (resp.ok) cargarNotas(); else toast('Sin conexión');
+  const resp = await corelinkPost('/api/notas/estado', { id, accion: nuevoHecha ? 'marcar' : 'desmarcar' });
+  if (resp && resp.ok) { cacheNotas = null; cargarNotas(); } else { toast('Sin conexión'); }
 }
+
 async function borrarNota(id) {
-  if (!confirm('¿Borrar esta nota?')) return;
-  const resp = await corelinkPost('/api/notas/estado',{id,accion:'borrar'});
-  if (resp.ok) { toast('Nota borrada ✓'); cargarNotas(); } else { toast('Sin conexión'); }
+  if (!confirm('¿Borrar esta tarea?')) return;
+  const resp = await corelinkPost('/api/notas/estado', { id, accion: 'borrar' });
+  if (resp && resp.ok) { toast('Tarea borrada ✓'); cacheNotas = null; cargarNotas(); } else { toast('Sin conexión'); }
 }
+
+function abrirEditarNota(id) {
+  if (!cacheContactos) cargarContactos();
+  const n = cacheNotas[id];
+  if (!n) return;
+  document.getElementById('editNotaId').value          = id;
+  document.getElementById('editNotaTexto').value       = n.texto || '';
+  document.getElementById('editNotaFecha').value       = n.fecha || '';
+  document.getElementById('editNotaUrgente').checked   = !!n.urgente;
+  document.getElementById('editNotaContactoNombre').value = (n.contacto && n.contacto.nombre) ? n.contacto.nombre : '';
+  document.getElementById('editNotaContactoTel').value    = (n.contacto && n.contacto.telefono) ? n.contacto.telefono : '';
+  document.getElementById('editNotaInstInput').value      = (n.instalacion && n.instalacion.nombre) ? n.instalacion.nombre : '';
+  document.getElementById('editNotaInstCodigo').value     = (n.instalacion && n.instalacion.codigo) ? n.instalacion.codigo : '';
+  document.getElementById('editNotaInstNombre').value     = (n.instalacion && n.instalacion.nombre) ? n.instalacion.nombre : '';
+  document.getElementById('editNotaContactoDrop').style.display = 'none';
+  document.getElementById('editNotaInstDrop').style.display     = 'none';
+  document.getElementById('modalEditarNota').style.display = 'flex';
+}
+
+function cerrarModalEditarNota() {
+  document.getElementById('modalEditarNota').style.display = 'none';
+}
+
+async function confirmarEditarNota() {
+  const id         = document.getElementById('editNotaId').value;
+  const texto      = document.getElementById('editNotaTexto').value.trim();
+  const fecha      = document.getElementById('editNotaFecha').value || null;
+  const urgente    = document.getElementById('editNotaUrgente').checked;
+  const ctcNombre  = document.getElementById('editNotaContactoNombre').value.trim();
+  const ctcTel     = document.getElementById('editNotaContactoTel').value.trim();
+  const instCodigo = document.getElementById('editNotaInstCodigo').value.trim();
+  const instNombre = document.getElementById('editNotaInstNombre').value.trim() || document.getElementById('editNotaInstInput').value.trim();
+  if (!texto) { toast('El texto no puede estar vacío'); return; }
+  const resp = await corelinkPost('/api/notas/editar', {
+    id, texto, fecha, urgente,
+    contacto:    ctcNombre ? { nombre: ctcNombre, telefono: ctcTel } : null,
+    instalacion: instCodigo ? { codigo: instCodigo, nombre: instNombre } : null
+  });
+  if (resp && resp.ok) {
+    toast('Tarea actualizada ✓');
+    cerrarModalEditarNota();
+    cacheNotas = null;
+    cargarNotas();
+  } else { toast('Error al guardar'); }
+}
+
+function editNotaBuscarInst(q) {
+  const drop = document.getElementById('editNotaInstDrop');
+  const norm = q.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+  if (norm.length < 2) { drop.style.display = 'none'; return; }
+  const res = INSTALACIONES.filter(function(i) {
+    return i.nombre.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().includes(norm) || i.codigo.toLowerCase().includes(norm);
+  }).slice(0, 8);
+  if (!res.length) { drop.style.display = 'none'; return; }
+  drop.innerHTML = res.map(function(i) {
+    var n2 = i.nombre.replace(/"/g,'&quot;');
+    return '<div onclick="editNotaSelInst(&quot;'+i.codigo+'&quot;,&quot;'+n2+'&quot;)" '
+      + 'style="padding:8px 12px;cursor:pointer;font-size:13px;border-bottom:0.5px solid #e5e7eb" '
+      + 'onmouseover="this.style.background=\'#eff6ff\'" onmouseout="this.style.background=\'\'">'
+      + '<strong>' + i.codigo + '</strong> — ' + i.nombre + '</div>';
+  }).join('');
+  drop.style.display = 'block';
+}
+
+function editNotaSelInst(codigo, nombre) {
+  document.getElementById('editNotaInstCodigo').value = codigo;
+  document.getElementById('editNotaInstNombre').value = nombre;
+  document.getElementById('editNotaInstInput').value  = nombre;
+  document.getElementById('editNotaInstDrop').style.display = 'none';
+}
+
+// ── Calendario de Agenda Personal ────────────────────────────────────
+let notasCalMesActual = new Date().getMonth();
+let notasCalAnio      = new Date().getFullYear();
+
+function notasCalMes(delta) {
+  notasCalMesActual += delta;
+  if (notasCalMesActual > 11) { notasCalMesActual = 0; notasCalAnio++; }
+  if (notasCalMesActual < 0)  { notasCalMesActual = 11; notasCalAnio--; }
+  renderNotasCalendario();
+}
+
+function renderNotasCalendario() {
+  const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  const titulo = document.getElementById('notasCalTitulo');
+  if (titulo) titulo.textContent = MESES[notasCalMesActual] + ' ' + notasCalAnio;
+  const grid = document.getElementById('notasCalGrid');
+  if (!grid) return;
+  const notas = cacheNotas || {};
+  const hoy   = new Date().toISOString().split('T')[0];
+  const primer = new Date(notasCalAnio, notasCalMesActual, 1);
+  const diasMes = new Date(notasCalAnio, notasCalMesActual + 1, 0).getDate();
+  const diaInicio = (primer.getDay() + 6) % 7; // Lunes=0
+  let html = '';
+  for (let i = 0; i < diaInicio; i++) html += '<div></div>';
+  for (let d = 1; d <= diasMes; d++) {
+    const fechaStr = notasCalAnio + '-' + String(notasCalMesActual+1).padStart(2,'0') + '-' + String(d).padStart(2,'0');
+    const notasDia = Object.entries(notas).filter(function([,n]) { return !n.hecha && n.fecha === fechaStr; });
+    const esHoy = fechaStr === hoy;
+    const tieneUrgente = notasDia.some(function([,n]) { return n.urgente; });
+    html += '<div onclick="notasCalVerDia(\''+fechaStr+'\')" style="min-height:60px;max-height:110px;overflow:hidden;border:1px solid '+(esHoy?'var(--azul)':'#e5e7eb')+';border-radius:6px;padding:3px;cursor:'+(notasDia.length>0||true?'pointer':'default')+';background:'+(esHoy?'#eff6ff':'#fff')+'">'+
+      '<div style="font-size:11px;font-weight:'+(esHoy?'900':'600')+';color:'+(esHoy?'var(--azul)':'var(--gris-oscuro)')+';margin-bottom:2px">'+d+'</div>'+
+      notasDia.slice(0,3).map(function([,n]) {
+        return '<div style="font-size:9px;background:'+(n.urgente?'#fee2e2':'#eff6ff')+';color:'+(n.urgente?'#c0392b':'var(--azul)')+';border-radius:2px;padding:1px 3px;margin-bottom:1px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;word-break:break-word;line-height:1.3">'+(n.urgente?'🚨 ':'')+n.texto+'</div>';
+      }).join('')+
+      (notasDia.length > 3 ? '<div style="font-size:9px;color:var(--gris-medio)">+' + (notasDia.length-3) + ' más</div>' : '')+
+      '</div>';
+  }
+  grid.innerHTML = html;
+  document.getElementById('notasCalDia').classList.add('hidden');
+}
+
+function notasCalVerDia(fecha) {
+  const notas = cacheNotas || {};
+  const notasDia = Object.entries(notas).filter(function([,n]) { return !n.hecha && n.fecha === fecha; });
+  const cont = document.getElementById('notasCalDia');
+  const fechaLabel = new Date(fecha+'T12:00:00').toLocaleDateString('es-ES',{weekday:'long',day:'numeric',month:'long'});
+  cont.innerHTML = '<div style="font-size:13px;font-weight:700;color:var(--azul);margin-bottom:10px">📅 '+fechaLabel+'</div>'+
+    (notasDia.length === 0 ? '<div class="empty-state">Sin tareas este día</div>' : notasDia.map(function([id,n]){ return renderNotaTarjeta(id, n); }).join(''))+
+    '<button class="btn-secondary" style="margin-top:10px;width:100%" onclick="notasAnadirEnFecha(\''+fecha+'\')">+ Añadir tarea en este día</button>';
+  cont.classList.remove('hidden');
+}
+
+function notasAnadirEnFecha(fecha) {
+  setTabNotas('pendientes');
+  document.getElementById('notaFecha').value = fecha;
+  document.getElementById('notaTexto').focus();
+}
+
+// Actualizar buscador contacto para editNotaContactoDrop
 
 // ═══════════════════════════════════════════════════════════════════════
 // STOCK V2 — con categorías, historial y consumo medio
@@ -3636,31 +3947,27 @@ async function cargarContactos() {
 function renderContactosFiltrados() {
   const cont = document.getElementById('contactosListContainer');
   if (!cacheContactos) return;
-  const filtroProv  = document.getElementById('contactoFiltroProvincia')?.value || '';
+  const filtroProv = document.getElementById('contactoFiltroProvincia')?.value || '';
   const query = (document.getElementById('contactoBuscador')?.value || '').trim()
-    .normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/\s*\/\s*/g, ' ');
+    .normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/\s*\/\s*/g,' ');
 
   if (Object.keys(cacheContactos).length === 0) {
     cont.innerHTML = '<div class="empty-state">Sin contactos todavía.</div>';
     return;
   }
 
-  // Aplanar todos los contactos para poder buscar en notas entre provincias
   let todos = [];
-  Object.entries(cacheContactos).forEach(([prov, lista]) => {
-    lista.forEach(c => todos.push({ ...c, _prov: prov }));
+  Object.entries(cacheContactos).forEach(function([prov, lista]) {
+    lista.forEach(function(c) { todos.push(Object.assign({}, c, { _prov: prov })); });
   });
 
-  // Aplicar filtro de provincia
-  if (filtroProv) todos = todos.filter(c => c._prov === filtroProv);
+  if (filtroProv) todos = todos.filter(function(c) { return c._prov === filtroProv; });
 
-  // Aplicar búsqueda en todos los campos
   if (query) {
-    todos = todos.filter(c => {
-      const haystack = [
-        c.nombre, c._prov, c.telefono, c.email, c.horarios, c.notas
-      ].join(' ').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/\s*\/\s*/g, ' ');
-      return haystack.includes(query);
+    todos = todos.filter(function(c) {
+      const hay = [c.nombre, c._prov, c.telefono, c.email, c.horarios, c.notas]
+        .join(' ').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/\s*\/\s*/g,' ');
+      return hay.includes(query);
     });
   }
 
@@ -3669,33 +3976,59 @@ function renderContactosFiltrados() {
     return;
   }
 
-  // Agrupar por provincia para mostrar
+  // Favoritos primero
+  todos.sort(function(a, b) {
+    if (b.favorito && !a.favorito) return 1;
+    if (a.favorito && !b.favorito) return -1;
+    return (a.nombre||'').localeCompare(b.nombre||'');
+  });
+
+  // Agrupar por provincia
   const porProv = {};
-  todos.forEach(c => {
+  todos.forEach(function(c) {
     if (!porProv[c._prov]) porProv[c._prov] = [];
     porProv[c._prov].push(c);
   });
 
-  cont.innerHTML = Object.keys(porProv).sort().map(prov => {
-    const contactos = porProv[prov];
-    return `<div class="provincia-grupo">
-      <div class="provincia-grupo-titulo">📍 ${prov}</div>
-      ${contactos.map(c => `
-        <div class="contacto-card">
-          <div class="ctc-nombre">${c.nombre || '<em style="color:var(--gris-medio)">Sin nombre</em>'}</div>
-          ${c.telefono ? `<div class="ctc-meta">📞 <a href="tel:${c.telefono}" style="color:var(--azul);text-decoration:none;font-weight:600">${c.telefono}</a></div>` : ''}
-          ${c.email    ? `<div class="ctc-meta">✉ <a href="mailto:${c.email}" style="color:var(--azul);text-decoration:none">${c.email}</a></div>` : ''}
-          ${c.horarios ? `<div class="ctc-meta">🕐 ${c.horarios}</div>` : ''}
-          ${c.notas    ? `<div class="ctc-meta" style="margin-top:4px;color:var(--gris-oscuro)">${c.notas}</div>` : ''}
-          <div class="ctc-btns">
-            <button class="btn-mini" onclick="editarContacto('${prov}','${c.id}')">✏ Editar</button>
-            <button class="btn-mini rojo" onclick="borrarContactoConfirm('${prov}','${c.id}')">🗑 Borrar</button>
-          </div>
-        </div>
-      `).join('')}
-    </div>`;
+  cont.innerHTML = Object.keys(porProv).sort().map(function(prov) {
+    return '<div class="provincia-grupo">'
+      + '<div class="provincia-grupo-titulo">📍 ' + prov + '</div>'
+      + porProv[prov].map(function(c) {
+          const esFav = !!c.favorito;
+          return '<div class="contacto-card" style="' + (esFav ? 'border-left:3px solid #f59e0b' : '') + '">'
+            + '<div style="display:flex;justify-content:space-between;align-items:flex-start">'
+            + '<div class="ctc-nombre">' + (c.nombre || '<em>Sin nombre</em>') + '</div>'
+            + '<button onclick="toggleFavorito(&quot;' + c._prov + '&quot;,&quot;' + c.id + '&quot;,' + (esFav?'false':'true') + ')" '
+            + 'style="background:none;border:none;font-size:18px;cursor:pointer;padding:0;line-height:1;color:' + (esFav?'#f59e0b':'#d1d5db') + '" '
+            + 'title="' + (esFav?'Quitar de favoritos':'Marcar como favorito') + '">'
+            + (esFav ? '⭐' : '☆') + '</button>'
+            + '</div>'
+            + (c.telefono ? '<div class="ctc-meta">📞 <a href="tel:' + c.telefono + '" style="color:var(--azul);text-decoration:none;font-weight:600">' + c.telefono + '</a></div>' : '')
+            + (c.email    ? '<div class="ctc-meta">✉ <a href="mailto:' + c.email + '" style="color:var(--azul);text-decoration:none">' + c.email + '</a></div>' : '')
+            + (c.horarios ? '<div class="ctc-meta">🕐 ' + c.horarios + '</div>' : '')
+            + (c.notas    ? '<div class="ctc-meta" style="margin-top:4px;color:var(--gris-oscuro)">' + c.notas + '</div>' : '')
+            + '<div class="ctc-btns">'
+            + '<button class="btn-mini" onclick="editarContacto(&quot;' + c._prov + '&quot;,&quot;' + c.id + '&quot;)">✏ Editar</button>'
+            + '<button class="btn-mini rojo" onclick="borrarContactoConfirm(&quot;' + c._prov + '&quot;,&quot;' + c.id + '&quot;)">🗑 Borrar</button>'
+            + '</div>'
+            + '</div>';
+        }).join('')
+      + '</div>';
   }).join('');
 }
+
+async function toggleFavorito(provincia, id, nuevoValor) {
+  const resp = await corelinkPost('/api/contactos/favorito', { provincia, id, favorito: nuevoValor });
+  if (resp && resp.ok) {
+    // Actualizar cache local
+    if (cacheContactos[provincia]) {
+      const c = cacheContactos[provincia].find(function(x) { return x.id === id; });
+      if (c) c.favorito = nuevoValor;
+    }
+    renderContactosFiltrados();
+  } else { toast('Error al actualizar favorito'); }
+}
+
 
 function abrirModalNuevoContacto() {
   contactoEditandoId   = null;
@@ -6637,11 +6970,14 @@ function buscarContactoOT(q, dropId) {
     var hay = ((c.nombre||'') + ' ' + (c.telefono||'') + ' ' + (c._prov||'') + ' ' + (c.notas||''))
       .normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
     return hay.includes(norm);
+  }).sort(function(a,b) {
+    if (b.favorito && !a.favorito) return 1;
+    if (a.favorito && !b.favorito) return -1;
+    return 0;
   }).slice(0, 8);
   if (!res.length) { drop.style.display = 'none'; return; }
-  var esEditar = dropId === 'editarOTContactoDrop';
-  var idNombre = esEditar ? 'editarOTContactoNombre' : 'tareaContactoNombre';
-  var idTel    = esEditar ? 'editarOTContactoTel'    : 'tareaContactoTel';
+  var idNombre = dropId === 'editarOTContactoDrop' ? 'editarOTContactoNombre' : dropId === 'notaContactoDrop' ? 'notaContactoNombre' : dropId === 'editNotaContactoDrop' ? 'editNotaContactoNombre' : 'tareaContactoNombre';
+  var idTel    = dropId === 'editarOTContactoDrop' ? 'editarOTContactoTel'    : dropId === 'notaContactoDrop' ? 'notaContactoTel'    : dropId === 'editNotaContactoDrop' ? 'editNotaContactoTel'    : 'tareaContactoTel';
   drop.innerHTML = res.map(function(c) {
     var tel = c.telefono || '';
     var n   = c.nombre.replace(/"/g,'&quot;');
@@ -6661,6 +6997,32 @@ function selContactoOT(nombre, tel, idNombre, idTel, dropId) {
   document.getElementById(idNombre).value = nombre;
   document.getElementById(idTel).value    = tel;
   document.getElementById(dropId).style.display = 'none';
+}
+
+
+// ── Buscador instalación en notas ─────────────────────────────────────
+function notaBuscarInst(q) {
+  const drop = document.getElementById('notaInstDrop');
+  const norm = q.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+  if (norm.length < 2) { drop.style.display = 'none'; return; }
+  const res = INSTALACIONES.filter(function(i) {
+    return i.nombre.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().includes(norm) || i.codigo.toLowerCase().includes(norm);
+  }).slice(0, 8);
+  if (!res.length) { drop.style.display = 'none'; return; }
+  drop.innerHTML = res.map(function(i) {
+    var n2 = i.nombre.replace(/"/g,'&quot;');
+    return '<div onclick="notaSelInst(&quot;'+i.codigo+'&quot;,&quot;'+n2+'&quot;,&quot;'+i.provincia+'&quot;)" '
+      + 'style="padding:8px 12px;cursor:pointer;font-size:13px;border-bottom:0.5px solid #e5e7eb" '
+      + 'onmouseover="this.style.background=\'#eff6ff\'" onmouseout="this.style.background=\'\'">'
+      + '<strong>' + i.codigo + '</strong> — ' + i.nombre + '</div>';
+  }).join('');
+  drop.style.display = 'block';
+}
+function notaSelInst(codigo, nombre, provincia) {
+  document.getElementById('notaInstCodigo').value = codigo;
+  document.getElementById('notaInstNombre').value = nombre;
+  document.getElementById('notaInstInput').value  = nombre;
+  document.getElementById('notaInstDrop').style.display = 'none';
 }
 
 </script>
