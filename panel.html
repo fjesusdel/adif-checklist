@@ -1773,7 +1773,7 @@ async function cargarResumen() {
 
   // Materiales bajo mínimo
   const materiales = Object.values(stock.materiales || {});
-  const bajoMinimo = materiales.filter(m => m.furgon <= m.minimoFurgon).length;
+  const bajoMinimo = materiales.filter(m => (m.minimoFurgon > 0 && m.furgon < m.minimoFurgon) || (m.minimoAlmacen > 0 && m.almacen < m.minimoAlmacen)).length;
 
   // OT por estado
   const otAbiertas   = Object.values(agenda).filter(t => t.estado === 'pendiente' || t.estado === 'en_curso');
@@ -3548,7 +3548,7 @@ async function cargarStockPanel() {
 
   // Badge alertas
   const materiales = Object.values(cachePanelStock.materiales);
-  const alertas = materiales.filter(m => m.furgon <= m.minimoFurgon || m.almacen <= m.minimoAlmacen);
+  const alertas = materiales.filter(m => (m.minimoFurgon > 0 && m.furgon < m.minimoFurgon) || (m.minimoAlmacen > 0 && m.almacen < m.minimoAlmacen));
   actualizarBadge('stockBadgeTab', alertas.length);
 
   renderStockMateriales();
@@ -3561,14 +3561,14 @@ function renderStockMateriales() {
 
   // Alertas
   const alertasEl = document.getElementById('stockAlertasBox');
-  const alertas = Object.entries(stock.materiales).filter(([id,m]) => m.furgon <= m.minimoFurgon || m.almacen <= m.minimoAlmacen);
+  const alertas = Object.entries(stock.materiales).filter(([id,m]) => (m.minimoFurgon > 0 && m.furgon < m.minimoFurgon) || (m.minimoAlmacen > 0 && m.almacen < m.minimoAlmacen));
   if (alertas.length > 0) {
     alertasEl.innerHTML = `<div class="alerta-stock-box">
       <div class="alerta-stock-titulo">🔴 ${alertas.length} material${alertas.length!==1?'es':''} por debajo del mínimo</div>
       ${alertas.map(([id,m]) => {
         const avisos = [];
-        if (m.furgon  <= m.minimoFurgon)  avisos.push(`Furgón: ${m.furgon}/${m.minimoFurgon}`);
-        if (m.almacen <= m.minimoAlmacen) avisos.push(`Almacén: ${m.almacen}/${m.minimoAlmacen}`);
+        if (m.minimoFurgon  > 0 && m.furgon  < m.minimoFurgon)  avisos.push(`Furgón: ${m.furgon}/${m.minimoFurgon}`);
+        if (m.minimoAlmacen > 0 && m.almacen < m.minimoAlmacen) avisos.push(`Almacén: ${m.almacen}/${m.minimoAlmacen}`);
         return `<div class="alerta-stock-item">⚠ <strong>${m.nombre}</strong> — ${avisos.join(' · ')}</div>`;
       }).join('')}
     </div>`;
@@ -3797,7 +3797,7 @@ function renderPedidoMateriales() {
       <div style="font-size:12px;font-weight:800;color:var(--azul);text-transform:uppercase;border-bottom:2px solid var(--azul-claro);padding-bottom:5px;margin-bottom:10px">${cat.icono} ${cat.nombre}</div>
       ${matsCat.map(([id,m]) => {
         const alertF = m.minimoFurgon  > 0 && m.furgon  < m.minimoFurgon;
-        const alertA = m.almacen <= m.minimoAlmacen;
+        const alertA = m.minimoAlmacen > 0 && m.almacen < m.minimoAlmacen;
         const alerta = alertF || alertA;
         return `<div style="background:${alerta?'#fef2f2':'var(--gris-fondo)'};border:1.5px solid ${alerta?'var(--rojo)':'var(--gris-borde)'};border-radius:9px;padding:12px 14px;margin-bottom:10px">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
