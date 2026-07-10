@@ -872,7 +872,21 @@ body.dark .item-card { background:#1e2433;border-color:#2d3548; }
   <div class="modal-box-mini" style="max-height:90vh;overflow-y:auto">
     <div class="modal-titulo" id="modalMaterialTitulo" style="margin-bottom:14px">Nuevo material</div>
     <div class="ficha-field" style="margin-bottom:10px"><label>Nombre *</label><input type="text" id="matNombre" placeholder="Ej: Batería 12V 7Ah"></div>
-    <div class="ficha-field" style="margin-bottom:10px"><label>Código de proveedor</label><input type="text" id="matCodigo" placeholder="Ej: BAT-12V-7AH-001"></div>
+    <div class="ficha-grid" style="margin-bottom:10px">
+      <div class="ficha-field"><label>Marca</label><input type="text" id="matMarca" placeholder="Ej: Hikvision"></div>
+      <div class="ficha-field"><label>Modelo homologado</label><input type="text" id="matModelo" placeholder="Ej: DS-2CE19D3T"></div>
+    </div>
+    <div class="ficha-grid" style="margin-bottom:10px">
+      <div class="ficha-field"><label>Referencia proveedor</label><input type="text" id="matReferencia" placeholder="Ej: 300508423"></div>
+      <div class="ficha-field"><label>Proveedor</label><input type="text" id="matProveedor" placeholder="Ej: ADI"></div>
+    </div>
+    <div class="ficha-grid" style="margin-bottom:10px">
+      <div class="ficha-field"><label>Precio unitario (€)</label><input type="number" id="matPrecio" min="0" step="0.01" value="0"></div>
+      <div class="ficha-field" style="display:flex;align-items:center;gap:8px;padding-top:22px">
+        <input type="checkbox" id="matRequiereSN" style="width:16px;height:16px;accent-color:var(--azul)">
+        <label for="matRequiereSN" style="font-size:13px;font-weight:600;cursor:pointer">Requiere S/N</label>
+      </div>
+    </div>
     <div class="ficha-field" style="margin-bottom:10px">
       <label>Categoría *</label>
       <select id="matCategoria" style="width:100%;border:1.5px solid var(--gris-borde);border-radius:7px;padding:9px 11px;font-size:14px;font-family:inherit"></select>
@@ -3636,14 +3650,21 @@ function abrirModalMaterial(id, catIdDefault) {
   if (id) {
     const m = cachePanelStock.materiales[id];
     document.getElementById('matNombre').value      = m.nombre||'';
-    document.getElementById('matCodigo').value      = m.codigoProveedor||'';
+    document.getElementById('matMarca').value       = m.marca||'';
+    document.getElementById('matModelo').value      = m.modelo||'';
+    document.getElementById('matReferencia').value  = m.referencia||m.codigoProveedor||'';
+    document.getElementById('matProveedor').value   = m.proveedor||'';
+    document.getElementById('matPrecio').value      = m.precioUnitario||0;
+    document.getElementById('matRequiereSN').checked = !!m.requiereSN;
     document.getElementById('matCategoria').value   = m.categoriaId||'';
     document.getElementById('matAlmacen').value     = m.almacen||0;
     document.getElementById('matFurgon').value      = m.furgon||0;
     document.getElementById('matMinAlmacen').value  = m.minimoAlmacen||0;
     document.getElementById('matMinFurgon').value   = m.minimoFurgon||0;
   } else {
-    ['matNombre','matCodigo'].forEach(f => document.getElementById(f).value='');
+    ['matNombre','matMarca','matModelo','matReferencia','matProveedor'].forEach(f => document.getElementById(f).value='');
+    document.getElementById('matPrecio').value = 0;
+    document.getElementById('matRequiereSN').checked = false;
     ['matAlmacen','matFurgon','matMinAlmacen','matMinFurgon'].forEach(f => document.getElementById(f).value=0);
     if (catIdDefault) document.getElementById('matCategoria').value = catIdDefault;
   }
@@ -3657,12 +3678,18 @@ async function guardarMaterial() {
   toast('Guardando...');
   const body = {
     id: materialEditandoId||null, nombre,
-    codigoProveedor: document.getElementById('matCodigo').value.trim(),
+    marca:         document.getElementById('matMarca').value.trim() || 'Genérico',
+    modelo:        document.getElementById('matModelo').value.trim(),
+    referencia:    document.getElementById('matReferencia').value.trim(),
+    codigoProveedor: document.getElementById('matReferencia').value.trim(),
+    proveedor:     document.getElementById('matProveedor').value.trim(),
+    precioUnitario:parseFloat(document.getElementById('matPrecio').value)||0,
+    requiereSN:    document.getElementById('matRequiereSN').checked,
     categoriaId,
-    almacen:      parseInt(document.getElementById('matAlmacen').value)||0,
-    furgon:       parseInt(document.getElementById('matFurgon').value)||0,
-    minimoAlmacen:parseInt(document.getElementById('matMinAlmacen').value)||0,
-    minimoFurgon: parseInt(document.getElementById('matMinFurgon').value)||0,
+    almacen:       parseInt(document.getElementById('matAlmacen').value)||0,
+    furgon:        parseInt(document.getElementById('matFurgon').value)||0,
+    minimoAlmacen: parseInt(document.getElementById('matMinAlmacen').value)||0,
+    minimoFurgon:  parseInt(document.getElementById('matMinFurgon').value)||0,
   };
   const resp = await corelinkPost('/api/stock/material', body);
   if (resp.ok) { toast('Material guardado ✓'); cerrarModalMaterial(); cachePanelStock=null; cargarStockPanel(); }
