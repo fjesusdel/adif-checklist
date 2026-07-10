@@ -2924,21 +2924,23 @@ function renderAgendaLista() {
   } else {
     const ordenadas = lista.sort((a,b) => b[1].fecha < a[1].fecha ? -1 : 1);
     cont.innerHTML = ordenadas.map(([id,t]) => {
-      const numOT = t.numeroOT ? `<span style="font-size:10px;color:var(--gris-medio);margin-left:6px">${t.numeroOT}</span>` : '';
+      const numOT    = t.numeroOT ? `<span style="font-size:10px;color:var(--gris-medio);margin-left:6px">${t.numeroOT}</span>` : '';
       const tieneParte = t.parte && t.parte.archivoHtml;
+      const numAlbs  = t.albaranes ? t.albaranes.length : (tieneParte ? 1 : 0);
       return `<div class="item-card" style="opacity:.85;background:#f0fdf4">
         <span class="item-tag" style="background:var(--verde);color:#fff">✓ Completada</span>${numOT}
         <div class="item-card-titulo">${t.nombreInstalacion||t.codigoInstalacion||'OT sin instalación'}</div>
         ${t.nota ? `<div class="item-card-desc">→ ${t.nota}</div>` : ''}
         <div class="item-card-meta">${new Date(t.fecha+'T12:00:00').toLocaleDateString('es-ES')}</div>
+        ${numAlbs > 0 ? `<div style="font-size:11px;color:var(--gris-medio);margin-top:3px">📋 ${numAlbs} albarán${numAlbs>1?'es':''}</div>` : ''}
         <div class="item-card-btns">
+          ${numAlbs > 0 ? `<button class="btn-mini" onclick="verAlbaranesOT('${id}')">📋 Albaranes</button>` : ''}
           ${tieneParte ? `<button class="btn-mini" onclick="verParteOT('${id}','${t.numeroOT||'OT'}')">📄 Ver parte</button>` : ''}
           <button class="btn-mini" onclick="cambiarEstadoTareaPanel('${id}','pendiente')">↺ Reabrir</button>
           <button class="btn-mini rojo" onclick="eliminarTarea('${id}')">🗑 Eliminar</button>
         </div>
       </div>`;
     }).join('');
-  }
 }
 
 async function eliminarTarea(id) {
@@ -7080,6 +7082,42 @@ function notaSelInst(codigo, nombre, provincia) {
   document.getElementById('notaInstNombre').value = nombre;
   document.getElementById('notaInstInput').value  = nombre;
   document.getElementById('notaInstDrop').style.display = 'none';
+}
+
+
+// ── Ver albaranes de una OT ───────────────────────────────────────────
+async function verAlbaranesOT(otId) {
+  const data = await corelinkGet('/api/agenda');
+  const ot   = data && data.tareas ? data.tareas[otId] : null;
+  if (!ot) { toast('OT no encontrada'); return; }
+  const albs = ot.albaranes || (ot.parte ? [ot.parte] : []);
+  if (albs.length === 0) { toast('Sin albaranes registrados'); return; }
+
+  const html = '<div style="padding:20px;max-width:520px;margin:0 auto">'
+    + '<div style="font-size:16px;font-weight:800;color:var(--azul);margin-bottom:4px">' + (ot.numeroOT||'OT') + ' — Albaranes</div>'
+    + '<div style="font-size:12px;color:var(--gris-medio);margin-bottom:16px">' + (ot.nombreInstalacion||'') + '</div>'
+    + albs.map(function(alb, i) {
+        const n = alb.numero || ((ot.numeroOT||'OT') + '-ALB' + String(i+1).padStart(3,'0'));
+        const fechaFmt = alb.fecha ? new Date(alb.fecha+'T12:00:00').toLocaleDateString('es-ES') : '—';
+        return '<div style="background:#f4f6fa;border-radius:8px;padding:12px 14px;margin-bottom:10px;border-left:3px solid var(--azul)">'
+          + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">'
+          + '<span style="font-size:12px;font-weight:800;color:var(--azul)">' + n + '</span>'
+          + '<span style="font-size:11px;color:var(--gris-medio)">' + fechaFmt + (alb.horaIn?' · '+alb.horaIn:'' ) + (alb.horaOut?'→'+alb.horaOut:'') + '</span>'
+          + '</div>'
+          + '<div style="font-size:12px;color:var(--gris-oscuro);line-height:1.5;margin-bottom:8px">' + (alb.resumen||'—') + '</div>'
+          + (alb.materialUsado && alb.materialUsado.length > 0 ? '<div style="font-size:11px;color:var(--gris-medio)">Material: ' + alb.materialUsado.map(function(m){ return m.nombre+' x'+m.cantidad; }).join(', ') + '</div>' : '')
+          + (alb.tecnico ? '<div style="font-size:11px;color:var(--gris-medio);margin-top:3px">Técnico: ' + alb.tecnico + '</div>' : '')
+          + (alb.archivoHtml ? '<button class="btn-mini" style="margin-top:8px" onclick="verParteOT(&quot;'+otId+'&quot;,&quot;'+n+'&quot;)">📄 Ver albarán</button>' : '')
+          + '</div>';
+      }).join('')
+    + '</div>';
+
+  const ventana = window.open('', '_blank', 'width=560,height=600,scrollbars=yes');
+  ventana.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Albaranes '+( ot.numeroOT||'OT')+'</title>'
+    + '<style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:Arial,sans-serif;font-size:13px;color:#1a1a1a;background:#f4f6fa}'
+    + '.btn-mini{background:#eff6ff;color:#003087;border:1px solid #bfdbfe;border-radius:6px;padding:4px 10px;font-size:11px;font-weight:600;cursor:pointer}'
+    + '</style></head><body>' + html + '</body></html>');
+  ventana.document.close();
 }
 
 </script>

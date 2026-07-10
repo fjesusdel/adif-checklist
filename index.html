@@ -2465,16 +2465,16 @@ async function cargarYRenderizarAgenda() {
         btns = '<button class="btn-tarea-estado" onclick="reanudarOTPNT(&quot;'+_id+'&quot;)">\u25b6 Reanudar</button>';
       } else if (esMtto && t.codigoInstalacion) {
         btns = '<button class="btn-tarea-estado '+(t.estado==='en_curso'?'active en_curso':'')+'" onclick="cambiarEstadoTarea(&quot;'+_id+'&quot;,&quot;en_curso&quot;)">\u25b6 En curso</button>'
-             + '<button class="btn-mini" style="background:#fff7ed;color:#92400e;border-color:#f59e0b" onclick="abrirPausaPNT(&quot;'+_id+'&quot;)">\u23f8 Pausar</button>'
+             
              + '<button class="btn-primary" style="padding:5px 14px;font-size:12px" onclick="irAInstalacionDesdeOT(&quot;'+_id+'&quot;,&quot;'+t.codigoInstalacion+'&quot;,&quot;'+t.tipo+'&quot;)">\ud83c\udfc1 En la instalaci\u00f3n</button>';
       } else if (esParte) {
         const _tit = ((t.numeroOT||'OT')+' \u2014 '+(t.nombreInstalacion||t.tipo||'')).replace(/"/g,'&quot;');
         btns = '<button class="btn-tarea-estado '+(t.estado==='en_curso'?'active en_curso':'')+'" onclick="cambiarEstadoTarea(&quot;'+_id+'&quot;,&quot;en_curso&quot;)">\u25b6 En curso</button>'
-             + '<button class="btn-mini" style="background:#fff7ed;color:#92400e;border-color:#f59e0b" onclick="abrirPausaPNT(&quot;'+_id+'&quot;)">\u23f8 Pausar</button>'
+             
              + '<button class="btn-primary" style="padding:5px 14px;font-size:12px;background:var(--verde)" onclick="abrirParteOTPNT(&quot;'+_id+'&quot;,&quot;'+_tit+'&quot;)">\u2713 Completar OT</button>';
       } else {
         btns = '<button class="btn-tarea-estado '+(t.estado==='en_curso'?'active en_curso':'')+'" onclick="cambiarEstadoTarea(&quot;'+_id+'&quot;,&quot;en_curso&quot;)">\u25b6 En curso</button>'
-             + '<button class="btn-mini" style="background:#fff7ed;color:#92400e;border-color:#f59e0b" onclick="abrirPausaPNT(&quot;'+_id+'&quot;)">\u23f8 Pausar</button>'
+             
              + '<button class="btn-tarea-estado" onclick="cambiarEstadoTarea(&quot;'+_id+'&quot;,&quot;completada&quot;)">\u2713 Completada</button>';
       }
       html += '<div class="agenda-tarea'+(esCompletada?' completada':'')+'" style="'+bordEstilo+'">'
@@ -5413,16 +5413,16 @@ function pntSelDia(dia) {
         btns = '<button class="btn-tarea-estado" onclick="reanudarOTPNT(&quot;'+_id+'&quot;)">\u25b6 Reanudar</button>';
       } else if (esMtto && t.codigoInstalacion) {
         btns = '<button class="btn-tarea-estado '+(t.estado==='en_curso'?'active en_curso':'')+'" onclick="cambiarEstadoTarea(&quot;'+_id+'&quot;,&quot;en_curso&quot;)">\u25b6 En curso</button>'
-             + '<button class="btn-mini" style="background:#fff7ed;color:#92400e;border-color:#f59e0b" onclick="abrirPausaPNT(&quot;'+_id+'&quot;)">\u23f8 Pausar</button>'
+             
              + '<button class="btn-primary" style="padding:5px 14px;font-size:12px" onclick="irAInstalacionDesdeOT(&quot;'+_id+'&quot;,&quot;'+t.codigoInstalacion+'&quot;,&quot;'+t.tipo+'&quot;)">\ud83c\udfc1 En la instalaci\u00f3n</button>';
       } else if (esParte) {
         var _tit = ((t.numeroOT||'OT')+' \u2014 '+(t.nombreInstalacion||t.tipo||'')).replace(/"/g,'&quot;');
         btns = '<button class="btn-tarea-estado '+(t.estado==='en_curso'?'active en_curso':'')+'" onclick="cambiarEstadoTarea(&quot;'+_id+'&quot;,&quot;en_curso&quot;)">\u25b6 En curso</button>'
-             + '<button class="btn-mini" style="background:#fff7ed;color:#92400e;border-color:#f59e0b" onclick="abrirPausaPNT(&quot;'+_id+'&quot;)">\u23f8 Pausar</button>'
+             
              + '<button class="btn-primary" style="padding:5px 14px;font-size:12px;background:var(--verde)" onclick="abrirParteOTPNT(&quot;'+_id+'&quot;,&quot;'+_tit+'&quot;)">\u2713 Completar OT</button>';
       } else {
         btns = '<button class="btn-tarea-estado '+(t.estado==='en_curso'?'active en_curso':'')+'" onclick="cambiarEstadoTarea(&quot;'+_id+'&quot;,&quot;en_curso&quot;)">\u25b6 En curso</button>'
-             + '<button class="btn-mini" style="background:#fff7ed;color:#92400e;border-color:#f59e0b" onclick="abrirPausaPNT(&quot;'+_id+'&quot;)">\u23f8 Pausar</button>'
+             
              + '<button class="btn-tarea-estado" onclick="cambiarEstadoTarea(&quot;'+_id+'&quot;,&quot;completada&quot;)">\u2713 Completada</button>';
       }
       return '<div class="agenda-tarea" style="margin-bottom:8px;'+(esParada?'background:#fffbeb;border-left:4px solid #f59e0b':(esJesus?'background:#eff6ff;border-left:4px solid #1e40af':''))+'">'
@@ -5650,6 +5650,29 @@ let _pntParteOTMats      = [];
 let _pntParteOTFirmaCtx  = null;
 let _pntParteOTDibujando = false;
 
+function mostrarPreguntaAveria() {
+  // Validar primero que hay resumen y firma
+  var resumen = document.getElementById('parteOTPNTResumen').value.trim();
+  if (!resumen) { toast('Escribe un resumen del trabajo'); return; }
+  var canvas = document.getElementById('parteOTPNTCanvas');
+  var pixelData = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height).data;
+  var hasFirma = Array.from(pixelData).some(function(v){ return v !== 0; });
+  if (!hasFirma) { toast('La firma es obligatoria'); return; }
+  // Si es avería correctiva mostrar pregunta, sino guardar directamente
+  var dataAg = null;
+  fetch(CORELINK_URL + '/api/agenda', { headers: { 'X-CoreLink-Key': CORELINK_API_KEY } })
+    .then(function(r){ return r.json(); })
+    .then(function(d) {
+      var ot = d ? (d.tareas || {})[_pntParteOTId] : null;
+      if (ot && ot.tipo === 'averia-correctiva') {
+        document.getElementById('parteOTPNTAveriaWrap').style.display = 'block';
+        document.getElementById('parteOTPNTBtnsNormal').style.display = 'none';
+      } else {
+        guardarParteOTPNT(undefined);
+      }
+    }).catch(function(){ guardarParteOTPNT(undefined); });
+}
+
 function abrirParteOTPNT(otId, titulo) {
   _pntParteOTId   = otId;
   _pntParteOTMats = [];
@@ -5659,6 +5682,8 @@ function abrirParteOTPNT(otId, titulo) {
   document.getElementById('parteOTPNTHoraOut').value       = '';
   document.getElementById('parteOTPNTResumen').value       = '';
   document.getElementById('parteOTPNTMaterialLista').innerHTML = '';
+  document.getElementById('parteOTPNTAveriaWrap').style.display = 'none';
+  document.getElementById('parteOTPNTBtnsNormal').style.display = 'flex';
   document.getElementById('modalParteOTPNT').style.display = 'block';
   setTimeout(() => {
     const canvas = document.getElementById('parteOTPNTCanvas');
@@ -5720,7 +5745,7 @@ function pntMatQuitar(idx) {
   if (el) el.remove();
 }
 
-async function guardarParteOTPNT() {
+async function guardarParteOTPNT(averiaResuelta) {
   if (!_pntParteOTId) return;
   var resumen = document.getElementById('parteOTPNTResumen').value.trim();
   if (!resumen) { toast('Escribe un resumen del trabajo'); return; }
@@ -5729,10 +5754,9 @@ async function guardarParteOTPNT() {
   var horaOut = document.getElementById('parteOTPNTHoraOut').value;
   var canvas  = document.getElementById('parteOTPNTCanvas');
   var firma   = canvas.toDataURL('image/png');
-  // Verificar que hay firma (canvas no vacío)
   var ctxCheck = canvas.getContext('2d');
   var pixelData = ctxCheck.getImageData(0, 0, canvas.width, canvas.height).data;
-  var hasFirma = Array.from(pixelData).some(v => v !== 0);
+  var hasFirma = Array.from(pixelData).some(function(v){ return v !== 0; });
   if (!hasFirma) { toast('La firma es obligatoria'); return; }
   var mats    = (_pntParteOTMats || []).filter(function(m) { return m && m.materialId; });
   var tecnico = (sesionPNT && sesionPNT.nombre) || '';
@@ -5740,9 +5764,14 @@ async function guardarParteOTPNT() {
   var dataAg = await fetch(CORELINK_URL + '/api/agenda', { headers: { 'X-CoreLink-Key': CORELINK_API_KEY } }).then(function(r){ return r.json(); }).catch(function(){ return null; });
   var ot = dataAg ? (dataAg.tareas || {})[_pntParteOTId] : null;
 
-  var htmlContent = _generarHTMLPartePNT({ ot: ot, resumen: resumen, tecnico: tecnico, fecha: fecha, horaIn: horaIn, horaOut: horaOut, firma: firma, mats: mats });
+  // Calcular número de albarán
+  var numAlb = ot && ot.albaranes ? ot.albaranes.length + 1 : 1;
+  var numOTStr = ot ? (ot.numeroOT || '') : '';
+  var numAlbStr = numOTStr + '-ALB' + String(numAlb).padStart(3,'0');
 
-  toast('Guardando parte...');
+  var htmlContent = _generarHTMLPartePNT({ ot: ot, resumen: resumen, tecnico: tecnico, fecha: fecha, horaIn: horaIn, horaOut: horaOut, firma: firma, mats: mats, numAlbaran: numAlbStr });
+
+  toast('Guardando albarán...');
   try {
     var resp = await fetch(CORELINK_URL + '/api/ot/parte', {
       method: 'POST',
@@ -5751,13 +5780,18 @@ async function guardarParteOTPNT() {
         id: _pntParteOTId, resumen: resumen, tecnico: tecnico, fecha: fecha,
         horaIn: horaIn, horaOut: horaOut, firma: firma,
         materialUsado: mats, htmlContent: htmlContent,
-        provincia:   ot ? (ot.provincia || '') : '',
-        instalacion: ot ? (ot.nombreInstalacion || '') : ''
+        provincia:      ot ? (ot.provincia || '') : '',
+        instalacion:    ot ? (ot.nombreInstalacion || '') : '',
+        averiaResuelta: averiaResuelta
       })
     });
     var data = await resp.json();
     if (data.ok) {
-      toast('OT completada y guardada: ' + data.numeroOT);
+      if (averiaResuelta === false) {
+        toast('Albarán ' + (data.numeroAlbaran||numAlbStr) + ' guardado. Avería pendiente de siguiente visita.');
+      } else {
+        toast('Albarán ' + (data.numeroAlbaran||numAlbStr) + ' guardado. OT completada ✓');
+      }
       cerrarParteOTPNT();
       cargarYRenderizarAgenda();
     } else { toast('Error: ' + (data.error || 'No se pudo guardar')); }
@@ -6022,9 +6056,17 @@ async function confirmarPausaPNT() {
         <canvas id="parteOTPNTCanvas" width="400" height="90" style="border:1.5px solid var(--gris-borde);border-radius:8px;background:#fafafa;touch-action:none;width:100%;cursor:crosshair"></canvas>
         <button onclick="parteOTPNTBorrarFirma()" style="margin-top:3px;background:none;border:none;color:var(--gris-medio);font-size:11px;cursor:pointer;text-decoration:underline">Borrar firma</button>
       </div>
-      <div style="display:flex;gap:10px">
+      <!-- Pregunta avería resuelta — solo para averías correctivas -->
+      <div id="parteOTPNTAveriaWrap" style="display:none;margin-bottom:16px;background:#eff6ff;border:1.5px solid var(--azul);border-radius:8px;padding:12px 14px">
+        <div style="font-size:13px;font-weight:700;color:var(--azul);margin-bottom:10px">¿Se ha podido solucionar la avería?</div>
+        <div style="display:flex;gap:10px">
+          <button onclick="guardarParteOTPNT(true)" style="flex:1;padding:10px;background:#059669;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer">✓ Sí, avería resuelta</button>
+          <button onclick="guardarParteOTPNT(false)" style="flex:1;padding:10px;background:#f59e0b;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer">⏳ No, pendiente</button>
+        </div>
+      </div>
+      <div id="parteOTPNTBtnsNormal" style="display:flex;gap:10px">
         <button onclick="cerrarParteOTPNT()" style="flex:1;padding:11px;background:#f3f4f6;color:var(--gris-oscuro);border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer">Cancelar</button>
-        <button onclick="guardarParteOTPNT()" style="flex:2;padding:11px;background:var(--verde);color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer">✓ Guardar y completar</button>
+        <button onclick="mostrarPreguntaAveria()" style="flex:2;padding:11px;background:var(--verde);color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer">✓ Guardar y completar</button>
       </div>
     </div>
   </div>
