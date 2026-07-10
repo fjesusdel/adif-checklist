@@ -6348,6 +6348,16 @@ function abrirModalEditarOT(id) {
   document.getElementById('editarOTNombreInst').value = t.nombreInstalacion || '';
   document.getElementById('editarOTProvincia').value  = t.provincia || '';
   document.getElementById('editarOTInstInput').value  = t.nombreInstalacion || '';
+  // Mostrar campo fecha pausa si está pausada
+  var wrapPausa = document.getElementById('editarOTFechaPausaWrap');
+  if (t.estado === 'parada') {
+    wrapPausa.style.display = 'block';
+    var fp = t.fechaPausa ? t.fechaPausa.split('T')[0] : '';
+    document.getElementById('editarOTFechaPausa').value = fp;
+  } else {
+    wrapPausa.style.display = 'none';
+    document.getElementById('editarOTFechaPausa').value = '';
+  }
   document.getElementById('editarOTInstDrop').style.display = 'none';
   document.getElementById('editarOTContactoNombre').value = (t.contactoAvisar && t.contactoAvisar.nombre) ? t.contactoAvisar.nombre : '';
   document.getElementById('editarOTContactoTel').value    = (t.contactoAvisar && t.contactoAvisar.telefono) ? t.contactoAvisar.telefono : '';
@@ -6391,10 +6401,11 @@ async function confirmarEditarOT() {
   const ctcNombre         = document.getElementById('editarOTContactoNombre').value.trim();
   const ctcTel            = document.getElementById('editarOTContactoTel').value.trim();
   const contactoAvisar    = ctcNombre ? { nombre: ctcNombre, telefono: ctcTel } : null;
-  const resp = await corelinkPost('/api/agenda/editar', {
-    id: _editarOTId, fecha, asignadoA, tipo, nota,
-    codigoInstalacion, nombreInstalacion, provincia, contactoAvisar
-  });
+  const fpEl              = document.getElementById('editarOTFechaPausa');
+  const fechaPausa        = fpEl && fpEl.value ? fpEl.value + 'T00:00:00.000Z' : null;
+  const body              = { id: _editarOTId, fecha, asignadoA, tipo, nota, codigoInstalacion, nombreInstalacion, provincia, contactoAvisar };
+  if (fechaPausa) body.fechaPausa = fechaPausa;
+  const resp = await corelinkPost('/api/agenda/editar', body);
   if (resp.ok) {
     toast(fecha ? 'OT actualizada ✓' : 'OT movida a pendientes ✓');
     cerrarModalEditarOT();
@@ -7213,6 +7224,10 @@ function notaSelInst(codigo, nombre, provincia) {
         <label style="font-size:12px;font-weight:700;color:var(--gris-oscuro);display:block;margin-bottom:6px">Fecha <span style="font-size:11px;color:var(--gris-medio);font-weight:400">(vacío = pendiente de agendar)</span></label>
         <input type="date" id="editarOTFecha" style="width:100%;border:1.5px solid var(--gris-borde);border-radius:8px;padding:9px;font-size:14px;font-family:inherit;box-sizing:border-box">
         <button onclick="document.getElementById('editarOTFecha').value=''" style="margin-top:4px;background:none;border:none;color:var(--gris-medio);font-size:11px;cursor:pointer;text-decoration:underline">✕ Quitar fecha</button>
+      </div>
+      <div id="editarOTFechaPausaWrap" style="display:none;margin-bottom:12px;background:#fffbeb;border:1px solid #f59e0b;border-radius:8px;padding:10px 12px">
+        <label style="font-size:12px;font-weight:700;color:#92400e;display:block;margin-bottom:6px">⏸ Fecha de pausa (editable)</label>
+        <input type="date" id="editarOTFechaPausa" style="width:100%;border:1.5px solid #f59e0b;border-radius:8px;padding:9px;font-size:14px;font-family:inherit;box-sizing:border-box">
       </div>
       <div style="margin-bottom:12px">
         <label style="font-size:12px;font-weight:700;color:var(--gris-oscuro);display:block;margin-bottom:6px">Asignado a</label>
