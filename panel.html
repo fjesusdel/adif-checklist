@@ -2898,7 +2898,6 @@ function renderAgendaLista() {
           btns = '<button class="btn-mini verde" onclick="reanudarOT(&quot;'+id+'&quot;)">\u25b6 Reanudar</button>';
         } else {
           btns = '<button class="btn-mini '+(t.estado==='en_curso'?'activo-amarillo':'')+'" onclick="cambiarEstadoTareaPanel(&quot;'+id+'&quot;,&quot;en_curso&quot;)">\u25b6 En curso</button>'
-               + '<button class="btn-mini" style="background:#fff7ed;color:#92400e;border-color:#f59e0b" onclick="abrirModalPausa(&quot;'+id+'&quot;)">\u23f8 Pausar</button>';
           if (esParteOT) {
             btns += '<button class="btn-mini verde" onclick="abrirModalParteOT(&quot;'+id+'&quot;,&quot;'+_q((t.numeroOT||'OT')+' \u2014 '+(t.nombreInstalacion||t.tipo||''))+'&quot;)">\u2713 Completar OT</button>';
           } else {
@@ -2943,6 +2942,7 @@ function renderAgendaLista() {
     }).join('');
 }
 
+}
 async function eliminarTarea(id) {
   if (!confirm('¿Eliminar esta tarea? No se puede deshacer.')) return;
   toast('Eliminando...');
