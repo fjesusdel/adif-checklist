@@ -3594,8 +3594,8 @@ function renderStockMateriales() {
         </div>
       </div>
       ${matsCat.map(([id,m]) => {
-        const alertF = m.furgon  <= m.minimoFurgon;
-        const alertA = m.almacen <= m.minimoAlmacen;
+        const alertF = m.minimoFurgon  > 0 && m.furgon  < m.minimoFurgon;
+        const alertA = m.minimoAlmacen > 0 && m.almacen < m.minimoAlmacen;
         const claseAlerta = alertF ? 'alerta-furgon' : alertA ? 'alerta-almacen' : '';
         return `<div class="material-row ${claseAlerta}" onclick="abrirModalDetalleStock('${id}')">
           <div style="flex:1">
@@ -3796,7 +3796,7 @@ function renderPedidoMateriales() {
     html += `<div style="margin-bottom:18px">
       <div style="font-size:12px;font-weight:800;color:var(--azul);text-transform:uppercase;border-bottom:2px solid var(--azul-claro);padding-bottom:5px;margin-bottom:10px">${cat.icono} ${cat.nombre}</div>
       ${matsCat.map(([id,m]) => {
-        const alertF = m.furgon  <= m.minimoFurgon;
+        const alertF = m.minimoFurgon  > 0 && m.furgon  < m.minimoFurgon;
         const alertA = m.almacen <= m.minimoAlmacen;
         const alerta = alertF || alertA;
         return `<div style="background:${alerta?'#fef2f2':'var(--gris-fondo)'};border:1.5px solid ${alerta?'var(--rojo)':'var(--gris-borde)'};border-radius:9px;padding:12px 14px;margin-bottom:10px">
