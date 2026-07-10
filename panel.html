@@ -507,8 +507,15 @@ body.dark .item-card { background:#1e2433;border-color:#2d3548; }
         <button class="pill"        id="filtroAgendaCompletadas" onclick="setFiltroAgenda('completadas')">Completadas</button>
         <button class="pill"        id="filtroAgendaMias"        onclick="setFiltroAgenda('mias')">🖥 Mis revisiones</button>
       </div>
-      <!-- Filtro fecha para completadas -->
-      <div id="filtroFechaCompletadas" style="display:none;margin-bottom:12px;display:flex;gap:8px;align-items:center">
+      <!-- Selector de mes -->
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;background:var(--gris-fondo);border-radius:8px;padding:8px 12px">
+        <button onclick="listaOTMes(-1)" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--azul);padding:0 4px">‹</button>
+        <span id="listaOTMesTitulo" style="font-size:14px;font-weight:800;color:var(--azul);flex:1;text-align:center"></span>
+        <button onclick="listaOTMes(+1)" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--azul);padding:0 4px">›</button>
+        <button onclick="listaOTMesHoy()" style="background:var(--azul);color:#fff;border:none;border-radius:6px;padding:4px 10px;font-size:12px;font-weight:700;cursor:pointer">Hoy</button>
+      </div>
+      <!-- Filtro día -->
+      <div style="margin-bottom:12px;display:flex;gap:8px;align-items:center">
         <label style="font-size:12px;font-weight:700;color:var(--gris-oscuro)">Filtrar por fecha:</label>
         <input type="date" id="completadasFechaFiltro" onchange="renderAgendaLista()" style="border:1.5px solid var(--gris-borde);border-radius:8px;padding:6px 10px;font-size:13px;font-family:inherit">
         <button onclick="document.getElementById('completadasFechaFiltro').value='';renderAgendaLista()" style="background:none;border:none;color:var(--gris-medio);font-size:12px;cursor:pointer;text-decoration:underline">Ver todas</button>
@@ -2799,7 +2806,9 @@ async function cargarAgenda() {
   else renderCalendario();
 }
 
-let filtroAgendaActual = 'pendientes';
+let filtroAgendaActual  = 'pendientes';
+let listaOTMesActual    = new Date().getMonth();
+let listaOTAnioActual   = new Date().getFullYear();
 
 function setFiltroAgenda(f) {
   filtroAgendaActual = f;
@@ -2811,13 +2820,47 @@ function setFiltroAgenda(f) {
   renderAgendaLista();
 }
 
+
+// ── Selector mes lista OT ─────────────────────────────────────────────
+function listaOTMes(delta) {
+  listaOTMesActual += delta;
+  if (listaOTMesActual > 11) { listaOTMesActual = 0; listaOTAnioActual++; }
+  if (listaOTMesActual < 0)  { listaOTMesActual = 11; listaOTAnioActual--; }
+  document.getElementById('completadasFechaFiltro').value = '';
+  renderAgendaLista();
+}
+
+function listaOTMesHoy() {
+  const hoy = new Date();
+  listaOTMesActual  = hoy.getMonth();
+  listaOTAnioActual = hoy.getFullYear();
+  document.getElementById('completadasFechaFiltro').value = '';
+  renderAgendaLista();
+}
+
+function actualizarTituloMesLista() {
+  const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  const el = document.getElementById('listaOTMesTitulo');
+  if (el) el.textContent = MESES[listaOTMesActual] + ' ' + listaOTAnioActual;
+}
+
 function renderAgendaLista() {
   const cont    = document.getElementById('agendaListContainer');
   const esPendientes = filtroAgendaActual === 'pendientes';
   const esMias        = filtroAgendaActual === 'mias';
+  actualizarTituloMesLista();
+  const mesStr   = String(listaOTMesActual + 1).padStart(2,'0');
+  const prefijo  = listaOTAnioActual + '-' + mesStr;
+  const fechaFiltroDay = document.getElementById('completadasFechaFiltro')?.value || '';
+
   const lista = Object.entries(cacheAgenda||{}).filter(([id,t]) => {
     if (esMias) return (t.asignadoA === 'fran' || (!t.asignadoA && t.tipo === 'trim-coord')) && t.estado !== 'completada';
-    return esPendientes ? t.estado !== 'completada' : t.estado === 'completada';
+    if (!esPendientes) return t.estado === 'completada' && (t.fecha||'').startsWith(prefijo);
+    // Pendientes: sin fecha siempre, con fecha solo del mes activo
+    if (t.estado === 'completada') return false;
+    if (fechaFiltroDay) return t.fecha === fechaFiltroDay;
+    if (!t.fecha) return true; // sin fecha siempre visibles
+    return t.fecha.startsWith(prefijo);
   });
   if (lista.length === 0) {
     const msgVacio = esMias ? '✓ No tienes revisiones trimestrales remotas pendientes' : (esPendientes ? '✓ No hay tareas pendientes' : 'Sin tareas completadas todavía');
@@ -2825,11 +2868,17 @@ function renderAgendaLista() {
     return;
   }
   if (esPendientes || esMias) {
+    const sinFecha = lista.filter(([,t]) => !t.fecha);
+    const conFecha = lista.filter(([,t]) => !!t.fecha);
     const porFecha = {};
-    lista.forEach(([id,t]) => { (porFecha[t.fecha] = porFecha[t.fecha]||[]).push([id,t]); });
+    conFecha.forEach(([id,t]) => { (porFecha[t.fecha] = porFecha[t.fecha]||[]).push([id,t]); });
     let html = '';
+    if (sinFecha.length > 0) {
+      html += '<div class="agenda-dia-titulo">📌 Pendientes de agendar</div>';
+      sinFecha.forEach(([id,t]) => { /* render igual abajo */ porFecha[''] = (porFecha['']||[]); });
+    }
     Object.keys(porFecha).sort().forEach(fecha => {
-      html += `<div class="agenda-dia-titulo">${etiquetaDia(fecha)}</div>`;
+      html += `<div class="agenda-dia-titulo">${fecha ? etiquetaDia(fecha) : '📌 Pendientes de agendar'}</div>`;
       porFecha[fecha].forEach(([id,t]) => {
         const esCoord = t.tipo === 'trim-coord';
         const asigEl = t.asignadoA === 'jesus' ? '<span style="font-size:10px;font-weight:700;background:#dbeafe;color:#1e40af;padding:1px 7px;border-radius:99px;margin-left:6px">👷 Jesús</span>'
@@ -2873,10 +2922,7 @@ function renderAgendaLista() {
     });
     cont.innerHTML = html;
   } else {
-    const fechaFiltro = document.getElementById('completadasFechaFiltro')?.value || '';
-    const ordenadas = lista
-      .filter(([,t]) => !fechaFiltro || t.fecha === fechaFiltro || (t.fechaCompletada||'').startsWith(fechaFiltro))
-      .sort((a,b) => b[1].fecha < a[1].fecha ? -1 : 1);
+    const ordenadas = lista.sort((a,b) => b[1].fecha < a[1].fecha ? -1 : 1);
     cont.innerHTML = ordenadas.map(([id,t]) => {
       const numOT = t.numeroOT ? `<span style="font-size:10px;color:var(--gris-medio);margin-left:6px">${t.numeroOT}</span>` : '';
       const tieneParte = t.parte && t.parte.archivoHtml;
