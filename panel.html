@@ -2915,7 +2915,7 @@ function renderAgendaLista() {
               + (t.nota ? '<div class="item-card-desc">→ '+t.nota+'</div>' : '')
               + (esParada && t.motivoPausa ? '<div style="font-size:12px;color:#92400e;background:#fef3c7;border-radius:6px;padding:6px 10px;margin-top:4px">⏸ '+t.motivoPausa+'</div>' : '')
               + (t.contactoAvisar ? '<div style="font-size:12px;color:#065f46;background:#d1fae5;border-radius:6px;padding:5px 10px;margin-top:4px">📞 Avisar a: <strong>'+t.contactoAvisar.nombre+'</strong>'+(t.contactoAvisar.telefono?' · '+t.contactoAvisar.telefono:'')+'</div>' : '')
-              + '<div class="item-card-btns">'+btns+'</div>'
+              + '<div class="item-card-btns">'+(t.albaranes&&t.albaranes.length>0?'<button class="btn-mini" onclick="verAlbaranesOT(&quot;'+id+'&quot;)">📋 '+t.albaranes.length+' albarán'+(t.albaranes.length>1?'es':'')+'</button>':'')+btns+'</div>'
               + '</div>';
       });
     });
@@ -5972,9 +5972,10 @@ function _generarHTMLParteOT({ ot, resumen, tecnico, fecha, horaIn, horaOut, fir
     </body></html>`;
 }
 
-async function verParteOT(otId, titulo) {
+async function verParteOT(otId, titulo, albIdx) {
   toast('Cargando parte...');
-  const data = await corelinkGet('/api/ot/html?id=' + encodeURIComponent(otId));
+  const url = '/api/ot/html?id=' + encodeURIComponent(otId) + (albIdx !== undefined ? '&alb=' + albIdx : '');
+  const data = await corelinkGet(url);
   if (!data || !data.html) { toast('Parte no disponible'); return; }
   document.getElementById('visorOTTitulo').textContent = titulo || 'Parte OT';
   const blob = new Blob([data.html], { type: 'text/html' });
@@ -7090,35 +7091,53 @@ async function verAlbaranesOT(otId) {
   const data = await corelinkGet('/api/agenda');
   const ot   = data && data.tareas ? data.tareas[otId] : null;
   if (!ot) { toast('OT no encontrada'); return; }
-  const albs = ot.albaranes || (ot.parte ? [ot.parte] : []);
+
+  // Construir lista de albaranes — compatibilidad con OT antiguas sin array albaranes
+  var albs = [];
+  if (ot.albaranes && ot.albaranes.length > 0) {
+    albs = ot.albaranes;
+  } else if (ot.parte) {
+    // OT antigua — crear albarán virtual con el parte existente
+    albs = [Object.assign({}, ot.parte, {
+      numero: (ot.numeroOT||'OT') + '-ALB001',
+      archivoHtml: ot.parte.archivoHtml || null
+    })];
+  }
+
   if (albs.length === 0) { toast('Sin albaranes registrados'); return; }
 
-  const html = '<div style="padding:20px;max-width:520px;margin:0 auto">'
-    + '<div style="font-size:16px;font-weight:800;color:var(--azul);margin-bottom:4px">' + (ot.numeroOT||'OT') + ' — Albaranes</div>'
-    + '<div style="font-size:12px;color:var(--gris-medio);margin-bottom:16px">' + (ot.nombreInstalacion||'') + '</div>'
-    + albs.map(function(alb, i) {
-        const n = alb.numero || ((ot.numeroOT||'OT') + '-ALB' + String(i+1).padStart(3,'0'));
-        const fechaFmt = alb.fecha ? new Date(alb.fecha+'T12:00:00').toLocaleDateString('es-ES') : '—';
-        return '<div style="background:#f4f6fa;border-radius:8px;padding:12px 14px;margin-bottom:10px;border-left:3px solid var(--azul)">'
-          + '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">'
-          + '<span style="font-size:12px;font-weight:800;color:var(--azul)">' + n + '</span>'
-          + '<span style="font-size:11px;color:var(--gris-medio)">' + fechaFmt + (alb.horaIn?' · '+alb.horaIn:'' ) + (alb.horaOut?'→'+alb.horaOut:'') + '</span>'
-          + '</div>'
-          + '<div style="font-size:12px;color:var(--gris-oscuro);line-height:1.5;margin-bottom:8px">' + (alb.resumen||'—') + '</div>'
-          + (alb.materialUsado && alb.materialUsado.length > 0 ? '<div style="font-size:11px;color:var(--gris-medio)">Material: ' + alb.materialUsado.map(function(m){ return m.nombre+' x'+m.cantidad; }).join(', ') + '</div>' : '')
-          + (alb.tecnico ? '<div style="font-size:11px;color:var(--gris-medio);margin-top:3px">Técnico: ' + alb.tecnico + '</div>' : '')
-          + (alb.archivoHtml ? '<button class="btn-mini" style="margin-top:8px" onclick="verParteOT(&quot;'+otId+'&quot;,&quot;'+n+'&quot;)">📄 Ver albarán</button>' : '')
-          + '</div>';
-      }).join('')
-    + '</div>';
+  var html = '<div style="padding:0">';
+  html += '<div style="font-size:15px;font-weight:800;color:var(--azul);margin-bottom:4px">' + (ot.numeroOT||'OT') + ' — Albaranes</div>';
+  html += '<div style="font-size:12px;color:var(--gris-medio);margin-bottom:16px">' + (ot.nombreInstalacion||'') + '</div>';
+  albs.forEach(function(alb, i) {
+    var n = alb.numero || ((ot.numeroOT||'OT') + '-ALB' + String(i+1).padStart(3,'0'));
+    var fechaFmt = alb.fecha ? new Date(alb.fecha+'T12:00:00').toLocaleDateString('es-ES') : '—';
+    var tieneArchivo = !!(alb.archivoHtml || (i===0 && ot.parte && ot.parte.archivoHtml));
+    html += '<div style="background:#f4f6fa;border-radius:8px;padding:12px 14px;margin-bottom:10px;border-left:3px solid var(--azul)">';
+    html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">';
+    html += '<span style="font-size:12px;font-weight:800;color:var(--azul)">' + n + '</span>';
+    html += '<span style="font-size:11px;color:var(--gris-medio)">' + fechaFmt + (alb.horaIn?' · '+alb.horaIn:'') + (alb.horaOut?'→'+alb.horaOut:'') + '</span>';
+    html += '</div>';
+    html += '<div style="font-size:12px;color:var(--gris-oscuro);line-height:1.5;margin-bottom:8px">' + (alb.resumen||'—') + '</div>';
+    if (alb.materialUsado && alb.materialUsado.length > 0) {
+      html += '<div style="font-size:11px;color:var(--gris-medio)">Material: ' + alb.materialUsado.map(function(m){ return m.nombre+' x'+m.cantidad; }).join(', ') + '</div>';
+    }
+    if (alb.tecnico) html += '<div style="font-size:11px;color:var(--gris-medio);margin-top:3px">Técnico: ' + alb.tecnico + '</div>';
+    if (tieneArchivo) {
+      html += '<button class="btn-mini" style="margin-top:8px" onclick="cerrarModalAlbaranes();verParteOT(&quot;' + otId + '&quot;,&quot;' + n + '&quot;,' + i + ')">📄 Ver albarán</button>';
+    }
+    html += '</div>';
+  });
+  html += '</div>';
 
-  const ventana = window.open('', '_blank', 'width=560,height=600,scrollbars=yes');
-  ventana.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Albaranes '+( ot.numeroOT||'OT')+'</title>'
-    + '<style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:Arial,sans-serif;font-size:13px;color:#1a1a1a;background:#f4f6fa}'
-    + '.btn-mini{background:#eff6ff;color:#003087;border:1px solid #bfdbfe;border-radius:6px;padding:4px 10px;font-size:11px;font-weight:600;cursor:pointer}'
-    + '</style></head><body>' + html + '</body></html>');
-  ventana.document.close();
+  document.getElementById('modalAlbaranesBody').innerHTML = html;
+  document.getElementById('modalAlbaranes').style.display = 'flex';
 }
+
+function cerrarModalAlbaranes() {
+  document.getElementById('modalAlbaranes').style.display = 'none';
+}
+
 
 </script>
 <!-- ── MODAL PARTE OT ──────────────────────────────────────────────── -->
@@ -7446,6 +7465,17 @@ async function verAlbaranesOT(otId) {
         <button onclick="confirmarPausaOT()" style="flex:2;padding:10px;background:#f59e0b;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer">⏸ Poner en pausa</button>
       </div>
     </div>
+  </div>
+</div>
+
+<!-- MODAL ALBARANES -->
+<div id="modalAlbaranes" style="display:none;position:fixed;inset:0;z-index:9100;background:rgba(0,0,0,0.65);align-items:flex-start;justify-content:center;padding:20px;overflow-y:auto">
+  <div style="background:#fff;border-radius:12px;max-width:520px;width:100%;margin:20px auto">
+    <div style="background:var(--azul);padding:14px 20px;display:flex;justify-content:space-between;align-items:center;border-radius:12px 12px 0 0">
+      <div style="color:#fff;font-size:15px;font-weight:800">📋 Albaranes</div>
+      <button onclick="cerrarModalAlbaranes()" style="background:rgba(255,255,255,0.15);color:#fff;border:none;border-radius:7px;padding:5px 12px;font-size:13px;cursor:pointer">✕</button>
+    </div>
+    <div id="modalAlbaranesBody" style="padding:20px"></div>
   </div>
 </div>
 
