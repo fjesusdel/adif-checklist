@@ -380,6 +380,16 @@ body.dark .item-card { background:#1e2433;border-color:#2d3548; }
   </div>
   <div class="card">
     <div class="card-title">Vista general</div>
+    <div id="bannerPlanAnual" style="display:none;background:#fff7ed;border:1.5px solid #f59e0b;border-radius:8px;padding:12px 16px;margin-bottom:14px;display:flex;justify-content:space-between;align-items:center;gap:12px">
+      <div>
+        <div style="font-size:13px;font-weight:800;color:#92400e">📅 Recuerda generar el plan de mantenimientos del año siguiente</div>
+        <div style="font-size:12px;color:#b45309;margin-top:2px">Duplica todas las OT al próximo año desde Ajustes para tenerlas listas a tiempo.</div>
+      </div>
+      <div style="display:flex;gap:8px;flex-shrink:0">
+        <button onclick="cambiarSeccion('ajustes')" style="background:#f59e0b;color:#fff;border:none;border-radius:7px;padding:7px 14px;font-size:12px;font-weight:700;cursor:pointer">Generar ahora →</button>
+        <button onclick="document.getElementById('bannerPlanAnual').style.display='none'" style="background:none;border:1px solid #f59e0b;color:#92400e;border-radius:7px;padding:7px 10px;font-size:12px;cursor:pointer">✕</button>
+      </div>
+    </div>
     <div class="stat-grid" id="resumenStatGrid"><div class="empty-state">Cargando datos...</div></div>
   </div>
   <div class="card">
@@ -1215,6 +1225,34 @@ body.dark .item-card { background:#1e2433;border-color:#2d3548; }
         </div>
       </div>
       <button onclick="descargarZipTodosInformes()" style="width:100%;margin-top:10px;padding:11px;background:var(--azul-claro);color:var(--azul);border:1.5px solid var(--azul);border-radius:8px;font-size:14px;font-weight:700;cursor:pointer">⬇️ Descargar ZIP global de informes</button>
+      <!-- Plan anual -->
+      <div class="ajuste-row" style="border-top:1px solid var(--gris-borde);margin-top:10px;padding-top:10px">
+        <div>
+          <div class="ajuste-label">📅 Plan de mantenimientos año siguiente</div>
+          <div class="ajuste-sub">Duplica todas las OT anuales y trimestrales del año actual al año siguiente, con la misma fecha exacta.</div>
+        </div>
+      </div>
+      <button onclick="generarPlanSiguienteAnio()" style="width:100%;margin-top:8px;padding:11px;background:#003087;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer">📅 Generar Plan de Mantenimientos año siguiente</button>
+      <div class="ajuste-row" style="margin-top:14px">
+        <div>
+          <div class="ajuste-label">🔔 Aviso recordatorio</div>
+          <div class="ajuste-sub">Muestra un banner en el Resumen para recordarte que generes el plan del año siguiente.</div>
+        </div>
+        <label class="toggle-switch">
+          <input type="checkbox" id="ajusteAvisoPlanAnual" onchange="guardarAjusteAvisoPlan()">
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+      <div class="ajuste-row" style="margin-top:6px;align-items:center">
+        <div>
+          <div class="ajuste-label">📆 Mostrar aviso a partir de</div>
+          <div class="ajuste-sub">Día del año desde el que aparece el banner (formato DD/MM).</div>
+        </div>
+        <input type="text" id="ajusteAvisoPlanDesde" placeholder="01/05" maxlength="5"
+          style="width:80px;border:1.5px solid var(--gris-borde);border-radius:7px;padding:7px 10px;font-size:14px;font-family:inherit;text-align:center"
+          onchange="guardarAjusteAvisoPlan()">
+      </div>
+
       <div class="ajuste-row" style="border-top:1px solid var(--gris-borde);margin-top:10px;padding-top:10px">
         <div>
           <div class="ajuste-label" style="color:var(--rojo)">🗑 Reset del sistema</div>
@@ -1745,6 +1783,10 @@ async function cargarResumen() {
       <div class="stat-label">OT completadas hoy</div>
     </div>
   `;
+
+  // Comprobar banner plan anual
+  if (cacheAjustes) comprobarBannerPlanAnual();
+  else corelinkGet('/api/ajustes').then(d => { if (d) { cacheAjustes = d.ajustes; comprobarBannerPlanAnual(); } });
 
   // ── Feed incidencias de checklist ────────────────────────────────────
   const incCheck = Object.entries(incidencias)
@@ -4198,6 +4240,16 @@ async function cargarAjustes() {
     document.getElementById('ajusteVisitasAnual').value = cacheAjustes.contrato.visitasAnuales      || 1;
   }
   document.getElementById('ajusteMensajeDia').value = cacheAjustes.mensajeDelDia || '';
+  // Plan anual
+  const elAviso = document.getElementById('ajusteAvisoPlanAnual');
+  if (elAviso) elAviso.checked = cacheAjustes.avisoPlanAnual !== false;
+  const elDesde = document.getElementById('ajusteAvisoPlanDesde');
+  if (elDesde) {
+    const desde = cacheAjustes.avisoPlanAnualDesde || '05-01';
+    const [mm2, dd2] = desde.split('-');
+    elDesde.value = (dd2||'01') + '/' + (mm2||'05');
+  }
+  comprobarBannerPlanAnual();
   renderAjusteInstalaciones();
   renderUsuariosPNC(cacheAjustes);
   renderTecnicosPNT(cacheAjustes);
@@ -7138,6 +7190,65 @@ function cerrarModalAlbaranes() {
   document.getElementById('modalAlbaranes').style.display = 'none';
 }
 
+
+
+// ═══════════════════════════════════════════════════════════════════════
+// PLAN ANUAL DE MANTENIMIENTOS
+// ═══════════════════════════════════════════════════════════════════════
+async function generarPlanSiguienteAnio() {
+  // Contar cuántas OT se van a crear
+  const data = await corelinkGet('/api/agenda');
+  if (!data) { toast('Sin conexión'); return; }
+  const candidatas = Object.values(data.tareas||{}).filter(t =>
+    (t.tipo === 'anual' || t.tipo === 'trimestral') && t.fecha
+  );
+  if (candidatas.length === 0) { toast('No hay OT de mantenimiento con fecha para duplicar'); return; }
+  if (!confirm('Se van a crear ' + candidatas.length + ' OT nuevas con las mismas fechas del año siguiente.\n\n¿Continuar?')) return;
+  toast('Generando plan...');
+  const resp = await corelinkPost('/api/agenda/generar-siguiente-ano', {});
+  if (resp && resp.ok) {
+    toast('✓ ' + resp.creadas + ' OT creadas para el año siguiente');
+    cacheAgenda = null;
+    cargarResumen();
+    // Actualizar ajustes locales
+    if (cacheAjustes) cacheAjustes.avisoPlanAnualUltimaGen = new Date().toISOString().split('T')[0];
+    comprobarBannerPlanAnual();
+  } else { toast('Error al generar el plan'); }
+}
+
+async function guardarAjusteAvisoPlan() {
+  const activo = document.getElementById('ajusteAvisoPlanAnual').checked;
+  const desdeRaw = (document.getElementById('ajusteAvisoPlanDesde').value || '01/05').trim();
+  // Convertir DD/MM a MM-DD
+  const partes = desdeRaw.split('/');
+  const desde = partes.length === 2 ? partes[1].padStart(2,'0') + '-' + partes[0].padStart(2,'0') : '05-01';
+  await corelinkPost('/api/ajustes', { avisoPlanAnual: activo, avisoPlanAnualDesde: desde });
+  if (cacheAjustes) { cacheAjustes.avisoPlanAnual = activo; cacheAjustes.avisoPlanAnualDesde = desde; }
+  comprobarBannerPlanAnual();
+  toast('Ajuste guardado ✓');
+}
+
+function comprobarBannerPlanAnual() {
+  const banner = document.getElementById('bannerPlanAnual');
+  if (!banner || !cacheAjustes) return;
+  if (!cacheAjustes.avisoPlanAnual) { banner.style.display = 'none'; return; }
+  const hoy = new Date();
+  const desdeStr = cacheAjustes.avisoPlanAnualDesde || '05-01';
+  const [mm, dd] = desdeStr.split('-').map(Number);
+  const desde = new Date(hoy.getFullYear(), mm-1, dd);
+  const ultimaGen = cacheAjustes.avisoPlanAnualUltimaGen;
+  // Ya generado este año
+  if (ultimaGen) {
+    const genDate = new Date(ultimaGen);
+    if (genDate.getFullYear() === hoy.getFullYear()) { banner.style.display = 'none'; return; }
+  }
+  // Mostrar si estamos a partir de la fecha configurada
+  if (hoy >= desde) {
+    banner.style.display = 'flex';
+  } else {
+    banner.style.display = 'none';
+  }
+}
 
 </script>
 <!-- ── MODAL PARTE OT ──────────────────────────────────────────────── -->
