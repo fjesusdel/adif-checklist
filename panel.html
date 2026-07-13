@@ -6018,13 +6018,19 @@ async function guardarParteOT() {
   } catch(e) { toast('Sin conexión'); }
 }
 
-function _generarHTMLParteOT({ ot, resumen, tecnico, fecha, horaIn, horaOut, firma, material }) {
+function _generarHTMLParteOT({ ot, resumen, tecnico, fecha, horaIn, horaOut, firma, material,
+  inicioViajeIda, finViajeIda, inicioViajeVuelta, finViajeVuelta, tecnicoDni, numAlbaran,
+  numOTGAM: numOTGAMParam, numAveriaGAM: numAveriaGAMParam }) {
   const fechaFmt = fecha ? new Date(fecha+'T12:00:00').toLocaleDateString('es-ES',{day:'2-digit',month:'2-digit',year:'numeric'}) : '-';
   const TIPO_LABEL = LABEL_TIPO_TAREA;
   const tipo = ot ? (TIPO_LABEL[ot.tipo] || ot.tipo) : 'OT';
   const instalacion = ot ? (ot.nombreInstalacion || 'Sin instalación') : 'Sin instalación';
   const codigo      = ot ? (ot.codigoInstalacion || '') : '';
-  const numeroOT    = ot ? (ot.numeroOT || '') : '';
+  const numeroOT    = numAlbaran || (ot ? (ot.numeroOT || '') : '');
+  const numOTGAM     = numOTGAMParam     || (ot ? (ot.numeroOTGAM     || '') : '');
+  const numAveriaGAM = numAveriaGAMParam || (ot ? (ot.numeroAveriaGAM || '') : '');
+  const idsVal       = ot ? (ot.ids || '') : '';
+  const numMostrar   = numOTGAM || numeroOT;
 
   const materialHTML = material && material.length > 0
     ? `<div style="margin-bottom:16px"><div style="font-size:12px;font-weight:800;color:#003087;background:#e8eef8;padding:6px 12px;border-radius:4px;margin-bottom:8px">Material utilizado</div>
@@ -6048,24 +6054,36 @@ function _generarHTMLParteOT({ ot, resumen, tecnico, fecha, horaIn, horaOut, fir
     : '';
 
   return `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">
-    <title>${numeroOT} — ${instalacion} — ${fechaFmt}</title>
-    <style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:Arial,sans-serif;font-size:13px;color:#1a1a1a;padding:28px;max-width:800px;margin:0 auto}</style>
+    <title>${numMostrar} — ${instalacion} — ${fechaFmt}</title>
+    <style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:Arial,sans-serif;font-size:13px;color:#1a1a1a;padding:28px;max-width:800px;margin:0 auto}@media print{body{padding:10px}}</style>
     </head><body>
     <div style="display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid #003087;padding-bottom:16px;margin-bottom:4px">
       <div><div style="font-size:20px;font-weight:900;color:#003087">INGLOBA Seguridad</div>
       <div style="font-size:11px;color:#6b7280;margin-top:3px">Contrato 4.26/28510.0005 · Mantenimiento RC Sur · ADIF</div></div>
-      <div style="text-align:right"><div style="font-size:15px;font-weight:800;color:#003087">${numeroOT}</div>
-      <div style="font-size:11px;background:#e8eef8;color:#003087;padding:2px 10px;border-radius:99px;margin-top:4px">${tipo}</div></div>
+      <div style="text-align:right">
+        <div style="font-size:15px;font-weight:800;color:#003087">${numMostrar}</div>
+        ${numOTGAM && numOTGAM !== numeroOT ? `<div style="font-size:10px;color:#9ca3af">Ref. interna: ${numeroOT}</div>` : ''}
+        ${numAveriaGAM ? `<div style="font-size:11px;color:#6b7280">Avería GAM: ${numAveriaGAM}</div>` : ''}
+        ${idsVal ? `<div style="font-size:11px;color:#6b7280">IDS: ${idsVal}</div>` : ''}
+        <div style="font-size:11px;background:#e8eef8;color:#003087;padding:2px 10px;border-radius:99px;margin-top:4px">${tipo}</div>
+      </div>
     </div>
     <div style="background:#FFD100;height:3px;margin-bottom:20px"></div>
     <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:20px">
       <div style="background:#f4f6fa;border-radius:6px;padding:10px 12px"><div style="font-size:10px;font-weight:700;color:#6b7280;text-transform:uppercase;margin-bottom:3px">Instalación</div><div style="font-size:14px;font-weight:700;color:#003087">${instalacion}</div></div>
       <div style="background:#f4f6fa;border-radius:6px;padding:10px 12px"><div style="font-size:10px;font-weight:700;color:#6b7280;text-transform:uppercase;margin-bottom:3px">Código</div><div style="font-size:14px;font-weight:700;color:#003087">${codigo}</div></div>
       <div style="background:#f4f6fa;border-radius:6px;padding:10px 12px"><div style="font-size:10px;font-weight:700;color:#6b7280;text-transform:uppercase;margin-bottom:3px">Fecha</div><div style="font-size:14px;font-weight:700;color:#003087">${fechaFmt}</div></div>
-      <div style="background:#f4f6fa;border-radius:6px;padding:10px 12px"><div style="font-size:10px;font-weight:700;color:#6b7280;text-transform:uppercase;margin-bottom:3px">Técnico</div><div style="font-size:14px;font-weight:700;color:#003087">${tecnico||'—'}</div></div>
-      <div style="background:#f4f6fa;border-radius:6px;padding:10px 12px"><div style="font-size:10px;font-weight:700;color:#6b7280;text-transform:uppercase;margin-bottom:3px">Hora inicio</div><div style="font-size:14px;font-weight:700;color:#003087">${horaIn||'—'}</div></div>
-      <div style="background:#f4f6fa;border-radius:6px;padding:10px 12px"><div style="font-size:10px;font-weight:700;color:#6b7280;text-transform:uppercase;margin-bottom:3px">Hora fin</div><div style="font-size:14px;font-weight:700;color:#003087">${horaOut||'—'}</div></div>
+      <div style="background:#f4f6fa;border-radius:6px;padding:10px 12px;grid-column:span 2"><div style="font-size:10px;font-weight:700;color:#6b7280;text-transform:uppercase;margin-bottom:3px">Técnico</div><div style="font-size:14px;font-weight:700;color:#003087">${tecnico||'—'}${tecnicoDni ? ' · DNI: '+tecnicoDni : ''}</div></div>
     </div>
+    ${(inicioViajeIda || finViajeIda || horaIn || horaOut || inicioViajeVuelta || finViajeVuelta) ? `
+    <div style="margin-bottom:16px">
+      <div style="font-size:12px;font-weight:800;color:#003087;background:#e8eef8;padding:6px 12px;border-radius:4px;margin-bottom:8px">Tiempos</div>
+      <table style="width:100%;border-collapse:collapse;font-size:12px">
+        ${inicioViajeIda || finViajeIda ? `<tr><td style="padding:5px 8px;color:#6b7280;border-bottom:0.5px solid #e5e7eb">Viaje IDA</td><td style="padding:5px 8px;font-weight:700;border-bottom:0.5px solid #e5e7eb">${inicioViajeIda||'—'} → ${finViajeIda||'—'}</td></tr>` : ''}
+        ${horaIn || horaOut ? `<tr><td style="padding:5px 8px;color:#6b7280;border-bottom:0.5px solid #e5e7eb">Trabajos</td><td style="padding:5px 8px;font-weight:700;border-bottom:0.5px solid #e5e7eb">${horaIn||'—'} → ${horaOut||'—'}</td></tr>` : ''}
+        ${inicioViajeVuelta || finViajeVuelta ? `<tr><td style="padding:5px 8px;color:#6b7280">Viaje VUELTA</td><td style="padding:5px 8px;font-weight:700">${inicioViajeVuelta||'—'} → ${finViajeVuelta||'—'}</td></tr>` : ''}
+      </table>
+    </div>` : ''}
     <div style="margin-bottom:16px">
       <div style="font-size:12px;font-weight:800;color:#003087;background:#e8eef8;padding:6px 12px;border-radius:4px;margin-bottom:8px">Trabajo realizado</div>
       <div style="font-size:13px;line-height:1.6;white-space:pre-wrap">${resumen}</div>
@@ -6085,10 +6103,10 @@ async function verParteOT(otId, titulo, albIdx) {
   const url = '/api/ot/html?id=' + encodeURIComponent(otId) + (albIdx !== undefined ? '&alb=' + albIdx : '');
   const data = await corelinkGet(url);
   if (!data || !data.html) { toast('Parte no disponible'); return; }
-  document.getElementById('visorOTTitulo').textContent = titulo || 'Parte OT';
-  const blob = new Blob([data.html], { type: 'text/html' });
-  document.getElementById('visorOTIframe').src = URL.createObjectURL(blob);
-  document.getElementById('modalVisorOT').style.display = 'flex';
+  // Abrir en ventana nueva limpia — sin barra del panel, imprime correctamente
+  const ventana = window.open('', '_blank');
+  ventana.document.write(data.html);
+  ventana.document.close();
 }
 
 function cerrarVisorOT() {
@@ -7240,7 +7258,8 @@ async function verAlbaranesOT(otId) {
     if (tieneArchivo) {
       html += '<button class="btn-mini" style="margin-top:8px" onclick="cerrarModalAlbaranes();verParteOT(&quot;' + otId + '&quot;,&quot;' + n + '&quot;,' + i + ')">📄 Ver albarán</button> ';
     }
-    html += '<button class="btn-mini" style="margin-top:8px" onclick="cerrarModalAlbaranes();abrirEditarAlbaran(&quot;' + otId + '&quot;,' + i + ')">✏ Editar</button>';
+    html += '<button class="btn-mini" style="margin-top:8px" onclick="cerrarModalAlbaranes();abrirEditarAlbaran(&quot;' + otId + '&quot;,' + i + ')">✏ Editar</button> ';
+    html += '<button class="btn-mini" style="margin-top:8px;background:#eff6ff;color:var(--azul);border-color:var(--azul)" onclick="regenerarAlbaran(&quot;' + otId + '&quot;,' + i + ')">🔄 Actualizar PDF</button>';
     html += '</div>';
   });
   html += '</div>';
@@ -7378,6 +7397,48 @@ async function confirmarEditarAlbaran() {
     cacheAgenda = null;
     cargarAgenda();
   } else { toast('Error al guardar'); }
+}
+
+// ── Regenerar HTML del albarán con datos actuales ────────────────────
+async function regenerarAlbaran(otId, albIdx) {
+  if (!confirm('¿Regenerar el albarán con los datos actuales?\n\nEl archivo en Drive se machacará con la versión actualizada.')) return;
+  const data = await corelinkGet('/api/agenda');
+  const ot   = data && data.tareas ? data.tareas[otId] : null;
+  if (!ot) { toast('OT no encontrada'); return; }
+
+  const albs = ot.albaranes && ot.albaranes.length > 0 ? ot.albaranes : (ot.parte ? [ot.parte] : []);
+  const alb  = albs[albIdx];
+  if (!alb) { toast('Albarán no encontrado'); return; }
+
+  // Generar HTML con los datos actuales del albarán
+  const htmlContent = _generarHTMLParteOT({
+    ot:      ot,
+    resumen: alb.resumen || '',
+    tecnico: alb.tecnico || '',
+    fecha:   alb.fecha   || '',
+    horaIn:  alb.horaIn  || alb.inicioTrabajos || '',
+    horaOut: alb.horaOut || alb.finTrabajos    || '',
+    firma:   alb.firma   || '',
+    material: alb.materialUsado || [],
+    inicioViajeIda:    alb.inicioViajeIda    || '',
+    finViajeIda:       alb.finViajeIda       || '',
+    inicioViajeVuelta: alb.inicioViajeVuelta || '',
+    finViajeVuelta:    alb.finViajeVuelta    || '',
+    tecnicoDni:        alb.tecnicoDni        || (cacheAjustes && cacheAjustes.tecnico ? cacheAjustes.tecnico.dni || '' : ''),
+    numAlbaran:        alb.numero            || '',
+    numOTGAM:          alb.numeroOTGAM       || '',
+    numAveriaGAM:      alb.numeroAveriaGAM   || '',
+  });
+
+  toast('Subiendo albarán actualizado...');
+  const resp = await corelinkPost('/api/ot/albaran/editar', {
+    otId, albIdx,
+    htmlContent
+  });
+  if (resp && resp.ok) {
+    toast('✓ Albarán actualizado en Drive');
+    cerrarModalAlbaranes();
+  } else { toast('Error al actualizar el albarán'); }
 }
 </script>
 <!-- ── MODAL PARTE OT ──────────────────────────────────────────────── -->
