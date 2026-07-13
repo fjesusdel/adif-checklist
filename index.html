@@ -5682,6 +5682,9 @@ function abrirParteOTPNT(otId, titulo) {
   document.getElementById('parteOTPNTHoraOut').value       = '';
   document.getElementById('parteOTPNTResumen').value       = '';
   document.getElementById('parteOTPNTMaterialLista').innerHTML = '';
+  ['parteInicioViajeIda','parteFinViajeIda','parteInicioViajeVuelta','parteFinViajeVuelta'].forEach(function(id) {
+    var el = document.getElementById(id); if (el) el.value = '';
+  });
   document.getElementById('parteOTPNTAveriaWrap').style.display = 'none';
   document.getElementById('parteOTPNTBtnsNormal').style.display = 'flex';
   document.getElementById('modalParteOTPNT').style.display = 'block';
@@ -5769,7 +5772,12 @@ async function guardarParteOTPNT(averiaResuelta) {
   var numOTStr = ot ? (ot.numeroOT || '') : '';
   var numAlbStr = numOTStr + '-ALB' + String(numAlb).padStart(3,'0');
 
-  var htmlContent = _generarHTMLPartePNT({ ot: ot, resumen: resumen, tecnico: tecnico, fecha: fecha, horaIn: horaIn, horaOut: horaOut, firma: firma, mats: mats, numAlbaran: numAlbStr });
+  var inicioViajeIda    = (document.getElementById('parteInicioViajeIda')||{value:''}).value;
+  var finViajeIda       = (document.getElementById('parteFinViajeIda')||{value:''}).value;
+  var inicioViajeVuelta = (document.getElementById('parteInicioViajeVuelta')||{value:''}).value;
+  var finViajeVuelta    = (document.getElementById('parteFinViajeVuelta')||{value:''}).value;
+  var htmlContent = _generarHTMLPartePNT({ ot: ot, resumen: resumen, tecnico: tecnico, fecha: fecha, horaIn: horaIn, horaOut: horaOut, firma: firma, mats: mats, numAlbaran: numAlbStr,
+    inicioViajeIda: inicioViajeIda, finViajeIda: finViajeIda, inicioViajeVuelta: inicioViajeVuelta, finViajeVuelta: finViajeVuelta });
 
   toast('Guardando albarán...');
   try {
@@ -5779,8 +5787,9 @@ async function guardarParteOTPNT(averiaResuelta) {
       body: JSON.stringify({
         id: _pntParteOTId, resumen: resumen, tecnico: tecnico, fecha: fecha,
         horaIn: horaIn, horaOut: horaOut, firma: firma,
-        materialUsado: mats, htmlContent: htmlContent,
-        provincia:      ot ? (ot.provincia || '') : '',
+        horaIn: horaIn, horaOut: horaOut, firma: firma,
+        inicioViajeIda: inicioViajeIda, finViajeIda: finViajeIda,
+        inicioViajeVuelta: inicioViajeVuelta, finViajeVuelta: finViajeVuelta,
         instalacion:    ot ? (ot.nombreInstalacion || '') : '',
         averiaResuelta: averiaResuelta
       })
@@ -5802,11 +5811,19 @@ function _generarHTMLPartePNT(opts) {
   var ot = opts.ot, resumen = opts.resumen, tecnico = opts.tecnico;
   var fecha = opts.fecha, horaIn = opts.horaIn, horaOut = opts.horaOut;
   var firma = opts.firma, mats = opts.mats || [];
+  var inicioViajeIda    = opts.inicioViajeIda    || '';
+  var finViajeIda       = opts.finViajeIda       || '';
+  var inicioViajeVuelta = opts.inicioViajeVuelta || '';
+  var finViajeVuelta    = opts.finViajeVuelta    || '';
+  var tecnicoDni        = opts.tecnicoDni        || '';
   var fechaFmt = fecha ? new Date(fecha+'T12:00:00').toLocaleDateString('es-ES',{day:'2-digit',month:'2-digit',year:'numeric'}) : '-';
   var tipo   = ot ? (LABEL_TIPO_TAREA[ot.tipo] || ot.tipo) : 'OT';
   var inst   = ot ? (ot.nombreInstalacion || 'Sin instalacion') : 'Sin instalacion';
   var codigo = ot ? (ot.codigoInstalacion || '') : '';
-  var numOT  = ot ? (ot.numeroOT || '') : '';
+  var numOT  = opts.numAlbaran || (ot ? (ot.numeroOT || '') : '');
+  var numOTGAM     = ot ? (ot.numeroOTGAM     || '') : '';
+  var numAveriaGAM = ot ? (ot.numeroAveriaGAM || '') : '';
+  var ids          = ot ? (ot.ids             || '') : '';
 
   var matHTML = mats.length > 0
     ? '<div style="margin-bottom:16px"><div style="font-size:12px;font-weight:800;color:#003087;background:#e8eef8;padding:6px 12px;border-radius:4px;margin-bottom:8px">Material utilizado</div>'
@@ -5830,6 +5847,15 @@ function _generarHTMLPartePNT(opts) {
     ? '<div style="margin-top:20px;display:flex;justify-content:flex-end"><div style="text-align:center"><img src="'+firma+'" style="height:60px;border:1px dashed #ccc;border-radius:4px;padding:4px"><div style="font-size:9px;color:#6b7280;border-top:1px solid #9ca3af;padding-top:3px;margin-top:4px">Firma del tecnico</div></div></div>'
     : '';
 
+  var tiemposHTML = (inicioViajeIda || finViajeIda || inicioViajeVuelta || finViajeVuelta || horaIn || horaOut)
+    ? '<div style="margin-bottom:16px"><div style="font-size:12px;font-weight:800;color:#003087;background:#e8eef8;padding:6px 12px;border-radius:4px;margin-bottom:8px">Tiempos</div>'
+      + '<table style="width:100%;border-collapse:collapse;font-size:12px">'
+      + (inicioViajeIda || finViajeIda ? '<tr><td style="padding:5px 8px;color:#6b7280;border-bottom:0.5px solid #e5e7eb">Viaje IDA</td><td style="padding:5px 8px;font-weight:700;border-bottom:0.5px solid #e5e7eb">'+(inicioViajeIda||'—')+' \u2192 '+(finViajeIda||'—')+'</td></tr>' : '')
+      + (horaIn || horaOut ? '<tr><td style="padding:5px 8px;color:#6b7280;border-bottom:0.5px solid #e5e7eb">Trabajos</td><td style="padding:5px 8px;font-weight:700;border-bottom:0.5px solid #e5e7eb">'+(horaIn||'—')+' \u2192 '+(horaOut||'—')+'</td></tr>' : '')
+      + (inicioViajeVuelta || finViajeVuelta ? '<tr><td style="padding:5px 8px;color:#6b7280">Viaje VUELTA</td><td style="padding:5px 8px;font-weight:700">'+(inicioViajeVuelta||'—')+' \u2192 '+(finViajeVuelta||'—')+'</td></tr>' : '')
+      + '</table></div>'
+    : '';
+
   return '<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8">'
     + '<title>'+numOT+' - '+inst+' - '+fechaFmt+'</title>'
     + '<style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:Arial,sans-serif;font-size:13px;color:#1a1a1a;padding:28px;max-width:800px;margin:0 auto}</style>'
@@ -5838,19 +5864,20 @@ function _generarHTMLPartePNT(opts) {
     + '<div><div style="font-size:20px;font-weight:900;color:#003087">INGLOBA Seguridad</div>'
     + '<div style="font-size:11px;color:#6b7280;margin-top:3px">Contrato 4.26/28510.0005 - Mantenimiento RC Sur - ADIF</div></div>'
     + '<div style="text-align:right"><div style="font-size:15px;font-weight:800;color:#003087">'+numOT+'</div>'
+    + (numOTGAM ? '<div style="font-size:11px;color:#6b7280;margin-top:2px">OT GAM: '+numOTGAM+'</div>' : '')
+    + (numAveriaGAM ? '<div style="font-size:11px;color:#6b7280">Av. GAM: '+numAveriaGAM+'</div>' : '')
+    + (ids ? '<div style="font-size:11px;color:#6b7280">IDS: '+ids+'</div>' : '')
     + '<div style="font-size:11px;background:#e8eef8;color:#003087;padding:2px 10px;border-radius:99px;margin-top:4px">'+tipo+'</div></div></div>'
     + '<div style="background:#FFD100;height:3px;margin-bottom:20px"></div>'
     + '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:20px">'
     + '<div style="background:#f4f6fa;border-radius:6px;padding:10px 12px"><div style="font-size:10px;font-weight:700;color:#6b7280;text-transform:uppercase;margin-bottom:3px">Instalacion</div><div style="font-size:13px;font-weight:700;color:#003087">'+inst+'</div></div>'
     + '<div style="background:#f4f6fa;border-radius:6px;padding:10px 12px"><div style="font-size:10px;font-weight:700;color:#6b7280;text-transform:uppercase;margin-bottom:3px">Codigo</div><div style="font-size:13px;font-weight:700;color:#003087">'+codigo+'</div></div>'
     + '<div style="background:#f4f6fa;border-radius:6px;padding:10px 12px"><div style="font-size:10px;font-weight:700;color:#6b7280;text-transform:uppercase;margin-bottom:3px">Fecha</div><div style="font-size:13px;font-weight:700;color:#003087">'+fechaFmt+'</div></div>'
-    + '<div style="background:#f4f6fa;border-radius:6px;padding:10px 12px"><div style="font-size:10px;font-weight:700;color:#6b7280;text-transform:uppercase;margin-bottom:3px">Tecnico</div><div style="font-size:13px;font-weight:700;color:#003087">'+(tecnico||'—')+'</div></div>'
-    + '<div style="background:#f4f6fa;border-radius:6px;padding:10px 12px"><div style="font-size:10px;font-weight:700;color:#6b7280;text-transform:uppercase;margin-bottom:3px">Hora inicio</div><div style="font-size:13px;font-weight:700;color:#003087">'+(horaIn||'—')+'</div></div>'
-    + '<div style="background:#f4f6fa;border-radius:6px;padding:10px 12px"><div style="font-size:10px;font-weight:700;color:#6b7280;text-transform:uppercase;margin-bottom:3px">Hora fin</div><div style="font-size:13px;font-weight:700;color:#003087">'+(horaOut||'—')+'</div></div>'
+    + '<div style="background:#f4f6fa;border-radius:6px;padding:10px 12px;grid-column:span 2"><div style="font-size:10px;font-weight:700;color:#6b7280;text-transform:uppercase;margin-bottom:3px">Tecnico</div><div style="font-size:13px;font-weight:700;color:#003087">'+(tecnico||'—')+(tecnicoDni?' · DNI: '+tecnicoDni:'')+'</div></div>'
     + '</div>'
     + '<div style="margin-bottom:16px"><div style="font-size:12px;font-weight:800;color:#003087;background:#e8eef8;padding:6px 12px;border-radius:4px;margin-bottom:8px">Trabajo realizado</div>'
     + '<div style="font-size:13px;line-height:1.6;white-space:pre-wrap">'+resumen+'</div></div>'
-    + pausaHTML + matHTML + firmaHTML
+    + tiemposHTML + pausaHTML + matHTML + firmaHTML
     + '<div style="margin-top:20px;padding-top:10px;border-top:1px solid #e5e7eb;display:flex;justify-content:space-between;font-size:10px;color:#9ca3af">'
     + '<span>Ingloba Seguridad - Contrato ADIF 4.26/28510.0005 - RC Sur</span>'
     + '<span>'+numOT+' - '+inst+' - '+fechaFmt+'</span></div>'
@@ -6037,10 +6064,25 @@ async function confirmarPausaPNT() {
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
         <div><label style="font-size:11px;font-weight:700;color:var(--gris-oscuro);display:block;margin-bottom:4px">Fecha</label>
           <input type="date" id="parteOTPNTFecha" style="width:100%;border:1.5px solid var(--gris-borde);border-radius:8px;padding:8px;font-size:13px;font-family:inherit;box-sizing:border-box"></div>
-        <div><label style="font-size:11px;font-weight:700;color:var(--gris-oscuro);display:block;margin-bottom:4px">Hora inicio</label>
+        <div><label style="font-size:11px;font-weight:700;color:var(--gris-oscuro);display:block;margin-bottom:4px">Inicio trabajos</label>
           <input type="time" id="parteOTPNTHoraIn" style="width:100%;border:1.5px solid var(--gris-borde);border-radius:8px;padding:8px;font-size:13px;font-family:inherit;box-sizing:border-box"></div>
-        <div><label style="font-size:11px;font-weight:700;color:var(--gris-oscuro);display:block;margin-bottom:4px">Hora fin</label>
+        <div><label style="font-size:11px;font-weight:700;color:var(--gris-oscuro);display:block;margin-bottom:4px">Fin trabajos</label>
           <input type="time" id="parteOTPNTHoraOut" style="width:100%;border:1.5px solid var(--gris-borde);border-radius:8px;padding:8px;font-size:13px;font-family:inherit;box-sizing:border-box"></div>
+      </div>
+      <div style="margin-bottom:12px;background:#f4f6fa;border-radius:8px;padding:10px 12px">
+        <div style="font-size:11px;font-weight:700;color:var(--gris-oscuro);margin-bottom:8px">🚗 Tiempos de viaje (opcionales)</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+          <div><label style="font-size:10px;font-weight:600;color:var(--gris-medio);display:block;margin-bottom:3px">Inicio viaje IDA</label>
+            <input type="time" id="parteInicioViajeIda" style="width:100%;border:1.5px solid var(--gris-borde);border-radius:7px;padding:7px;font-size:13px;font-family:inherit;box-sizing:border-box"></div>
+          <div><label style="font-size:10px;font-weight:600;color:var(--gris-medio);display:block;margin-bottom:3px">Fin viaje IDA</label>
+            <input type="time" id="parteFinViajeIda" style="width:100%;border:1.5px solid var(--gris-borde);border-radius:7px;padding:7px;font-size:13px;font-family:inherit;box-sizing:border-box"></div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+          <div><label style="font-size:10px;font-weight:600;color:var(--gris-medio);display:block;margin-bottom:3px">Inicio viaje VUELTA</label>
+            <input type="time" id="parteInicioViajeVuelta" style="width:100%;border:1.5px solid var(--gris-borde);border-radius:7px;padding:7px;font-size:13px;font-family:inherit;box-sizing:border-box"></div>
+          <div><label style="font-size:10px;font-weight:600;color:var(--gris-medio);display:block;margin-bottom:3px">Fin viaje VUELTA</label>
+            <input type="time" id="parteFinViajeVuelta" style="width:100%;border:1.5px solid var(--gris-borde);border-radius:7px;padding:7px;font-size:13px;font-family:inherit;box-sizing:border-box"></div>
+        </div>
       </div>
       <div style="margin-bottom:12px">
         <label style="font-size:11px;font-weight:700;color:var(--gris-oscuro);display:block;margin-bottom:4px">Resumen del trabajo realizado <span style="color:var(--rojo)">*</span></label>

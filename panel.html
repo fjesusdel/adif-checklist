@@ -579,6 +579,11 @@ body.dark .item-card { background:#1e2433;border-color:#2d3548; }
             <option value="anual">Sí — Anual (genera 1 tarea al año)</option>
           </select>
         </div>
+        <div class="ficha-grid" style="margin-bottom:10px">
+          <div class="ficha-field"><label>Nº OT GAM (opcional)</label><input type="text" id="tareaNumOTGAM" placeholder="Ej: 4626/2026"></div>
+          <div class="ficha-field"><label>Nº Avería GAM (opcional)</label><input type="text" id="tareaNumAveriaGAM" placeholder="Ej: 2235/2026"></div>
+        </div>
+        <div class="ficha-field" style="margin-bottom:10px"><label>IDS (opcional)</label><input type="text" id="tareaIDS" placeholder="Ej: 3727261"></div>
         <div style="display:flex;gap:8px">
           <button class="btn-secondary" onclick="cerrarFormNuevaTarea()">Cancelar</button>
           <button class="btn-primary"   onclick="guardarNuevaTareaPanel()">Guardar tarea</button>
@@ -1216,6 +1221,7 @@ body.dark .item-card { background:#1e2433;border-color:#2d3548; }
       <div class="card-title">👤 Técnico por defecto (para informes)</div>
       <div class="ficha-grid">
         <div class="ficha-field"><label>Nombre completo</label><input type="text" id="ajusteTecnicoNombre" placeholder="Jesús Ángel Muñoz"></div>
+        <div class="ficha-field"><label>DNI</label><input type="text" id="ajusteTecnicoDni" placeholder="12345678A"></div>
         <div class="ficha-field"><label>Matrícula vehículo</label><input type="text" id="ajusteTecnicoMatricula" placeholder="8756LFL"></div>
       </div>
       <button class="btn-primary" style="margin-top:14px" onclick="guardarAjustesTecnico()">Guardar</button>
@@ -2977,6 +2983,8 @@ function renderAgendaLista() {
               + '<span class="item-tag" style="background:'+tagBg+';color:'+tagColor+'">'+(LABEL_TIPO_TAREA[t.tipo]||t.tipo)+'</span>'+asigEl+numOT
               + (esParada ? '<span style="font-size:10px;font-weight:700;background:#fef3c7;color:#92400e;padding:1px 8px;border-radius:99px;margin-left:6px">⏸ PARADA</span>' : '')
               + '<div class="item-card-titulo">'+(t.nombreInstalacion||t.codigoInstalacion||'OT sin instalación')+'</div>'
+              + (t.numeroOTGAM ? '<div class="item-card-meta" style="color:var(--azul);font-weight:600">GAM: '+t.numeroOTGAM+(t.numeroAveriaGAM?' &middot; Av: '+t.numeroAveriaGAM:'')+'</div>' : '')
+              + (t.ids ? '<div class="item-card-meta">IDS: '+t.ids+'</div>' : '')
               + (t.nota ? '<div class="item-card-desc">→ '+t.nota+'</div>' : '')
               + (esParada && t.motivoPausa ? '<div style="font-size:12px;color:#92400e;background:#fef3c7;border-radius:6px;padding:6px 10px;margin-top:4px">⏸ '+t.motivoPausa+'</div>' : '')
               + (t.contactoAvisar ? '<div style="font-size:12px;color:#065f46;background:#d1fae5;border-radius:6px;padding:5px 10px;margin-top:4px">📞 Avisar a: <strong>'+t.contactoAvisar.nombre+'</strong>'+(t.contactoAvisar.telefono?' · '+t.contactoAvisar.telefono:'')+'</div>' : '')
@@ -2994,6 +3002,8 @@ function renderAgendaLista() {
       return `<div class="item-card" style="opacity:.85;background:#f0fdf4">
         <span class="item-tag" style="background:var(--verde);color:#fff">✓ Completada</span>${numOT}
         <div class="item-card-titulo">${t.nombreInstalacion||t.codigoInstalacion||'OT sin instalación'}</div>
+        ${t.numeroOTGAM ? `<div class="item-card-meta" style="color:var(--azul);font-weight:600">GAM: ${t.numeroOTGAM}${t.numeroAveriaGAM?' · Av: '+t.numeroAveriaGAM:''}</div>` : ''}
+        ${t.ids ? `<div class="item-card-meta">IDS: ${t.ids}</div>` : ''}
         ${t.nota ? `<div class="item-card-desc">→ ${t.nota}</div>` : ''}
         <div class="item-card-meta">${new Date(t.fecha+'T12:00:00').toLocaleDateString('es-ES')}</div>
         ${numAlbs > 0 ? `<div style="font-size:11px;color:var(--gris-medio);margin-top:3px">📋 ${numAlbs} albarán${numAlbs>1?'es':''}</div>` : ''}
@@ -3216,6 +3226,9 @@ async function guardarNuevaTareaPanel() {
   const ctcNombre    = document.getElementById('tareaContactoNombre').value.trim();
   const ctcTel       = document.getElementById('tareaContactoTel').value.trim();
   const contactoAvisar = ctcNombre ? { nombre: ctcNombre, telefono: ctcTel } : null;
+  const numeroOTGAM     = (document.getElementById('tareaNumOTGAM')||{value:''}).value.trim() || null;
+  const numeroAveriaGAM = (document.getElementById('tareaNumAveriaGAM')||{value:''}).value.trim() || null;
+  const ids             = (document.getElementById('tareaIDS')||{value:''}).value.trim() || null;
   const resp = await corelinkPost('/api/agenda', {
     codigoInstalacion: codigo,
     nombreInstalacion: nombre,
@@ -3225,7 +3238,10 @@ async function guardarNuevaTareaPanel() {
     nota: notaFinal,
     recurrente,
     asignadoA,
-    contactoAvisar
+    contactoAvisar,
+    numeroOTGAM,
+    numeroAveriaGAM,
+    ids
   });
   if (resp.ok) {
     const msg = recurrente === 'trimestral' ? '4 tareas trimestrales creadas ✓' :
@@ -4266,6 +4282,7 @@ async function cargarAjustes() {
   // M38
   if (cacheAjustes.tecnico) {
     document.getElementById('ajusteTecnicoNombre').value    = cacheAjustes.tecnico.nombre    || '';
+    document.getElementById('ajusteTecnicoDni').value       = cacheAjustes.tecnico.dni       || '';
     document.getElementById('ajusteTecnicoMatricula').value = cacheAjustes.tecnico.matricula || '';
   }
   if (cacheAjustes.informe) {
@@ -4803,6 +4820,7 @@ async function cargarResumenTrimestral() {
 async function guardarAjustesTecnico() {
   const resp = await corelinkPost('/api/ajustes', { tecnico: {
     nombre:   document.getElementById('ajusteTecnicoNombre').value.trim(),
+    dni:      document.getElementById('ajusteTecnicoDni').value.trim(),
     matricula:document.getElementById('ajusteTecnicoMatricula').value.trim()
   }});
   if (resp.ok) toast('Datos del técnico guardados ✓'); else toast('Sin conexión');
@@ -6434,6 +6452,9 @@ function abrirModalEditarOT(id) {
   document.getElementById('editarOTAsignado').value   = t.asignadoA || '';
   document.getElementById('editarOTTipo').value       = t.tipo || 'anual';
   document.getElementById('editarOTNota').value       = t.nota || '';
+  document.getElementById('editarOTNumGAM').value     = t.numeroOTGAM || '';
+  document.getElementById('editarOTNumAveriaGAM').value = t.numeroAveriaGAM || '';
+  document.getElementById('editarOTIds').value        = t.ids || '';
   document.getElementById('editarOTContactoNombre').value = (t.contactoAvisar && t.contactoAvisar.nombre) ? t.contactoAvisar.nombre : '';
   document.getElementById('editarOTContactoTel').value    = (t.contactoAvisar && t.contactoAvisar.telefono) ? t.contactoAvisar.telefono : '';
   document.getElementById('editarOTCodigo').value     = t.codigoInstalacion || '';
@@ -6495,7 +6516,10 @@ async function confirmarEditarOT() {
   const contactoAvisar    = ctcNombre ? { nombre: ctcNombre, telefono: ctcTel } : null;
   const fpEl              = document.getElementById('editarOTFechaPausa');
   const fechaPausa        = fpEl && fpEl.value ? fpEl.value + 'T00:00:00.000Z' : null;
-  const body              = { id: _editarOTId, fecha, asignadoA, tipo, nota, codigoInstalacion, nombreInstalacion, provincia, contactoAvisar };
+  const numeroOTGAM     = document.getElementById('editarOTNumGAM').value.trim() || null;
+  const numeroAveriaGAM = document.getElementById('editarOTNumAveriaGAM').value.trim() || null;
+  const ids             = document.getElementById('editarOTIds').value.trim() || null;
+  const body            = { id: _editarOTId, fecha, asignadoA, tipo, nota, codigoInstalacion, nombreInstalacion, provincia, contactoAvisar, numeroOTGAM, numeroAveriaGAM, ids };
   if (fechaPausa) body.fechaPausa = fechaPausa;
   const resp = await corelinkPost('/api/agenda/editar', body);
   if (resp.ok) {
@@ -7213,8 +7237,9 @@ async function verAlbaranesOT(otId) {
     }
     if (alb.tecnico) html += '<div style="font-size:11px;color:var(--gris-medio);margin-top:3px">Técnico: ' + alb.tecnico + '</div>';
     if (tieneArchivo) {
-      html += '<button class="btn-mini" style="margin-top:8px" onclick="cerrarModalAlbaranes();verParteOT(&quot;' + otId + '&quot;,&quot;' + n + '&quot;,' + i + ')">📄 Ver albarán</button>';
+      html += '<button class="btn-mini" style="margin-top:8px" onclick="cerrarModalAlbaranes();verParteOT(&quot;' + otId + '&quot;,&quot;' + n + '&quot;,' + i + ')">📄 Ver albarán</button> ';
     }
+    html += '<button class="btn-mini" style="margin-top:8px" onclick="cerrarModalAlbaranes();abrirEditarAlbaran(&quot;' + otId + '&quot;,' + i + ')">✏ Editar</button>';
     html += '</div>';
   });
   html += '</div>';
@@ -7299,6 +7324,55 @@ async function resetStockCatalogo() {
       cargarStockPanel();
     }
   } else { toast('Error al reiniciar el stock'); }
+}
+
+// ── Editar albarán desde PNC ──────────────────────────────────────────
+function abrirEditarAlbaran(otId, albIdx) {
+  if (!cacheAgenda) return;
+  const ot  = cacheAgenda[otId];
+  const alb = ot && ot.albaranes ? ot.albaranes[albIdx] : (ot && ot.parte ? ot.parte : null);
+  if (!alb) { toast('Albarán no encontrado'); return; }
+  document.getElementById('editAlbOtId').value   = otId;
+  document.getElementById('editAlbIdx').value    = albIdx;
+  document.getElementById('editAlbFecha').value  = alb.fecha || '';
+  document.getElementById('editAlbHoraIn').value = alb.horaIn || alb.inicioTrabajos || '';
+  document.getElementById('editAlbHoraOut').value= alb.horaOut || alb.finTrabajos   || '';
+  document.getElementById('editAlbInicioViajeIda').value    = alb.inicioViajeIda    || '';
+  document.getElementById('editAlbFinViajeIda').value       = alb.finViajeIda       || '';
+  document.getElementById('editAlbInicioViajeVuelta').value = alb.inicioViajeVuelta || '';
+  document.getElementById('editAlbFinViajeVuelta').value    = alb.finViajeVuelta    || '';
+  document.getElementById('editAlbTecnico').value  = alb.tecnico  || '';
+  document.getElementById('editAlbResumen').value  = alb.resumen  || '';
+  document.getElementById('modalEditarAlbaran').style.display = 'flex';
+}
+
+function cerrarModalEditarAlbaran() {
+  document.getElementById('modalEditarAlbaran').style.display = 'none';
+}
+
+async function confirmarEditarAlbaran() {
+  const otId   = document.getElementById('editAlbOtId').value;
+  const albIdx = parseInt(document.getElementById('editAlbIdx').value);
+  const body = {
+    otId, albIdx,
+    fecha:             document.getElementById('editAlbFecha').value,
+    horaIn:            document.getElementById('editAlbHoraIn').value,
+    horaOut:           document.getElementById('editAlbHoraOut').value,
+    inicioViajeIda:    document.getElementById('editAlbInicioViajeIda').value,
+    finViajeIda:       document.getElementById('editAlbFinViajeIda').value,
+    inicioViajeVuelta: document.getElementById('editAlbInicioViajeVuelta').value,
+    finViajeVuelta:    document.getElementById('editAlbFinViajeVuelta').value,
+    tecnico:           document.getElementById('editAlbTecnico').value.trim(),
+    resumen:           document.getElementById('editAlbResumen').value.trim(),
+  };
+  toast('Guardando...');
+  const resp = await corelinkPost('/api/ot/albaran/editar', body);
+  if (resp && resp.ok) {
+    toast('Albarán actualizado ✓');
+    cerrarModalEditarAlbaran();
+    cacheAgenda = null;
+    cargarAgenda();
+  } else { toast('Error al guardar'); }
 }
 </script>
 <!-- ── MODAL PARTE OT ──────────────────────────────────────────────── -->
@@ -7446,6 +7520,21 @@ async function resetStockCatalogo() {
       <div id="editarOTFechaPausaWrap" style="display:none;margin-bottom:12px;background:#fffbeb;border:1px solid #f59e0b;border-radius:8px;padding:10px 12px">
         <label style="font-size:12px;font-weight:700;color:#92400e;display:block;margin-bottom:6px">⏸ Fecha de pausa (editable)</label>
         <input type="date" id="editarOTFechaPausa" style="width:100%;border:1.5px solid #f59e0b;border-radius:8px;padding:9px;font-size:14px;font-family:inherit;box-sizing:border-box">
+      </div>
+      <div style="margin-bottom:12px">
+        <label style="font-size:12px;font-weight:700;color:var(--gris-oscuro);display:block;margin-bottom:6px">Referencias GAM / IDS</label>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+          <div>
+            <label style="font-size:11px;color:var(--gris-medio);font-weight:600">Nº OT GAM</label>
+            <input type="text" id="editarOTNumGAM" placeholder="Ej: 4626/2026" style="width:100%;border:1.5px solid var(--gris-borde);border-radius:7px;padding:8px;font-size:13px;font-family:inherit;box-sizing:border-box">
+          </div>
+          <div>
+            <label style="font-size:11px;color:var(--gris-medio);font-weight:600">Nº Avería GAM</label>
+            <input type="text" id="editarOTNumAveriaGAM" placeholder="Ej: 2235/2026" style="width:100%;border:1.5px solid var(--gris-borde);border-radius:7px;padding:8px;font-size:13px;font-family:inherit;box-sizing:border-box">
+          </div>
+        </div>
+        <label style="font-size:11px;color:var(--gris-medio);font-weight:600">IDS</label>
+        <input type="text" id="editarOTIds" placeholder="Ej: 3727261" style="width:100%;border:1.5px solid var(--gris-borde);border-radius:7px;padding:8px;font-size:13px;font-family:inherit;box-sizing:border-box">
       </div>
       <div style="margin-bottom:12px">
         <label style="font-size:12px;font-weight:700;color:var(--gris-oscuro);display:block;margin-bottom:6px">Asignado a</label>
@@ -7637,6 +7726,57 @@ async function resetStockCatalogo() {
       <button onclick="cerrarModalAlbaranes()" style="background:rgba(255,255,255,0.15);color:#fff;border:none;border-radius:7px;padding:5px 12px;font-size:13px;cursor:pointer">✕</button>
     </div>
     <div id="modalAlbaranesBody" style="padding:20px"></div>
+  </div>
+</div>
+
+<!-- MODAL EDITAR ALBARÁN -->
+<div id="modalEditarAlbaran" style="display:none;position:fixed;inset:0;z-index:9200;background:rgba(0,0,0,0.65);align-items:flex-start;justify-content:center;padding:20px;overflow-y:auto">
+  <div style="background:#fff;border-radius:12px;max-width:520px;width:100%;margin:20px auto">
+    <div style="background:var(--azul);padding:14px 20px;display:flex;justify-content:space-between;align-items:center;border-radius:12px 12px 0 0">
+      <div style="color:#fff;font-size:15px;font-weight:800">✏ Editar albarán</div>
+      <button onclick="cerrarModalEditarAlbaran()" style="background:rgba(255,255,255,0.15);color:#fff;border:none;border-radius:7px;padding:5px 12px;font-size:13px;cursor:pointer">✕</button>
+    </div>
+    <div style="padding:20px">
+      <input type="hidden" id="editAlbOtId">
+      <input type="hidden" id="editAlbIdx">
+      <div style="margin-bottom:12px">
+        <label style="font-size:12px;font-weight:700;color:var(--gris-oscuro);display:block;margin-bottom:6px">Fecha</label>
+        <input type="date" id="editAlbFecha" style="width:100%;border:1.5px solid var(--gris-borde);border-radius:8px;padding:9px;font-size:14px;font-family:inherit;box-sizing:border-box">
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+        <div><label style="font-size:12px;font-weight:700;color:var(--gris-oscuro);display:block;margin-bottom:6px">Inicio trabajos</label>
+          <input type="time" id="editAlbHoraIn" style="width:100%;border:1.5px solid var(--gris-borde);border-radius:8px;padding:9px;font-size:14px;font-family:inherit;box-sizing:border-box"></div>
+        <div><label style="font-size:12px;font-weight:700;color:var(--gris-oscuro);display:block;margin-bottom:6px">Fin trabajos</label>
+          <input type="time" id="editAlbHoraOut" style="width:100%;border:1.5px solid var(--gris-borde);border-radius:8px;padding:9px;font-size:14px;font-family:inherit;box-sizing:border-box"></div>
+      </div>
+      <div style="background:#f4f6fa;border-radius:8px;padding:10px 12px;margin-bottom:12px">
+        <div style="font-size:11px;font-weight:700;color:var(--gris-oscuro);margin-bottom:8px">🚗 Tiempos de viaje (opcionales)</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+          <div><label style="font-size:10px;font-weight:600;color:var(--gris-medio)">Inicio viaje IDA</label>
+            <input type="time" id="editAlbInicioViajeIda" style="width:100%;border:1.5px solid var(--gris-borde);border-radius:7px;padding:7px;font-size:13px;font-family:inherit;box-sizing:border-box;margin-top:3px"></div>
+          <div><label style="font-size:10px;font-weight:600;color:var(--gris-medio)">Fin viaje IDA</label>
+            <input type="time" id="editAlbFinViajeIda" style="width:100%;border:1.5px solid var(--gris-borde);border-radius:7px;padding:7px;font-size:13px;font-family:inherit;box-sizing:border-box;margin-top:3px"></div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          <div><label style="font-size:10px;font-weight:600;color:var(--gris-medio)">Inicio viaje VUELTA</label>
+            <input type="time" id="editAlbInicioViajeVuelta" style="width:100%;border:1.5px solid var(--gris-borde);border-radius:7px;padding:7px;font-size:13px;font-family:inherit;box-sizing:border-box;margin-top:3px"></div>
+          <div><label style="font-size:10px;font-weight:600;color:var(--gris-medio)">Fin viaje VUELTA</label>
+            <input type="time" id="editAlbFinViajeVuelta" style="width:100%;border:1.5px solid var(--gris-borde);border-radius:7px;padding:7px;font-size:13px;font-family:inherit;box-sizing:border-box;margin-top:3px"></div>
+        </div>
+      </div>
+      <div style="margin-bottom:12px">
+        <label style="font-size:12px;font-weight:700;color:var(--gris-oscuro);display:block;margin-bottom:6px">Técnico</label>
+        <input type="text" id="editAlbTecnico" style="width:100%;border:1.5px solid var(--gris-borde);border-radius:8px;padding:9px;font-size:14px;font-family:inherit;box-sizing:border-box">
+      </div>
+      <div style="margin-bottom:20px">
+        <label style="font-size:12px;font-weight:700;color:var(--gris-oscuro);display:block;margin-bottom:6px">Trabajo realizado</label>
+        <textarea id="editAlbResumen" rows="4" style="width:100%;border:1.5px solid var(--gris-borde);border-radius:8px;padding:9px;font-size:14px;font-family:inherit;box-sizing:border-box;resize:vertical"></textarea>
+      </div>
+      <div style="display:flex;gap:10px">
+        <button onclick="cerrarModalEditarAlbaran()" style="flex:1;padding:10px;background:#f3f4f6;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer">Cancelar</button>
+        <button onclick="confirmarEditarAlbaran()" style="flex:2;padding:10px;background:var(--azul);color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer">✓ Guardar</button>
+      </div>
+    </div>
   </div>
 </div>
 
