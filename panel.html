@@ -3010,6 +3010,7 @@ function renderAgendaLista() {
         <div class="item-card-btns">
           ${numAlbs > 0 ? `<button class="btn-mini" onclick="verAlbaranesOT('${id}')">📋 Albaranes</button>` : ''}
           ${tieneParte ? `<button class="btn-mini" onclick="verParteOT('${id}','${t.numeroOT||'OT'}')">📄 Ver parte</button>` : ''}
+          <button class="btn-mini" onclick="abrirModalEditarOT('${id}')">✏ Editar</button>
           <button class="btn-mini" onclick="cambiarEstadoTareaPanel('${id}','pendiente')">↺ Reabrir</button>
           <button class="btn-mini rojo" onclick="eliminarTarea('${id}')">🗑 Eliminar</button>
         </div>
@@ -7334,6 +7335,8 @@ function abrirEditarAlbaran(otId, albIdx) {
   if (!alb) { toast('Albarán no encontrado'); return; }
   document.getElementById('editAlbOtId').value   = otId;
   document.getElementById('editAlbIdx').value    = albIdx;
+  document.getElementById('editAlbNumOTGAM').value     = alb.numeroOTGAM     || '';
+  document.getElementById('editAlbNumAveriaGAM').value = alb.numeroAveriaGAM || '';
   document.getElementById('editAlbFecha').value  = alb.fecha || '';
   document.getElementById('editAlbHoraIn').value = alb.horaIn || alb.inicioTrabajos || '';
   document.getElementById('editAlbHoraOut').value= alb.horaOut || alb.finTrabajos   || '';
@@ -7355,6 +7358,8 @@ async function confirmarEditarAlbaran() {
   const albIdx = parseInt(document.getElementById('editAlbIdx').value);
   const body = {
     otId, albIdx,
+    numeroOTGAM:       document.getElementById('editAlbNumOTGAM').value.trim() || null,
+    numeroAveriaGAM:   document.getElementById('editAlbNumAveriaGAM').value.trim() || null,
     fecha:             document.getElementById('editAlbFecha').value,
     horaIn:            document.getElementById('editAlbHoraIn').value,
     horaOut:           document.getElementById('editAlbHoraOut').value,
@@ -7739,6 +7744,12 @@ async function confirmarEditarAlbaran() {
     <div style="padding:20px">
       <input type="hidden" id="editAlbOtId">
       <input type="hidden" id="editAlbIdx">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+        <div><label style="font-size:12px;font-weight:700;color:var(--gris-oscuro);display:block;margin-bottom:6px">Nº OT GAM</label>
+          <input type="text" id="editAlbNumOTGAM" placeholder="Ej: 4626/2026" style="width:100%;border:1.5px solid var(--gris-borde);border-radius:8px;padding:9px;font-size:14px;font-family:inherit;box-sizing:border-box"></div>
+        <div><label style="font-size:12px;font-weight:700;color:var(--gris-oscuro);display:block;margin-bottom:6px">Nº Avería GAM</label>
+          <input type="text" id="editAlbNumAveriaGAM" placeholder="Ej: 2235/2026" style="width:100%;border:1.5px solid var(--gris-borde);border-radius:8px;padding:9px;font-size:14px;font-family:inherit;box-sizing:border-box"></div>
+      </div>
       <div style="margin-bottom:12px">
         <label style="font-size:12px;font-weight:700;color:var(--gris-oscuro);display:block;margin-bottom:6px">Fecha</label>
         <input type="date" id="editAlbFecha" style="width:100%;border:1.5px solid var(--gris-borde);border-radius:8px;padding:9px;font-size:14px;font-family:inherit;box-sizing:border-box">
