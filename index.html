@@ -2164,10 +2164,17 @@ function cambiarSeccion(seccion) {
   document.getElementById('tabStock').classList.toggle('active', seccion === 'stock');
   document.getElementById('tabEstadisticas').classList.toggle('active', seccion === 'estadisticas');
   document.getElementById('seccionInicio').classList.toggle('hidden', seccion !== 'inicio');
-  document.getElementById('paso1').classList.toggle('hidden', seccion !== 'mantenimientos');
   document.getElementById('seccionAgenda').classList.toggle('hidden', seccion !== 'agenda');
   document.getElementById('seccionStock').classList.toggle('hidden', seccion !== 'stock');
   document.getElementById('seccionEstadisticas').classList.toggle('hidden', seccion !== 'estadisticas');
+  // Gestionar pasos del checklist — al salir de Visitas volver siempre a paso1
+  if (seccion === 'mantenimientos') {
+    document.getElementById('paso1').classList.remove('hidden');
+  } else {
+    ['paso1','paso2','paso3','paso4','paso5'].forEach(p => {
+      document.getElementById(p).classList.add('hidden');
+    });
+  }
   const box = document.getElementById('resumenDiaBox');
   if (box) box.style.display = seccion === 'mantenimientos' && todasLasTareas && Object.values(todasLasTareas).some(t => t.fecha === new Date().toISOString().split('T')[0] && t.estado !== 'completada') ? 'block' : 'none';
 
