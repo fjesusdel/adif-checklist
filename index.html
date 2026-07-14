@@ -2463,16 +2463,17 @@ async function cargarYRenderizarAgenda() {
         btns = '<span style="font-size:11px;color:var(--gris-medio);font-style:italic">\u2713 Completada</span>';
       } else if (esParada) {
         btns = '<button class="btn-tarea-estado" onclick="reanudarOTPNT(&quot;'+_id+'&quot;)">\u25b6 Reanudar</button>';
-      } else if (esMtto && t.codigoInstalacion) {
-             
-             + '<button class="btn-primary" style="padding:5px 14px;font-size:12px" onclick="irAInstalacionDesdeOT(&quot;'+_id+'&quot;,&quot;'+t.codigoInstalacion+'&quot;,&quot;'+t.tipo+'&quot;)">\ud83c\udfc1 En la instalaci\u00f3n</button>';
+      } else if (esMtto) {
+        if (t.codigoInstalacion) {
+          btns = '<button class="btn-primary" style="padding:5px 14px;font-size:12px" onclick="irAInstalacionDesdeOT(&quot;'+_id+'&quot;,&quot;'+t.codigoInstalacion+'&quot;,&quot;'+t.tipo+'&quot;)">\ud83c\udfc1 En la instalaci\u00f3n</button>';
+        } else {
+          btns = '<button class="btn-tarea-estado" onclick="cambiarEstadoTarea(&quot;'+_id+'&quot;,&quot;completada&quot;)">\u2713 Completada</button>';
+        }
       } else if (esParte) {
         const _tit = ((t.numeroOT||'OT')+' \u2014 '+(t.nombreInstalacion||t.tipo||'')).replace(/"/g,'&quot;');
-             
-             + '<button class="btn-primary" style="padding:5px 14px;font-size:12px;background:var(--verde)" onclick="abrirParteOTPNT(&quot;'+_id+'&quot;,&quot;'+_tit+'&quot;)">\u2713 Completar OT</button>';
+        btns = '<button class="btn-primary" style="padding:5px 14px;font-size:12px;background:var(--verde)" onclick="abrirParteOTPNT(&quot;'+_id+'&quot;,&quot;'+_tit+'&quot;)">\u2713 Completar OT</button>';
       } else {
-             
-             + '<button class="btn-tarea-estado" onclick="cambiarEstadoTarea(&quot;'+_id+'&quot;,&quot;completada&quot;)">\u2713 Completada</button>';
+        btns = '<button class="btn-tarea-estado" onclick="cambiarEstadoTarea(&quot;'+_id+'&quot;,&quot;completada&quot;)">\u2713 Completada</button>';
       }
       html += '<div class="agenda-tarea'+(esCompletada?' completada':'')+'" style="'+bordEstilo+'">'
             + '<span class="agenda-tarea-tipo-tag">'+(LABEL_TIPO_TAREA[t.tipo]||t.tipo)+'</span>'+asigTxt+numOT
@@ -5408,17 +5409,17 @@ function pntSelDia(dia) {
       var btns = '';
       if (esParada) {
         btns = '<button class="btn-tarea-estado" onclick="reanudarOTPNT(&quot;'+_id+'&quot;)">\u25b6 Reanudar</button>';
-      } else if (esMtto && t.codigoInstalacion) {
-             
-             + '<button class="btn-primary" style="padding:5px 14px;font-size:12px" onclick="irAInstalacionDesdeOT(&quot;'+_id+'&quot;,&quot;'+t.codigoInstalacion+'&quot;,&quot;'+t.tipo+'&quot;)">\ud83c\udfc1 En la instalaci\u00f3n</button>';
+      } else if (esMtto) {
+        if (t.codigoInstalacion) {
+          btns = '<button class="btn-primary" style="padding:5px 14px;font-size:12px" onclick="irAInstalacionDesdeOT(&quot;'+_id+'&quot;,&quot;'+t.codigoInstalacion+'&quot;,&quot;'+t.tipo+'&quot;)">\ud83c\udfc1 En la instalaci\u00f3n</button>';
+        } else {
+          btns = '<button class="btn-tarea-estado" onclick="cambiarEstadoTarea(&quot;'+_id+'&quot;,&quot;completada&quot;)">\u2713 Completada</button>';
+        }
       } else if (esParte) {
         var _tit = ((t.numeroOT||'OT')+' \u2014 '+(t.nombreInstalacion||t.tipo||'')).replace(/"/g,'&quot;');
-             
-             + '<button class="btn-primary" style="padding:5px 14px;font-size:12px;background:var(--verde)" onclick="abrirParteOTPNT(&quot;'+_id+'&quot;,&quot;'+_tit+'&quot;)">\u2713 Completar OT</button>';
+        btns = '<button class="btn-primary" style="padding:5px 14px;font-size:12px;background:var(--verde)" onclick="abrirParteOTPNT(&quot;'+_id+'&quot;,&quot;'+_tit+'&quot;)">\u2713 Completar OT</button>';
       } else {
-        btns = '<button class="btn-tarea-estado '+(t.estado==='en_curso'?'active en_curso':'')+'" onclick="cambiarEstadoTarea(&quot;'+_id+'&quot;,&quot;en_curso&quot;)">\u25b6 En curso</button>'
-             
-             + '<button class="btn-tarea-estado" onclick="cambiarEstadoTarea(&quot;'+_id+'&quot;,&quot;completada&quot;)">\u2713 Completada</button>';
+        btns = '<button class="btn-tarea-estado" onclick="cambiarEstadoTarea(&quot;'+_id+'&quot;,&quot;completada&quot;)">\u2713 Completada</button>';
       }
       return '<div class="agenda-tarea" style="margin-bottom:8px;'+(esParada?'background:#fffbeb;border-left:4px solid #f59e0b':(esJesus?'background:#eff6ff;border-left:4px solid #1e40af':''))+'">'
         + '<span class="agenda-tarea-tipo-tag">'+(LABEL_TIPO_TAREA[t.tipo]||t.tipo)+'</span>'+asigTxt+numOT
