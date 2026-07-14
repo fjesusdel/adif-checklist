@@ -2492,22 +2492,33 @@ async function cargarYRenderizarAgenda() {
 
 // Navegar directamente a la instalación desde una OT de mantenimiento
 async function irAInstalacionDesdeOT(otId, codigoInstalacion, tipoChecklist) {
-  // Marcar OT en curso
-  await corelinkActualizarEstadoTarea(otId, 'en_curso');
-  // Guardar referencia a la OT para completarla al sincronizar
-  state.otVinculadaId = otId;
-  // Buscar la instalación y navegar al paso 2 con el tipo de checklist
   const inst = INSTALACIONES.find(i => i.codigo === codigoInstalacion);
   if (!inst) { toast('Instalación no encontrada'); return; }
-  state.instalacion = inst;
-  state.tipoVisita  = tipoChecklist;
-  await irPaso2();
-  // Preseleccionar el tipo de visita
+  state.otVinculadaId = otId;
+  state.instalacion   = inst;
+  state.tipoVisita    = tipoChecklist;
+  state.resultados    = {};
+  // Primero navegar a Visitas para que los elementos paso1/paso2 sean accesibles
+  cambiarSeccion('mantenimientos');
+  // Ir directamente a paso2 mostrando solo ese paso
+  ['paso1','paso2','paso3','paso4','paso5'].forEach(p => {
+    document.getElementById(p).classList.toggle('hidden', p !== 'paso2');
+  });
+  setP2Tab('visita');
+  renderInstCard('instSelectedCard2');
+  // Aviso instalación no disponible
+  const fichaInst = fichasCache && fichasCache[inst.codigo];
+  const avisoEl = document.getElementById('avisoNoDisponible');
+  if (avisoEl) avisoEl.classList.toggle('hidden', !(fichaInst && fichaInst.noDisponible));
+  cargarNotasInstPNT();
+  // Preseleccionar tipo de visita
   document.querySelectorAll('.tipo-btn').forEach(el => {
     el.classList.toggle('selected', el.dataset.tipo === tipoChecklist);
   });
-  document.getElementById('btnConfirmarTipo').disabled = false;
-  document.getElementById('btnMarcarRealizada').style.display = 'block';
+  const btnConfirmar = document.getElementById('btnConfirmarTipo');
+  if (btnConfirmar) btnConfirmar.disabled = false;
+  const btnMarcar = document.getElementById('btnMarcarRealizada');
+  if (btnMarcar) btnMarcar.style.display = 'block';
 }
 
 async function reanudarOTPNT(id) {
