@@ -165,7 +165,7 @@ header { background: var(--azul); position: sticky; top: 0; z-index: 100; box-sh
 .btn-mini.activo-amarillo{ background: var(--amarillo); border-color: var(--amarillo); color: var(--azul); }
 
 /* ── AGENDA ───────────────────────────────────── */
-.agenda-dia-titulo { font-size: 12px; font-weight: 800; color: var(--azul); text-transform: uppercase; margin: 16px 0 8px; padding-bottom: 6px; border-bottom: 2px solid var(--azul-claro); }
+.agenda-dia-titulo { font-size: 12px; font-weight: 800; color: #fff; background: var(--azul); text-transform: uppercase; margin: 16px -16px 8px; padding: 8px 16px; letter-spacing: 0.5px; }
 .agenda-dia-titulo:first-child { margin-top: 0; }
 
 /* ── CALENDARIO (M24) ─────────────────────────── */
@@ -514,8 +514,10 @@ body.dark .item-card { background:#1e2433;border-color:#2d3548; }
       </div>
       <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">
         <button class="pill active" id="filtroAgendaPendientes"  onclick="setFiltroAgenda('pendientes')">Pendientes</button>
+        <button class="pill"        id="filtroAgendaSinAsignar" onclick="setFiltroAgenda('sinasignar')">Sin asignar</button>
         <button class="pill"        id="filtroAgendaCompletadas" onclick="setFiltroAgenda('completadas')">Completadas</button>
-        <button class="pill"        id="filtroAgendaMias"        onclick="setFiltroAgenda('mias')">🖥 Mis revisiones</button>
+        <button class="pill"        id="filtroAgendaJesus"      onclick="setFiltroAgenda('jesus')">👷 OT Jesús</button>
+        <button class="pill"        id="filtroAgendaFran"       onclick="setFiltroAgenda('fran')">🖥 OT Fran</button>
       </div>
       <!-- Selector de mes -->
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;background:var(--gris-fondo);border-radius:8px;padding:8px 12px">
@@ -2883,9 +2885,11 @@ let listaOTAnioActual   = new Date().getFullYear();
 
 function setFiltroAgenda(f) {
   filtroAgendaActual = f;
-  document.getElementById('filtroAgendaPendientes').classList.toggle('active', f === 'pendientes');
+  document.getElementById('filtroAgendaPendientes').classList.toggle('active',  f === 'pendientes');
+  document.getElementById('filtroAgendaSinAsignar').classList.toggle('active',  f === 'sinasignar');
   document.getElementById('filtroAgendaCompletadas').classList.toggle('active', f === 'completadas');
-  document.getElementById('filtroAgendaMias').classList.toggle('active', f === 'mias');
+  document.getElementById('filtroAgendaJesus').classList.toggle('active',       f === 'jesus');
+  document.getElementById('filtroAgendaFran').classList.toggle('active',        f === 'fran');
   const filtroFecha = document.getElementById('filtroFechaCompletadas');
   if (filtroFecha) filtroFecha.style.display = f === 'completadas' ? 'flex' : 'none';
   renderAgendaLista();
@@ -2917,28 +2921,34 @@ function actualizarTituloMesLista() {
 
 function renderAgendaLista() {
   const cont    = document.getElementById('agendaListContainer');
-  const esPendientes = filtroAgendaActual === 'pendientes';
-  const esMias        = filtroAgendaActual === 'mias';
+  const esPendientes  = filtroAgendaActual === 'pendientes';
+  const esSinAsignar  = filtroAgendaActual === 'sinasignar';
+  const esCompletadas = filtroAgendaActual === 'completadas';
+  const esJesus       = filtroAgendaActual === 'jesus';
+  const esFran        = filtroAgendaActual === 'fran';
   actualizarTituloMesLista();
-  const mesStr   = String(listaOTMesActual + 1).padStart(2,'0');
-  const prefijo  = listaOTAnioActual + '-' + mesStr;
+  const mesStr        = String(listaOTMesActual + 1).padStart(2,'0');
+  const prefijo       = listaOTAnioActual + '-' + mesStr;
   const fechaFiltroDay = document.getElementById('completadasFechaFiltro')?.value || '';
 
   const lista = Object.entries(cacheAgenda||{}).filter(([id,t]) => {
-    if (esMias) return (t.asignadoA === 'fran' || (!t.asignadoA && t.tipo === 'trim-coord')) && t.estado !== 'completada';
-    if (!esPendientes) return t.estado === 'completada' && (t.fecha||'').startsWith(prefijo);
-    // Pendientes: sin fecha siempre, con fecha solo del mes activo
+    if (esCompletadas) return t.estado === 'completada' && (t.fecha||'').startsWith(prefijo);
     if (t.estado === 'completada') return false;
     if (fechaFiltroDay) return t.fecha === fechaFiltroDay;
-    if (!t.fecha) return true; // sin fecha siempre visibles
-    return t.fecha.startsWith(prefijo);
+    if (!t.fecha) return esPendientes || esSinAsignar || esJesus || esFran;
+    if (!t.fecha.startsWith(prefijo)) return false;
+    if (esPendientes)  return true;
+    if (esSinAsignar)  return !t.asignadoA;
+    if (esJesus)       return t.asignadoA === 'jesus';
+    if (esFran)        return t.asignadoA === 'fran';
+    return false;
   });
   if (lista.length === 0) {
-    const msgVacio = esMias ? '✓ No tienes revisiones trimestrales remotas pendientes' : (esPendientes ? '✓ No hay tareas pendientes' : 'Sin tareas completadas todavía');
+    const msgVacio = esCompletadas ? 'Sin tareas completadas en este mes' : '✓ No hay tareas pendientes para este filtro';
     cont.innerHTML = `<div class="empty-state">${msgVacio}</div>`;
     return;
   }
-  if (esPendientes || esMias) {
+  if (!esCompletadas) {
     const sinFecha = lista.filter(([,t]) => !t.fecha);
     const conFecha = lista.filter(([,t]) => !!t.fecha);
     const porFecha = {};
@@ -2968,7 +2978,7 @@ function renderAgendaLista() {
         if (esParada) {
           btns = '<button class="btn-mini verde" onclick="reanudarOT(&quot;'+id+'&quot;)">\u25b6 Reanudar</button>';
         } else {
-          btns = '<button class="btn-mini '+(t.estado==='en_curso'?'activo-amarillo':'')+'" onclick="cambiarEstadoTareaPanel(&quot;'+id+'&quot;,&quot;en_curso&quot;)">\u25b6 En curso</button>'
+          btns = '';
           if (esParteOT) {
             btns += '<button class="btn-mini verde" onclick="abrirModalParteOT(&quot;'+id+'&quot;,&quot;'+_q((t.numeroOT||'OT')+' \u2014 '+(t.nombreInstalacion||t.tipo||''))+'&quot;)">\u2713 Completar OT</button>';
           } else {

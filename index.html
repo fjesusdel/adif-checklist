@@ -2464,16 +2464,13 @@ async function cargarYRenderizarAgenda() {
       } else if (esParada) {
         btns = '<button class="btn-tarea-estado" onclick="reanudarOTPNT(&quot;'+_id+'&quot;)">\u25b6 Reanudar</button>';
       } else if (esMtto && t.codigoInstalacion) {
-        btns = '<button class="btn-tarea-estado '+(t.estado==='en_curso'?'active en_curso':'')+'" onclick="cambiarEstadoTarea(&quot;'+_id+'&quot;,&quot;en_curso&quot;)">\u25b6 En curso</button>'
              
              + '<button class="btn-primary" style="padding:5px 14px;font-size:12px" onclick="irAInstalacionDesdeOT(&quot;'+_id+'&quot;,&quot;'+t.codigoInstalacion+'&quot;,&quot;'+t.tipo+'&quot;)">\ud83c\udfc1 En la instalaci\u00f3n</button>';
       } else if (esParte) {
         const _tit = ((t.numeroOT||'OT')+' \u2014 '+(t.nombreInstalacion||t.tipo||'')).replace(/"/g,'&quot;');
-        btns = '<button class="btn-tarea-estado '+(t.estado==='en_curso'?'active en_curso':'')+'" onclick="cambiarEstadoTarea(&quot;'+_id+'&quot;,&quot;en_curso&quot;)">\u25b6 En curso</button>'
              
              + '<button class="btn-primary" style="padding:5px 14px;font-size:12px;background:var(--verde)" onclick="abrirParteOTPNT(&quot;'+_id+'&quot;,&quot;'+_tit+'&quot;)">\u2713 Completar OT</button>';
       } else {
-        btns = '<button class="btn-tarea-estado '+(t.estado==='en_curso'?'active en_curso':'')+'" onclick="cambiarEstadoTarea(&quot;'+_id+'&quot;,&quot;en_curso&quot;)">\u25b6 En curso</button>'
              
              + '<button class="btn-tarea-estado" onclick="cambiarEstadoTarea(&quot;'+_id+'&quot;,&quot;completada&quot;)">\u2713 Completada</button>';
       }
@@ -5412,12 +5409,10 @@ function pntSelDia(dia) {
       if (esParada) {
         btns = '<button class="btn-tarea-estado" onclick="reanudarOTPNT(&quot;'+_id+'&quot;)">\u25b6 Reanudar</button>';
       } else if (esMtto && t.codigoInstalacion) {
-        btns = '<button class="btn-tarea-estado '+(t.estado==='en_curso'?'active en_curso':'')+'" onclick="cambiarEstadoTarea(&quot;'+_id+'&quot;,&quot;en_curso&quot;)">\u25b6 En curso</button>'
              
              + '<button class="btn-primary" style="padding:5px 14px;font-size:12px" onclick="irAInstalacionDesdeOT(&quot;'+_id+'&quot;,&quot;'+t.codigoInstalacion+'&quot;,&quot;'+t.tipo+'&quot;)">\ud83c\udfc1 En la instalaci\u00f3n</button>';
       } else if (esParte) {
         var _tit = ((t.numeroOT||'OT')+' \u2014 '+(t.nombreInstalacion||t.tipo||'')).replace(/"/g,'&quot;');
-        btns = '<button class="btn-tarea-estado '+(t.estado==='en_curso'?'active en_curso':'')+'" onclick="cambiarEstadoTarea(&quot;'+_id+'&quot;,&quot;en_curso&quot;)">\u25b6 En curso</button>'
              
              + '<button class="btn-primary" style="padding:5px 14px;font-size:12px;background:var(--verde)" onclick="abrirParteOTPNT(&quot;'+_id+'&quot;,&quot;'+_tit+'&quot;)">\u2713 Completar OT</button>';
       } else {
