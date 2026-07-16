@@ -3115,16 +3115,16 @@ async function cargarFichaTecnica() {
 
   // Ficha técnica según sistemas presentes
   const campos = [
-    {id:'ip_grabador', label:'IP Grabador CCTV', ph:'Ej: 192.168.1.100', cond: (Array.isArray(inst.sistemas) && inst.sistemas.includes('cctv')},)
-    {id:'puerto_grabador', label:'Puerto acceso remoto', ph:'Ej: 8080', cond: (Array.isArray(inst.sistemas) && inst.sistemas.includes('cctv')},)
-    {id:'user_grabador', label:'Usuario grabador', ph:'', cond: (Array.isArray(inst.sistemas) && inst.sistemas.includes('cctv')},)
-    {id:'pass_grabador', label:'Contraseña grabador', ph:'', cond: (Array.isArray(inst.sistemas) && inst.sistemas.includes('cctv')},)
+    {id:'ip_grabador', label:'IP Grabador CCTV', ph:'Ej: 192.168.1.100', cond: (Array.isArray(inst.sistemas) && inst.sistemas.includes('cctv'))},
+    {id:'puerto_grabador', label:'Puerto acceso remoto', ph:'Ej: 8080', cond: (Array.isArray(inst.sistemas) && inst.sistemas.includes('cctv'))},
+    {id:'user_grabador', label:'Usuario grabador', ph:'', cond: (Array.isArray(inst.sistemas) && inst.sistemas.includes('cctv'))},
+    {id:'pass_grabador', label:'Contraseña grabador', ph:'', cond: (Array.isArray(inst.sistemas) && inst.sistemas.includes('cctv'))},
     {id:'ip_central', label:'IP Central de Alarma', ph:'Ej: 192.168.1.101', cond: true},
     {id:'modelo_central', label:'Modelo central alarma', ph:'Ej: Paradox EVO192', cond: true},
     {id:'codigo_arm', label:'Código armado/desarmado', ph:'', cond: true},
     {id:'codigo_inst', label:'Código instalador / ingeniero', ph:'Ej: 1234 (Galaxy: código ingeniero)', cond: true},
-    {id:'ip_uca', label:'IP UCA / Controlador', ph:'Ej: 192.168.1.102', cond: (Array.isArray(inst.sistemas) && inst.sistemas.includes('ccaa')},)
-    {id:'ip_pci', label:'IP Central PCI', ph:'Ej: 192.168.1.103', cond: (Array.isArray(inst.sistemas) && inst.sistemas.includes('pci')},)
+    {id:'ip_uca', label:'IP UCA / Controlador', ph:'Ej: 192.168.1.102', cond: (Array.isArray(inst.sistemas) && inst.sistemas.includes('ccaa'))},
+    {id:'ip_pci', label:'IP Central PCI', ph:'Ej: 192.168.1.103', cond: (Array.isArray(inst.sistemas) && inst.sistemas.includes('pci'))},
     {id:'notas', label:'Notas / Observaciones previas', ph:'Acceso, particularidades, histórico...', cond: true, tipo:'textarea'},
   ].filter(c => c.cond);
 
@@ -3579,16 +3579,16 @@ async function mostrarSeccionDT() {
 
   // Campos técnicos
   const campos = [
-    {id:'ip_grabador',    label:'IP Grabador CCTV',         cond: (Array.isArray(inst.sistemas) && inst.sistemas.includes('cctv')},)
-    {id:'puerto_grabador',label:'Puerto acceso remoto',      cond: (Array.isArray(inst.sistemas) && inst.sistemas.includes('cctv')},)
-    {id:'user_grabador',  label:'Usuario grabador',          cond: (Array.isArray(inst.sistemas) && inst.sistemas.includes('cctv')},)
-    {id:'pass_grabador',  label:'Contraseña grabador',       cond: (Array.isArray(inst.sistemas) && inst.sistemas.includes('cctv')},)
+    {id:'ip_grabador',    label:'IP Grabador CCTV',         cond: (Array.isArray(inst.sistemas) && inst.sistemas.includes('cctv'))},
+    {id:'puerto_grabador',label:'Puerto acceso remoto',      cond: (Array.isArray(inst.sistemas) && inst.sistemas.includes('cctv'))},
+    {id:'user_grabador',  label:'Usuario grabador',          cond: (Array.isArray(inst.sistemas) && inst.sistemas.includes('cctv'))},
+    {id:'pass_grabador',  label:'Contraseña grabador',       cond: (Array.isArray(inst.sistemas) && inst.sistemas.includes('cctv'))},
     {id:'ip_central',     label:'IP Central de Alarma',      cond: true},
     {id:'modelo_central', label:'Modelo central alarma',     cond: true},
     {id:'codigo_arm',     label:'Código armado/desarmado',   cond: true},
     {id:'codigo_inst',    label:'Código instalador',         cond: true},
-    {id:'ip_uca',         label:'IP UCA / Controlador',      cond: (Array.isArray(inst.sistemas) && inst.sistemas.includes('ccaa')},)
-    {id:'ip_pci',         label:'IP Central PCI',            cond: (Array.isArray(inst.sistemas) && inst.sistemas.includes('pci')},)
+    {id:'ip_uca',         label:'IP UCA / Controlador',      cond: (Array.isArray(inst.sistemas) && inst.sistemas.includes('ccaa'))},
+    {id:'ip_pci',         label:'IP Central PCI',            cond: (Array.isArray(inst.sistemas) && inst.sistemas.includes('pci'))},
     {id:'notas',          label:'Notas / Observaciones',     cond: true, tipo:'textarea'},
   ].filter(c => c.cond);
 
