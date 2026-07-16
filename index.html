@@ -2266,8 +2266,9 @@ async function confirmarCierreAveriaGlobal(id) {
 // Actualiza el badge numérico de la pestaña "Averías" con el total de abiertas
 function actualizarBadgeAveriasTab() {
   if (!todasLasAverias) return;
-  const abiertas = Object.values(todasLasAverias).filter(a => a.estado === 'abierta');
   const badge = document.getElementById('averiasBadgeTab');
+  if (!badge) return;
+  const abiertas = Object.values(todasLasAverias).filter(a => a.estado === 'abierta');
   if (abiertas.length > 0) {
     badge.textContent = abiertas.length;
     badge.classList.remove('hidden');
@@ -3941,7 +3942,6 @@ function mostrarPaso(id) {
   document.getElementById('seccionInicio').classList.add('hidden');
   document.getElementById('seccionDatosTecnicos').classList.add('hidden');
   document.getElementById('navTabs').classList.toggle('hidden', id !== 'paso1');
-  document.getElementById('seccionAverias').classList.add('hidden');
   document.getElementById('seccionAgenda').classList.add('hidden');
   document.getElementById('seccionStock').classList.add('hidden');
   document.getElementById('seccionEstadisticas').classList.add('hidden');
