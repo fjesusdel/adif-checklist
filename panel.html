@@ -434,6 +434,7 @@ body.dark .item-card { background:#1e2433;border-color:#2d3548; }
       <button class="modal-tab"        id="modalTabVisitas"    onclick="cambiarModalTab('visitas')">📋 Visitas</button>
       <button class="modal-tab"        id="modalTabInformes"   onclick="cambiarModalTab('informes')">📄 Informes</button>
       <button class="modal-tab"        id="modalTabNotas"      onclick="cambiarModalTab('notas')">📝 Notas</button>
+      <button class="modal-tab"        id="modalTabGPS"        onclick="cambiarModalTab('gps')">📍 GPS</button>
       <button class="modal-tab"        id="modalTabHistorial"  onclick="cambiarModalTab('historial')">⚠ Averías</button>
     </div>
     <div class="modal-body">
@@ -443,6 +444,7 @@ body.dark .item-card { background:#1e2433;border-color:#2d3548; }
       <div id="modalPanelVisitas"    class="hidden"></div>
       <div id="modalPanelInformes"   class="hidden"></div>
       <div id="modalPanelNotas"      class="hidden"></div>
+      <div id="modalPanelGPS"        class="hidden"></div>
       <div id="modalPanelHistorial"  class="hidden"></div>
     </div>
   </div>
@@ -2002,9 +2004,14 @@ function cerrarModalInstalacion() {
 }
 
 function cambiarModalTab(tab) {
-  ['ficha','fotos','documentos','visitas','informes','notas','historial'].forEach(t => {
-    document.getElementById('modalTab' + t.charAt(0).toUpperCase() + t.slice(1)).classList.toggle('active', t === tab);
-    document.getElementById('modalPanel' + t.charAt(0).toUpperCase() + t.slice(1)).classList.toggle('hidden', t !== tab);
+  const idMap = {
+    ficha: 'Ficha', fotos: 'Fotos', documentos: 'Documentos',
+    visitas: 'Visitas', informes: 'Informes', notas: 'Notas',
+    gps: 'GPS', historial: 'Historial'
+  };
+  Object.keys(idMap).forEach(t => {
+    document.getElementById('modalTab'   + idMap[t]).classList.toggle('active', t === tab);
+    document.getElementById('modalPanel' + idMap[t]).classList.toggle('hidden', t !== tab);
   });
   if (tab === 'ficha')       renderPanelFicha();
   if (tab === 'fotos')       renderPanelFotos();
@@ -2012,7 +2019,44 @@ function cambiarModalTab(tab) {
   if (tab === 'visitas')     renderPanelVisitas();
   if (tab === 'informes')    renderPanelInformes();
   if (tab === 'notas')       renderPanelNotas();
+  if (tab === 'gps')         renderPanelGPS();
   if (tab === 'historial')   renderPanelHistorial();
+}
+
+// ── GPS ───────────────────────────────────────────────────────────────
+async function renderPanelGPS() {
+  const inst  = instalacionAbierta;
+  const ficha = (cacheFichas && cacheFichas[inst.codigo]) || {};
+  const enlace = ficha.gpsEnlace || '';
+  const cont = document.getElementById('modalPanelGPS');
+  cont.innerHTML = `
+    <div style="padding:8px 0">
+      <div style="font-size:13px;font-weight:700;color:var(--gris-oscuro);margin-bottom:8px">📍 Enlace Google Maps</div>
+      <textarea id="gpsEnlaceInput" rows="4" placeholder="Pega aquí el enlace de Google Maps..."
+        style="width:100%;border:1.5px solid var(--gris-borde);border-radius:8px;padding:10px;font-size:13px;font-family:inherit;box-sizing:border-box;resize:vertical">${enlace}</textarea>
+      <div style="display:flex;gap:8px;margin-top:10px">
+        <button class="btn-primary" onclick="guardarGPSEnlace()">💾 Guardar</button>
+        ${enlace ? `<button class="btn-secondary" onclick="window.open('${enlace}','_blank')">📍 Abrir en Maps</button>` : ''}
+      </div>
+      ${enlace ? `<div style="margin-top:12px;font-size:11px;color:var(--gris-medio)">Enlace guardado ✓</div>` : ''}
+    </div>`;
+}
+
+async function guardarGPSEnlace() {
+  const enlace = document.getElementById('gpsEnlaceInput').value.trim();
+  const inst = instalacionAbierta;
+  const ficha = (cacheFichas && cacheFichas[inst.codigo]) || {};
+  const resp = await corelinkPost('/api/fichas', {
+    codigo: inst.codigo,
+    datos: Object.assign({}, ficha, { gpsEnlace: enlace })
+  });
+  if (resp && resp.ok) {
+    if (!cacheFichas) cacheFichas = {};
+    if (!cacheFichas[inst.codigo]) cacheFichas[inst.codigo] = {};
+    cacheFichas[inst.codigo].gpsEnlace = enlace;
+    toast('Ubicación guardada ✓');
+    renderPanelGPS();
+  } else { toast('Error al guardar'); }
 }
 
 // ── Ficha técnica ─────────────────────────────────────────────────────
@@ -2020,16 +2064,16 @@ function renderPanelFicha() {
   const inst  = instalacionAbierta;
   const ficha = (cacheFichas && cacheFichas[inst.codigo]) || {};
   const campos = [
-    {id:'ip_grabador',    label:'IP Grabador CCTV',         cond: inst.sistemas.includes('cctv')},
-    {id:'puerto_grabador',label:'Puerto acceso remoto',      cond: inst.sistemas.includes('cctv')},
-    {id:'user_grabador',  label:'Usuario grabador',          cond: inst.sistemas.includes('cctv')},
-    {id:'pass_grabador',  label:'Contraseña grabador',       cond: inst.sistemas.includes('cctv')},
+    {id:'ip_grabador',    label:'IP Grabador CCTV',         cond: (Array.isArray(inst.sistemas) && inst.sistemas.includes('cctv'))},
+    {id:'puerto_grabador',label:'Puerto acceso remoto',      cond: (Array.isArray(inst.sistemas) && inst.sistemas.includes('cctv'))},
+    {id:'user_grabador',  label:'Usuario grabador',          cond: (Array.isArray(inst.sistemas) && inst.sistemas.includes('cctv'))},
+    {id:'pass_grabador',  label:'Contraseña grabador',       cond: (Array.isArray(inst.sistemas) && inst.sistemas.includes('cctv'))},
     {id:'ip_central',     label:'IP Central de Alarma',      cond: true},
     {id:'modelo_central', label:'Modelo central alarma',     cond: true},
     {id:'codigo_arm',     label:'Código armado/desarmado',   cond: true},
     {id:'codigo_inst',    label:'Código instalador',         cond: true},
-    {id:'ip_uca',         label:'IP UCA / Controlador',      cond: inst.sistemas.includes('ccaa')},
-    {id:'ip_pci',         label:'IP Central PCI',            cond: inst.sistemas.includes('pci')},
+    {id:'ip_uca',         label:'IP UCA / Controlador',      cond: (Array.isArray(inst.sistemas) && inst.sistemas.includes('ccaa'))},
+    {id:'ip_pci',         label:'IP Central PCI',            cond: (Array.isArray(inst.sistemas) && inst.sistemas.includes('pci'))},
   ].filter(c => c.cond);
 
   const noDisp = ficha.noDisponible || false;

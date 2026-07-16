@@ -1170,7 +1170,6 @@ header {
     <div id="agendaVistaListaPNT">
       <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap">
         <button class="btn-primary" onclick="abrirFormNuevaTarea()">+ Nueva tarea</button>
-        <button style="background:#fff7ed;color:#c05621;border:1.5px solid #f59e0b;border-radius:var(--radio);padding:9px 16px;font-size:14px;font-weight:700;cursor:pointer" onclick="abrirGuardiaPNT()">🚨 Guardia</button>
       </div>
       <div id="formNuevaTarea" class="form-nueva-averia hidden">
         <div class="ficha-field" style="margin-bottom:10px">
@@ -1299,6 +1298,7 @@ header {
     <button class="pill"        id="p2tab_docs"     onclick="setP2Tab('docs')">📎 Docs</button>
     <button class="pill"        id="p2tab_fotos"    onclick="setP2Tab('fotos')">📷 Fotos</button>
     <button class="pill"        id="p2tab_averias"  onclick="setP2Tab('averias')">⚠ Averías</button>
+    <button class="pill"        id="p2tab_gps"      onclick="setP2Tab('gps')">📍 GPS</button>
     <button class="pill"        id="p2tab_anterior" onclick="setP2Tab('anterior')">📄 Informes</button>
   </div>
 
@@ -1362,6 +1362,9 @@ header {
   </div>
 
   <!-- Panel informes -->
+  <div id="p2panel_gps" class="hidden">
+    <div id="p2gpsContent" style="padding:8px 0"></div>
+  </div>
   <div id="p2panel_anterior" class="hidden">
     <div class="card">
       <div class="card-title">📄 Informes de mantenimiento</div>
@@ -2136,7 +2139,7 @@ async function corelinkCrearAveriaManual(codigoInstalacion, nombreInstalacion, d
           codigoInstalacion: codigoInstalacion,
           nombreInstalacion: nombreInstalacion,
           codigoPunto: null,
-          nombrePunto: 'Avería de guardia',
+          nombrePunto: 'Avería',
           descripcion: descripcion,
           fechaApertura: new Date().toISOString().split('T')[0],
           prioridad: prioridad
@@ -2231,7 +2234,7 @@ async function cargarYRenderizarAverias() {
       <span class="averia-prioridad-tag prio-${prio}">${labelPrio[prio]}</span>
       ${a.numeroAveria?`<span style="font-size:11px;font-weight:800;color:var(--gris-medio);margin-left:4px">${a.numeroAveria}</span>`:''}
       <div class="averia-inst-nombre">${a.nombreInstalacion}</div>
-      ${a.nombrePunto && a.nombrePunto !== 'Avería de guardia' ? `<div style="font-size:11px;color:var(--gris-medio);font-weight:600">${a.codigoPunto||''} ${a.nombrePunto}</div>` : ''}
+      ${a.nombrePunto && a.nombrePunto !== 'Avería' ? `<div style="font-size:11px;color:var(--gris-medio);font-weight:600">${a.codigoPunto||''} ${a.nombrePunto}</div>` : ''}
       ${a.descripcion ? `<div class="averia-desc">→ ${a.descripcion}</div>` : ''}
       <div class="averia-meta">Abierta el ${fechaApertura.toLocaleDateString('es-ES')} (hace ${diasAbierta} día${diasAbierta!==1?'s':''})</div>
       <button class="btn-cerrar-inc" onclick="mostrarFormCierreGlobal('${id}')">✓ Marcar como resuelta</button>
@@ -3048,7 +3051,7 @@ async function cargarYMostrarIncidenciasPendientes() {
 
     html += `<div class="pendiente-item">
       <div class="pendiente-codigo">${inc.codigoPunto}${esAntigua?'<span class="pendiente-antigua">+3 meses abierta</span>':''}</div>
-      <div class="pendiente-nombre">${inc.nombrePunto}</div>
+      <div class="pendiente-nombre">${(inc.nombrePunto && inc.nombrePunto !== 'Avería de guardia') ? inc.nombrePunto : 'Avería'}</div>
       ${inc.descripcion?`<div class="pendiente-desc">→ ${inc.descripcion}</div>`:''}
       <div class="pendiente-fecha">Abierta el ${fechaApertura.toLocaleDateString('es-ES')}</div>
       <button class="btn-cerrar-inc" onclick="mostrarFormCierre('${id}')">✓ Marcar como resuelta</button>
@@ -4823,14 +4826,40 @@ async function cargarInicio() {
 // PASO 2 — PESTAÑAS DE LA INSTALACIÓN
 // ═══════════════════════════════════════════════════════════════════════
 function setP2Tab(tab) {
-  ['visita','docs','fotos','averias','anterior'].forEach(t => {
+  ['visita','docs','fotos','averias','gps','anterior'].forEach(t => {
     document.getElementById('p2tab_'+t).classList.toggle('active', t===tab);
     document.getElementById('p2panel_'+t).classList.toggle('hidden', t!==tab);
   });
   if (tab==='docs')     cargarP2Docs();
   if (tab==='fotos')    cargarP2Fotos();
   if (tab==='averias')  cargarP2Averias();
+  if (tab==='gps')      cargarP2GPS();
   if (tab==='anterior') cargarP2Anterior();
+}
+
+async function cargarP2GPS() {
+  const cont = document.getElementById('p2gpsContent');
+  cont.innerHTML = '<div class="empty-state">Cargando...</div>';
+  try {
+    const resp = await fetch(CORELINK_URL + '/api/fichas', { headers: { 'X-CoreLink-Key': CORELINK_API_KEY } });
+    const data = await resp.json();
+    const ficha = data.fichas && data.fichas[state.instalacion.codigo];
+    const enlace = ficha && ficha.gpsEnlace ? ficha.gpsEnlace : '';
+    if (!enlace) {
+      cont.innerHTML = '<div class="empty-state">Sin ubicación GPS guardada</div>';
+      return;
+    }
+    cont.innerHTML = `
+      <div style="text-align:center;padding:20px 0">
+        <div style="font-size:48px;margin-bottom:12px">📍</div>
+        <div style="font-size:14px;font-weight:700;color:var(--azul);margin-bottom:16px">${state.instalacion.nombre}</div>
+        <a href="${enlace}" target="_blank" style="display:inline-block;background:#4285f4;color:#fff;text-decoration:none;border-radius:10px;padding:14px 28px;font-size:15px;font-weight:700">
+          🗺 Abrir en Google Maps
+        </a>
+      </div>`;
+  } catch(e) {
+    cont.innerHTML = '<div class="empty-state">Error al cargar</div>';
+  }
 }
 
 async function cargarP2Docs() {
@@ -4928,7 +4957,7 @@ async function cargarP2Averias() {
           <div style="display:flex;align-items:center;gap:6px">
             ${!esManual?`<span style="font-size:10px;font-weight:800;background:var(--azul-claro);color:var(--azul);padding:1px 6px;border-radius:3px">${a.codigoPunto}</span>`
                        :`<span style="font-size:10px;font-weight:800;background:#fee2e2;color:var(--rojo);padding:1px 6px;border-radius:3px">Manual</span>`}
-            <span style="font-size:12px;font-weight:600">${a.nombrePunto||a.descripcion||'Avería'}</span>
+            <span style="font-size:12px;font-weight:600">${(a.nombrePunto && a.nombrePunto !== 'Avería de guardia' ? a.nombrePunto : 'Avería')||a.descripcion||'Avería'}</span>
           </div>
           <span style="font-size:10px;font-weight:700;color:${COLORES[a.estado]||'var(--gris-medio)'}">${a.estado}</span>
         </div>
