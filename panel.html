@@ -520,6 +520,8 @@ body.dark .item-card { background:#1e2433;border-color:#2d3548; }
         <button class="pill"        id="filtroAgendaCompletadas" onclick="setFiltroAgenda('completadas')">Completadas</button>
         <button class="pill"        id="filtroAgendaJesus"      onclick="setFiltroAgenda('jesus')">👷 OT Jesús</button>
         <button class="pill"        id="filtroAgendaFran"       onclick="setFiltroAgenda('fran')">🖥 OT Fran</button>
+        <button class="pill"        id="filtroAgendaCorrectivos" onclick="setFiltroAgenda('correctivos')">⚠️ Correctivos</button>
+        <button class="pill"        id="filtroAgendaMttos"      onclick="setFiltroAgenda('mttos')">🔧 Mttos</button>
       </div>
       <!-- Selector de mes -->
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;background:var(--gris-fondo);border-radius:8px;padding:8px 12px">
@@ -2934,6 +2936,8 @@ function setFiltroAgenda(f) {
   document.getElementById('filtroAgendaCompletadas').classList.toggle('active', f === 'completadas');
   document.getElementById('filtroAgendaJesus').classList.toggle('active',       f === 'jesus');
   document.getElementById('filtroAgendaFran').classList.toggle('active',        f === 'fran');
+  document.getElementById('filtroAgendaCorrectivos').classList.toggle('active', f === 'correctivos');
+  document.getElementById('filtroAgendaMttos').classList.toggle('active',       f === 'mttos');
   const filtroFecha = document.getElementById('filtroFechaCompletadas');
   if (filtroFecha) filtroFecha.style.display = f === 'completadas' ? 'flex' : 'none';
   renderAgendaLista();
@@ -2970,13 +2974,20 @@ function renderAgendaLista() {
   const esCompletadas = filtroAgendaActual === 'completadas';
   const esJesus       = filtroAgendaActual === 'jesus';
   const esFran        = filtroAgendaActual === 'fran';
+  const esCorrectivos = filtroAgendaActual === 'correctivos';
+  const esMttos       = filtroAgendaActual === 'mttos';
   actualizarTituloMesLista();
   const mesStr        = String(listaOTMesActual + 1).padStart(2,'0');
   const prefijo       = listaOTAnioActual + '-' + mesStr;
   const fechaFiltroDay = document.getElementById('completadasFechaFiltro')?.value || '';
 
+  const TIPOS_CORRECTIVO = ['averia-correctiva', 'averia', 'guardia'];
+  const TIPOS_MTTO       = ['anual', 'trimestral', 'pci-trim'];
+
   const lista = Object.entries(cacheAgenda||{}).filter(([id,t]) => {
     if (esCompletadas) return t.estado === 'completada' && (t.fecha||'').startsWith(prefijo);
+    if (esCorrectivos) return t.estado !== 'completada' && TIPOS_CORRECTIVO.includes(t.tipo);
+    if (esMttos)       return t.estado !== 'completada' && TIPOS_MTTO.includes(t.tipo);
     if (t.estado === 'completada') return false;
     if (fechaFiltroDay) return t.fecha === fechaFiltroDay;
     if (!t.fecha) return esPendientes || esSinAsignar || esJesus || esFran;
