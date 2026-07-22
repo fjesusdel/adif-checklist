@@ -4875,7 +4875,7 @@ async function cargarP2Docs() {
       <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:0.5px solid var(--gris-borde)">
         <span style="font-size:20px">📄</span>
         <div style="flex:1;font-size:13px">${d.nombre}</div>
-        <a href="https://drive.google.com/file/d/${d.id}/view" target="_blank" style="font-size:12px;color:var(--azul);font-weight:600">Abrir</a>
+        <a href="${CORELINK_URL}/api/docs-inst/descargar?fileId=${d.id}&nombre=${encodeURIComponent(d.nombre||d.name||'documento')}" target="_blank" style="font-size:12px;color:var(--azul);font-weight:600">Abrir</a>
       </div>`).join('');
   } catch(e) { cont.innerHTML = '<div class="empty-state">Sin conexión</div>'; }
 }
